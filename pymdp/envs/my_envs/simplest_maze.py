@@ -1,0 +1,1 @@
+'''This is a sanity test of pymdp with the simplest environment: an environment with two states: a starting location and a reward (ie preferred location)'''
