@@ -54,7 +54,7 @@ class TMazeEnv(Env):
         self._state = None
     
     def reset(self, state=None):
-        if state is None:
+        if state is None: #what type is state? it is a list of one-hot vectors giving the state of each factor
             loc_state = utils.onehot(0, self.num_locations)
             
             self._reward_condition = np.random.randint(self.num_reward_conditions) # randomly select a reward condition
