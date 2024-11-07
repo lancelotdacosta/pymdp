@@ -46,25 +46,25 @@ B_gp = env.get_transition_dist()
 
 # In[3]:
 
+pA = utils.dirichlet_like(A_gp, scale = 1e16) # set the prior over likelihoods to be centred around A_gp with a scale param (technically A_gp is the expected value of the prior NOT its mode)
 
-pA = utils.dirichlet_like(A_gp, scale = 1e16)
+pA[1][1:,1:3,:] = 1.0 # set the prior over reward observations to be uniform when one is not at the cue location
 
-pA[1][1:,1:3,:] = 1.0
-
-A_gm = utils.norm_dist_obj_arr(pA)      
+A_gm = utils.norm_dist_obj_arr(pA) # initialize the agent's beliefs about the likelihoods to be the centre of the prior Dirichlet distribution. Under the hood, this is takes the Dirichlet parameters of the prior, and scales them to sum to 1.0
 
 
 # In[4]:
 
 
-plot_likelihood(A_gm[1][:,:,0],'Initial beliefs about reward mapping')
-plot_likelihood(A_gp[1][:,:,0],'True reward mapping in RIGHT ARM (Condition 0)')
+plot_likelihood(A_gm[1][:,:,0],'Model location->reward likelihood assuming reward is RIGHT')
+plot_likelihood(A_gp[1][:,:,0],'TRUE location->reward likelihood assuming reward is RIGHT')
 
 
 # In[5]:
 
 
-plot_likelihood(A_gm[2][:,:,0],'Initial beliefs about cue mapping')
+plot_likelihood(A_gm[2][:,:,0],'Model location->cue likelihood assuming reward is RIGHT')
+plot_likelihood(A_gp[2][:,:,0],'TRUE location->cue likelihood assuming reward is RIGHT')
 
 
 # In[6]:
@@ -86,20 +86,22 @@ learnable_modalities = [1] # this is a list of the modalities that you want to b
 agent = Agent(A=A_gm,pA=pA,B=B_gm,
               control_fac_idx=controllable_indices,
               modalities_to_learn=learnable_modalities,
-              lr_pA = 0.25,
+              lr_pA = 1, #mathematically this should always be equal to 1.0
               use_param_info_gain=True)
+
+#see how this compares to the non-learning case: agent = Agent(A=A_gm, B=B_gm, control_fac_idx=controllable_indices)
 
 
 # In[9]:
 
 
-agent.D[0] = utils.onehot(0, agent.num_states[0])
+agent.D[0] = utils.onehot(0, agent.num_states[0]) # set the initial prior over location state to be dirac at centre location
 
 
 # In[10]:
 
 
-agent.C[1][1] = 2.0
+agent.C[1][1] = 2.0 # set the prior over reward observations to be biased towards the reward outcome
 agent.C[1][2] = -2.0
 
 
@@ -109,9 +111,11 @@ agent.C[1][2] = -2.0
 T = 1000 # number of timesteps
 
 obs = env.reset() # reset the environment and get an initial observation
+while env.reward_condition != 1:  # make sure the reward condition is LEFT ARM.
+    obs = env.reset()
 
 # these are useful for displaying read-outs during the loop over time
-reward_conditions = ["Right Arm Better", "Left arm Better"]
+reward_conditions = ["Right Arm", "Left arm"]
 location_observations = ['CENTER','RIGHT ARM','LEFT ARM','CUE LOCATION']
 reward_observations = ['No reward','Reward!','Loss!']
 cue_observations = ['Null','Cue Right','Cue Left']
@@ -120,16 +124,16 @@ print(msg.format(reward_conditions[env.reward_condition], location_observations[
 
 pA_history = []
 
-all_actions = np.zeros((T, 2))
+all_actions = np.zeros((T, 2)) #2 because there are two state factors.
 for t in range(T):
     
     qx = agent.infer_states(obs)
 
     q_pi, efe = agent.infer_policies()
 
-    action = agent.sample_action()
+    action = agent.sample_action() # the action is a vector that gives the action index for each controllable state factor. in this case it is a vector of two numbers.
 
-    pA_t = agent.update_A(obs)
+    pA_t = agent.update_A(obs) #  Update approximate posterior beliefs about Dirichlet parameters. Note that we do so after each observation, not at the end of the trial.
     pA_history.append(pA_t)
     
     msg = """[Step {}] Action: [Move to {}]"""
@@ -137,7 +141,7 @@ for t in range(T):
 
     obs = env.step(action)
 
-    all_actions[t,:] = action
+    all_actions[t,:] = action #store action
 
     msg = """[Step {}] Observation: [{},  {}, {}]"""
     print(msg.format(t, location_observations[int(obs[0])], reward_observations[int(obs[1])], cue_observations[int(obs[2])]))
@@ -145,17 +149,19 @@ for t in range(T):
 
 # In[12]:
 
+plot_likelihood(A_gm[1][:,:,0],'Initial beliefs about reward contingencies \n under the condition that the reward condition is RIGHT ARM')
+plot_likelihood(agent.A[1][:,:,0],'Final beliefs about reward contingencies \n under the condition that the reward condition is RIGHT ARM')
+#recall that when learning, agent.A is the expected value of the approximate posterior over A.
+plot_likelihood(A_gp[1][:,:,0],'True reward contingencies under the condition \n that the reward condition is RIGHT ARM')
 
-plot_likelihood(agent.A[1][1:,:,0],'Final beliefs about reward contingencies under the condition that the reward condition is RIGHT ARM BETTER')
-plot_likelihood(A_gp[1][1:,:,0],'True reward contingencies under the condition that the reward condition is RIGHT ARM BETTER')
-
-plot_likelihood(agent.A[1][1:,:,1],'Final beliefs about reward contingencies under the condition that the reward condition is LEFT ARM BETTER')
-plot_likelihood(A_gp[1][1:,:,1],'True reward contingencies under the condition that the reward condition is LEFT ARM BETTER')
+plot_likelihood(A_gm[1][:,:,1],'Initial beliefs about reward contingencies \n under the condition that the reward condition is LEFT ARM')
+plot_likelihood(agent.A[1][:,:,1],'Final beliefs about reward contingencies \n under the condition that the reward condition is LEFT ARM')
+plot_likelihood(A_gp[1][:,:,1],'True reward contingencies \n under the condition that the reward condition is LEFT ARM')
 
 
 # In[13]:
 
 
-plot_likelihood(agent.A[2][1:,:,1],'Final beliefs about cue mapping')
-plot_likelihood(A_gp[2][1:,:,1],'True contingencies underlying the cue mapping')
+plot_likelihood(agent.A[2][:,:,1],'Final beliefs about location->cue mapping \n under reward LEFT condition')
+plot_likelihood(A_gp[2][:,:,1],'True location->cue mapping \n under reward LEFT condition')
 
