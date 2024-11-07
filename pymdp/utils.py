@@ -185,8 +185,8 @@ def dirichlet_like(template_categorical, scale = 1.0):
     """
     '''Recall a Dirichlet distribution has concentration parameters that have the same shape as its categorical support.
     This function returns a Dirichlet distribution with concentration parameters given by the parameters of the categorical template multiplied by a factor `scale`
-    This has the effect of producing a Dirichlet distribution that is centred around the categorical template
-     and which is concentrated according to the scale factor.'''
+    This has the effect of producing a Dirichlet distribution that has the categorical template as its expected value, NOT its mode 
+    Its degree of concentration is increasing in the scale factor.'''
 
     if not is_obj_array(template_categorical):
         warnings.warn(
