@@ -11,9 +11,11 @@ from pymdp.envs import Env
 from pymdp import utils, maths
 import numpy as np
 
+'this is for the hidden states'
 LOCATION_FACTOR_ID = 0
-TRIAL_FACTOR_ID = 1
+TRIAL_FACTOR_ID = 1 #trial refers to location of reward. TRIAL_FACTOR_ID gives the index of the factor that represents the reward state
 
+'this is for the observations'
 LOCATION_MODALITY_ID = 0
 REWARD_MODALITY_ID = 1
 CUE_MODALITY_ID = 2
@@ -191,7 +193,9 @@ class TMazeEnv(Env):
 
 class TMazeEnvNullOutcome(Env):
     """ Implementation of the 3-arm T-Maze environment where there is an additional null outcome within the cue modality, so that the agent
-    doesn't get a random cue observation, but a null one, when it visits non-cue locations"""
+    doesn't get a random cue observation, but a null one, when it visits non-cue locations.
+    Here the null cue has index 0, cue right has index 1, and cue left has index 2.
+    """
 
     def __init__(self, reward_probs=None):
 
