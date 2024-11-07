@@ -182,7 +182,11 @@ def construct_controllable_B(num_states, num_controls):
 def dirichlet_like(template_categorical, scale = 1.0):
     """
     Helper function to construct a Dirichlet distribution based on an existing Categorical distribution
-    """ 
+    """
+    '''Recall a Dirichlet distribution has concentration parameters that have the same shape as its categorical support.
+    This function returns a Dirichlet distribution with concentration parameters given by the parameters of the categorical template multiplied by a factor `scale`
+    This has the effect of producing a Dirichlet distribution that is centred around the categorical template
+     and which is concentrated according to the scale factor.'''
 
     if not is_obj_array(template_categorical):
         warnings.warn(
