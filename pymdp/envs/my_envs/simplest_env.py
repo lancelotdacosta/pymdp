@@ -3,7 +3,7 @@
 __author__: Lancelot Da Costa
 
 '''This is the simplest environment to sanity test pymdp: an environment with two states
-In simulations, there will be a starting location and a preferred location'''
+In simulations, there will usually be a starting location and a preferred location'''
 """
 
 from pymdp.envs import Env
@@ -38,7 +38,7 @@ class SimplestEnv(Env):
         self._state = None
 
     def reset(self, state=None):
-        if state is None: #state is a list of one-hot vectors
+        if state is None: #state is a list of one-hot vectors, one for each factor
             loc_state = utils.onehot(0, self.num_locations) #start at location 0
             full_state = utils.obj_array(self.num_factors)
             full_state[LOCATION_FACTOR_ID] = loc_state
