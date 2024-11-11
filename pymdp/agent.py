@@ -541,7 +541,9 @@ class Agent(object):
                 **self.inference_params
             )
 
-            self.F = F # variational free energy of each policy  
+            self.F = F # variational free energy of each policy
+
+        #TODO: Bethe free energy, ie belief propagation, is not implemented yet
 
         if hasattr(self, "qs_hist"):
             self.qs_hist.append(qs)
@@ -706,7 +708,7 @@ class Agent(object):
             Vector containing the indices of the actions for each control factor
         """
 
-        if self.sampling_mode == "marginal":
+        if self.sampling_mode == "marginal": #what is marginal? or full?
             action = control.sample_action(
                 self.q_pi, self.policies, self.num_controls, action_selection = self.action_selection, alpha = self.alpha
             )
