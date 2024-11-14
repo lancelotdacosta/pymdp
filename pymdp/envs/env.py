@@ -23,7 +23,7 @@ class Env(object):
 
     This would be the first step of an active inference process, where a sub-class of ``Env``, ``MyCustomEnv`` is initialized, 
     an initial observation is produced, and these observations are fed into an instance of ``Agent`` in order to produce an action,
-    that can then be fed back into the the ``Env`` instance.
+    that can then be fed back into the ``Env`` instance.
 
     """
 
