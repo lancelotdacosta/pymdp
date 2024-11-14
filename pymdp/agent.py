@@ -708,11 +708,11 @@ class Agent(object):
             Vector containing the indices of the actions for each control factor
         """
 
-        if self.sampling_mode == "marginal": #what is marginal? or full?
+        if self.sampling_mode == "marginal": #marginal is when one samples from the marginal posterior over actions
             action = control.sample_action(
                 self.q_pi, self.policies, self.num_controls, action_selection = self.action_selection, alpha = self.alpha
             )
-        elif self.sampling_mode == "full":
+        elif self.sampling_mode == "full": #full is when one samples from the full posterior over policies
             action = control.sample_policy(self.q_pi, self.policies, self.num_controls,
                                            action_selection=self.action_selection, alpha=self.alpha)
 
