@@ -42,7 +42,7 @@ def update_matrix(agent, update_method_name, history_list, learning, *args):
 
 
 # In[]:
-def init_distribution(learning_enabled, base_dist, concentration=1):
+def init_prior(learning_enabled, base_dist, concentration=1):
     'initialises dirichlet prior with uniform parameters if learning is enabled, otherwise returns the base distribution'
     if learning_enabled:
         p = copy.deepcopy(base_dist)
@@ -52,12 +52,16 @@ def init_distribution(learning_enabled, base_dist, concentration=1):
     return copy.deepcopy(base_dist), None
 
 # Initialise the likelihood and transition distributions of the generative model
-learning_A=False
-A_gm, pA = init_distribution(learning_enabled=learning_A, base_dist= A_gp)
-learning_B=False
-B_gm, pB = init_distribution(learning_enabled=learning_B, base_dist= B_gp)
+learning_A=True
+A_gm, pA = init_prior(learning_enabled=learning_A, base_dist= A_gp)
+learning_B=True
+B_gm, pB = init_prior(learning_enabled=learning_B, base_dist= B_gp)
 learning_D=True
-D_gm, pD = init_distribution(learning_enabled=learning_D, base_dist= utils.obj_array_uniform(env.num_states))
+D_gm, pD = init_prior(learning_enabled=learning_D, base_dist= utils.obj_array_uniform(env.num_states))
+'Learning B and D but not A: works as expected'
+'Learning A and D but not B: does not work because as the agent learns A (correctly), it does not update its past beliefs through smoothing so that additions to pD remain uniform'
+'Learning A and B but not D does not work in the all uniform case because the agent does not have any information to update its beliefs, however if one jiggles D slightly, the agent will learn A and B (interestingly, it will learn in mirror fashion if the jiggling favours the other initial state)'
+'Learning A, B, and D should work if agent implements smoothing and if one breaks the symmetry of some (which?) distributions, presumably initial state should suffice'
 
 # In[]:
 # plot_likelihood(A_gm[0][:, :], 'Likelihood map \n from location state to location observation')
@@ -68,15 +72,12 @@ D_gm, pD = init_distribution(learning_enabled=learning_D, base_dist= utils.obj_a
 
 # agent.D[0] = utils.onehot(0, agent.num_states[0])  # set the initial prior over location state to be dirac at left location
 #agent.D = utils.obj_array_uniform(agent.num_states) # set the initial prior over location state to be uniform
-#agent.D[0] = np.array([0.51, 0.49])  # set the initial prior over location state to be uniform
+D_gm[0] = np.array([0.49, 0.51])  # set the initial prior over location state to be uniform
 
 # In[7]:
 
 controllable_indices = [0]  # this is a list of the indices of the hidden state factors that are controllable
-# if learning_A: learnable_modalities = [0]  # this is a list of the modalities (ie indices of observation factors) that you want to be learn-able
-# else: learnable_modalities = []
-# if learning_B: learnable_factors = [0]  # this is a list of the hidden state factors that you want to be learn-able
-# else: learnable_factors = []
+
 
 # In[8]:
 
@@ -105,7 +106,7 @@ agent.C[0][1] = 0.0
 
 # In[11]:
 
-T = 4  # number of timesteps
+T = 1000  # number of timesteps
 
 obs = env.reset()  # reset the environment and get an initial observation
 
@@ -116,7 +117,7 @@ print(msg.format(location_observations[obs[0]]))
 
 pA_history, pB_history, pD_history = [pA], [pB], [pD]
 
-all_actions = np.zeros((T, 1))  # 1 because there is one state factor.
+action_hist = np.zeros((T, 1))  # 1 because there is one state factor.
 
 # state inference
 qx = agent.infer_states(obs)
@@ -133,7 +134,7 @@ for t in range(T):
 
     # action selection
     action = agent.sample_action()  # the action is a vector that gives the action index for each controllable state factor. in this case it is a vector of two numbers.
-    all_actions[t, :] = action # store the action
+    action_hist[t, :] = action # store the action
     # action print statement
     msg = """[Step {}] Action: [Move to {}]"""
     print(msg.format(t, location_observations[int(action[0])]))
