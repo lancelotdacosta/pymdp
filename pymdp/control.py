@@ -1029,7 +1029,7 @@ def sample_action(q_pi, policies, num_controls, action_selection="deterministic"
     num_controls: ``list`` of ``int``
         ``list`` of the dimensionalities of each control state factor.
     action_selection: ``str``, default "deterministic"
-        String indicating whether whether the selected action is chosen as the maximum of the posterior over actions,
+        String indicating whether the selected action is chosen as the maximum of the posterior over actions,
         or whether it's sampled from the posterior marginal over actions
     alpha: ``float``, default 16.0
         Action selection precision -- the inverse temperature of the softmax that is used to scale the 
@@ -1081,7 +1081,7 @@ def _sample_action_test(q_pi, policies, num_controls, action_selection="determin
     num_controls: ``list`` of ``int``
         ``list`` of the dimensionalities of each control state factor.
     action_selection: ``str``, default "deterministic"
-        String indicating whether whether the selected action is chosen as the maximum of the posterior over actions,
+        String indicating whether the selected action is chosen as the maximum of the posterior over actions,
         or whether it's sampled from the posterior marginal over actions
     alpha: float, default 16.0
         Action selection precision -- the inverse temperature of the softmax that is used to scale the 
