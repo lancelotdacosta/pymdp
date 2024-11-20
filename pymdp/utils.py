@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 import warnings
 import itertools
+import copy
 
 EPS_VAL = 1e-16 # global constant for use in norm_dist()
 
@@ -185,7 +186,7 @@ def dirichlet_like(template_categorical, scale = 1.0):
     """
     '''Recall a Dirichlet distribution has concentration parameters that have the same shape as its categorical support.
     This function returns a Dirichlet distribution with concentration parameters given by the parameters of the categorical template multiplied by a factor `scale`
-    This has the effect of producing a Dirichlet distribution that has the categorical template as its expected value, NOT its mode 
+    This has the effect of producing a Dirichlet distribution that has the categorical template as its expected value (*NOT* its mode) 
     Its degree of concentration is increasing in the scale factor.'''
 
     if not is_obj_array(template_categorical):
@@ -203,6 +204,32 @@ def dirichlet_like(template_categorical, scale = 1.0):
         dirichlet_out[i] = scale * arr
 
     return dirichlet_out
+
+def init_dirichlet_prior(learning_enabled, base_dist, concentration=1):
+    """
+    Initialises Dirichlet prior with uniform parameters if learning is enabled, otherwise returns the base distribution.
+    
+    Parameters
+    ----------
+    learning_enabled : bool
+        Whether to initialize a Dirichlet prior (True) or return the base distribution (False)
+    base_dist : numpy.ndarray or list
+        Base distribution to use as template for the Dirichlet prior
+    concentration : float, optional
+        Concentration parameter for the Dirichlet distribution (default=1)
+        
+    Returns
+    -------
+    tuple
+        (normalized distribution, prior parameters) if learning is enabled
+        (copy of base distribution, None) if learning is disabled
+    """
+    if learning_enabled:
+        p = copy.deepcopy(base_dist)
+        for i in range(len(p)):
+            p[i] = concentration * np.ones_like(p[i])
+        return norm_dist_obj_arr(p), p
+    return copy.deepcopy(base_dist), None
 
 def get_model_dimensions(A=None, B=None, factorized=False):
 
@@ -578,4 +605,3 @@ def plot_likelihood(A, title=""):
 
     
    
-
