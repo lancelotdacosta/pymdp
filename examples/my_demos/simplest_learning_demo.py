@@ -8,9 +8,15 @@ import sys
 
 import numpy as np
 
-path = pathlib.Path(os.getcwd())
-module_path = str(path.parent) + '/'
-sys.path.append(module_path)
+# path = pathlib.Path(os.getcwd())
+# module_path = str(path.parent) + '/'
+# sys.path.append(module_path)
+
+# Add the pymdp root directory to Python path
+current_file = pathlib.Path().absolute()
+project_root = str(current_file.parent.parent)  # Go up two levels from examples/my_demos to reach root
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from pymdp.envs.my_envs.simplest_env import SimplestEnv
 from pymdp.agent import Agent
@@ -42,22 +48,15 @@ def update_matrix(agent, update_method_name, history_list, learning, *args):
 
 
 # In[]:
-def init_prior(learning_enabled, base_dist, concentration=1):
-    'initialises dirichlet prior with uniform parameters if learning is enabled, otherwise returns the base distribution'
-    if learning_enabled:
-        p = copy.deepcopy(base_dist)
-        for i in range(len(p)):
-            p[i] = concentration * np.ones_like(p[i])
-        return utils.norm_dist_obj_arr(p), p
-    return copy.deepcopy(base_dist), None
+
 
 # Initialise the likelihood and transition distributions of the generative model
 learning_A=True
-A_gm, pA = init_prior(learning_enabled=learning_A, base_dist= A_gp)
+A_gm, pA = utils.init_dirichlet_prior(learning_enabled=learning_A, base_dist=A_gp)
 learning_B=True
-B_gm, pB = init_prior(learning_enabled=learning_B, base_dist= B_gp)
+B_gm, pB = utils.init_dirichlet_prior(learning_enabled=learning_B, base_dist=B_gp)
 learning_D=True
-D_gm, pD = init_prior(learning_enabled=learning_D, base_dist= utils.obj_array_uniform(env.num_states))
+D_gm, pD = utils.init_dirichlet_prior(learning_enabled=learning_D, base_dist=utils.obj_array_uniform(env.num_states))
 'Learning B and D but not A: works as expected'
 'Learning A and D but not B: does not work because as the agent learns A (correctly), it does not update its past beliefs through smoothing so that additions to pD remain uniform'
 'Learning A and B but not D does not work in the all uniform case because the agent does not have any information to update its beliefs, however if one jiggles D slightly, the agent will learn A and B (interestingly, it will learn in mirror fashion if the jiggling favours the other initial state)'
@@ -91,12 +90,6 @@ agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, D=D_gm, pD=pD,  # pass the likelihoo
               use_param_info_gain=True)
 
 # see how this compares to the non-learning case: agent = Agent(A=A_gm, B=B_gm, control_fac_idx=controllable_indices)
-
-# In[9]:
-
-# agent.D[0] = utils.onehot(0, agent.num_states[0])  # set the initial prior over location state to be dirac at left location
-#agent.D = utils.obj_array_uniform(agent.num_states) # set the initial prior over location state to be uniform
-#agent.D[0] = np.array([0.51, 0.49])  # set the initial prior over location state to be uniform
 
 # In[10]:
 
