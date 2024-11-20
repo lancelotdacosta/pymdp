@@ -181,7 +181,7 @@ def update_state_likelihood_dirichlet_interactions(
     qs_prev: 1D ``numpy.ndarray`` or ``numpy.ndarray`` of dtype object
         Marginal posterior beliefs over hidden states at previous timepoint.
     B_factor_list: ``list`` of ``list`` of ``int``
-        A list of lists, where each element ``B_factor_list[f]`` is a list of indices of hidden state factors that that are needed to predict the dynamics of hidden state factor ``f``.
+        A list of lists, where each element ``B_factor_list[f]`` is a list of indices of hidden state factors that are needed to predict the dynamics of hidden state factor ``f``.
     lr: float, default ``1.0``
         Learning rate, scale of the Dirichlet pseudo-count update.
     factors: ``list``, default "all"
