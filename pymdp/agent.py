@@ -296,7 +296,7 @@ class Agent(object):
                 warnings.warn(
                     "If `inference_algo` is VANILLA, then inference_horizon must be 1\n. \
                     Setting inference_horizon to default value of 1...\n"
-                    )
+                    ) #Why is this?
                 self.inference_horizon = 1
             else:
                 self.inference_horizon = 1
