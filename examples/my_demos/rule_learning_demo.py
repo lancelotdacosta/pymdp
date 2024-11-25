@@ -118,7 +118,7 @@ print(f"num_controls: {num_controls}, type: {type(num_controls)}")
 # %%
 # Initialize prior beliefs about transitions and likelihoods
 learning_A = True
-A_gm, pA = utils.dirichlet_like(template_categorical=A_gp, scale=[1,128,128], learning_enabled=learning_A)
+A_gm, pA = utils.dirichlet_like(template_categorical=A_gp, scale=[1,128,128])
 for i in range(len(pA)):
     print_likelihood(pA[i][:,:])
 

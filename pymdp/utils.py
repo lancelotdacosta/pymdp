@@ -182,13 +182,24 @@ def construct_controllable_B(num_states, num_controls):
 
 def dirichlet_like(template_categorical, scale = 1.0):
     """
-    Helper function to construct a Dirichlet distribution based on an existing Categorical distribution
+    Helper function to construct a Dirichlet distribution based on an existing Categorical distribution.
+    
+    Parameters
+    ----------
+    template_categorical : numpy.ndarray or list
+        Template categorical distribution used to determine the shape of the Dirichlet prior
+    scale : float, list, or numpy.ndarray, optional
+        Scale parameter(s) for the Dirichlet distribution.
+        Can be either:
+        - float: same scale used for all factors (default=1.0)
+        - list or numpy.ndarray: array of scale values, one for each factor in categorical template
+        
+    Returns
+    -------
+    numpy.ndarray
+        Object array containing Dirichlet concentration parameters, where each factor's parameters
+        are the template's parameters multiplied by the corresponding scale value
     """
-    '''Recall a Dirichlet distribution has concentration parameters that have the same shape as its categorical support.
-    This function returns a Dirichlet distribution with concentration parameters given by the parameters of the categorical template multiplied by a factor `scale`
-    This has the effect of producing a Dirichlet distribution that has the categorical template as its expected value (*NOT* its mode) 
-    Its degree of concentration is increasing in the scale factor.'''
-
     if not is_obj_array(template_categorical):
         warnings.warn(
                     "Input array is not an object array...\
@@ -197,11 +208,18 @@ def dirichlet_like(template_categorical, scale = 1.0):
         template_categorical = to_obj_array(template_categorical)
 
     n_sub_arrays = len(template_categorical)
-
     dirichlet_out = obj_array(n_sub_arrays)
     
+    # Convert single scale value to list if needed
+    if not isinstance(scale, (list, np.ndarray)):
+        scale = [scale] * n_sub_arrays
+    
+    # Verify the number of scale values matches number of factors
+    if len(scale) != n_sub_arrays:
+        raise ValueError(f"Number of scale values ({len(scale)}) must match number of factors ({n_sub_arrays})")
+    
     for i, arr in enumerate(template_categorical):
-        dirichlet_out[i] = scale * arr
+        dirichlet_out[i] = scale[i] * arr
 
     return dirichlet_out
 
