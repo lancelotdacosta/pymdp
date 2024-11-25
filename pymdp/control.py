@@ -646,7 +646,7 @@ def calc_expected_utility(qo_pi, C):
     modalities_to_tile = [modality_i for modality_i in range(num_modalities) if C[modality_i].ndim == 1]
 
     # make a deepcopy of C where it has been tiled across timesteps
-    C_tiled = copy.deepcopy(C)
+    C_tiled = copy.deepcopy(C)  
     for modality in modalities_to_tile:
         C_tiled[modality] = np.tile(C[modality][:,None], (1, n_steps) )
     

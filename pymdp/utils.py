@@ -205,31 +205,42 @@ def dirichlet_like(template_categorical, scale = 1.0):
 
     return dirichlet_out
 
-def init_dirichlet_prior(learning_enabled, base_dist, concentration=1):
+def dirichlet_uniform(template_categorical, scale=1, learning_enabled=True):
     """
-    Initialises Dirichlet prior with uniform parameters if learning is enabled, otherwise returns the base distribution.
+    Initialises a Dirichlet prior with UNIFORM parameters if learning is enabled, otherwise returnsusing a template categorical distribution.
     
     Parameters
     ----------
-    learning_enabled : bool
-        Whether to initialize a Dirichlet prior (True) or return the base distribution (False)
-    base_dist : numpy.ndarray or list
-        Base distribution to use as template for the Dirichlet prior
-    concentration : float, optional
-        Concentration parameter for the Dirichlet distribution (default=1)
+    template_categorical : numpy.ndarray or list
+        Template categorical distribution used to determine the shape of the Dirichlet prior
+    scale : float, list, or numpy.ndarray, optional
+        Scale parameter(s) for the uniform Dirichlet distribution.
+        Can be either:
+        - float: same scale used for all factors (default=1)
+        - list or numpy.ndarray: array of scale values, one for each factor in categorical template
+    learning_enabled : bool, optional
+        Whether to initialize a Dirichlet prior (True) or return a copy of the template (False).
+        Default is True.
         
     Returns
     -------
     tuple
-        (normalized distribution, prior parameters) if learning is enabled
-        (copy of base distribution, None) if learning is disabled
+        (normalized distribution, prior parameters) if learning_enabled is True
+        (copy of template_categorical, None) if learning_enabled is False
     """
     if learning_enabled:
-        p = copy.deepcopy(base_dist)
+        p = copy.deepcopy(template_categorical)
+        # Convert single concentration value to list if needed
+        if not isinstance(scale, (list, np.ndarray)):
+            scale = [scale] * len(p)
+        # Verify the number of concentration values matches number of factors
+        if len(scale) != len(p):
+            raise ValueError(f"Number of concentration values ({len(scale)}) must match number of factors ({len(p)})")
+        # Initialize each factor with its corresponding concentration
         for i in range(len(p)):
-            p[i] = concentration * np.ones_like(p[i])
+            p[i] = scale[i] * np.ones_like(p[i])
         return norm_dist_obj_arr(p), p
-    return copy.deepcopy(base_dist), None
+    return copy.deepcopy(template_categorical), None
 
 def get_model_dimensions(A=None, B=None, factorized=False):
 
@@ -451,7 +462,7 @@ def reduce_a_matrix(A):
     """
 
     o_dim, num_states = A.shape[0], A.shape[1:]
-    idx_vec_s = [slice(0, o_dim)]  + [slice(ns) for _, ns in enumerate(num_states)]
+    idx_vec_s = [slice(0, o_dim)]  + [slice(0, ns) for _, ns in enumerate(num_states)]
 
     original_factor_idx = []
     excluded_factor_idx = [] # the indices of the hidden state factors that are independent of the observation and thus marginalized away
@@ -576,6 +587,23 @@ def build_xn_vn_array(xn):
                 xn_array[itr,:,:,policy_i] = xn[policy_i][itr][0] 
     
     return xn_array
+
+def update_matrix(agent, update_method_name, history_list, learning, *args):
+    """
+    Conditionally updates a matrix if learning is enabled, using the specified agent method,
+    and appends the result to the given history list.
+
+    Parameters:
+    - agent: the agent object with update methods for A, B, and D.
+    - update_method_name: name of the method (string) to be called for updating (e.g., "update_A").
+    - history_list: list to append the update result to (e.g., pA_history, pB_history, pD_history).
+    - learning: boolean, whether to perform the update.
+    - *args: additional arguments to pass to the update method.
+    """
+    if learning:
+        update_method = getattr(agent, update_method_name)
+        update = update_method(*args)
+        history_list.append(update)
 
 def plot_beliefs(belief_dist, title=""):
     """

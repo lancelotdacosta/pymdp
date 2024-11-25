@@ -54,7 +54,7 @@ if project_root not in sys.path:
 print(f"Added to Python path: {project_root}")
 
 from pymdp.agent import Agent
-from pymdp.utils import plot_beliefs, plot_likelihood
+from pymdp.utils import plot_beliefs, plot_likelihood, update_matrix
 from pymdp import utils
 from pymdp.envs.my_envs.rule_learning import RuleLearningEnv
 
@@ -88,7 +88,7 @@ B_gp = env.get_transition_dist()
 # plot_likelihood(A_gp[1][:,i,j,:,k],'Where Modality Likelihoods (pure deterministic mapping from where state)')
 # print('Feedback Modality Likelihoods (deterministic based on choice matching hidden color):')
 # print(A_gp[2][:,i,j,k,j])#,'Feedback Modality Likelihoods (should be independent of rule and where)')
-# #A[0]is correct
+#A[0]is correct
 
 # for l in range(env.num_choices):    
 #     plot_likelihood(A_gp[0][:,2,:,2,l],'.')
@@ -115,30 +115,40 @@ print(f"num_obs: {num_obs}, type: {type(num_obs)}")
 print(f"num_states: {num_states}, type: {type(num_states)}")
 print(f"num_controls: {num_controls}, type: {type(num_controls)}")
 
+# %%
 # Initialize prior beliefs about transitions and likelihoods
-learning_A = False
-A_gm, pA = utils.init_dirichlet_prior(learning_enabled=learning_A, base_dist=A_gp)
+learning_A = True
+A_gm, pA = utils.dirichlet_like(template_categorical=A_gp, scale=[1,128,128], learning_enabled=learning_A)
+for i in range(len(pA)):
+    print_likelihood(pA[i][:,:])
+
+# %%
 learning_B = False
-B_gm, pB = utils.init_dirichlet_prior(learning_enabled=learning_B, base_dist=B_gp)
+B_gm, pB = utils.dirichlet_uniform(template_categorical=B_gp, learning_enabled=learning_B)
+
+# %%
 
 # Create (time dependent)prior preferences
 T = 3  # Number of timesteps in the simulations
 
-C_gm = utils.obj_array_zeros(env.num_obs)
+C = utils.obj_array_zeros(env.num_obs)
 
-# Allow feedback modality preferences to vary over time
-C_gm[2] = np.zeros((3, T))  # Shape: (num_feedback_obs, num_timesteps)
+# Incorrect feedback always to avoid, zero preference for correct or neutral feedback (but we will change the preference for neutral feedback at the third timestep, to make it take a decision)
+C[2][2] = -4 
 
-# evolving over time
-for t in range(T):
-    # Incorrect feedback always to avoid
-    C_gm[2][2, t] = -4
-    # Correct feedback preferred
-    C_gm[2][1, t] = 4
-    # Neutral feedback is neutral
-    # C_gm[2][0, t] = -4
-    if t>=1: # Neutral feedback to avoid from timestep 3
-        C_gm[2][0, t] = -32
+# # Allow feedback modality preferences to vary over time
+# C_gm[2] = np.zeros((3, T))  # Shape: (num_feedback_obs, num_timesteps)
+
+# # evolving over time
+# for t in range(T):
+#     # Incorrect feedback always to avoid
+#     C_gm[2][2, t] = -4
+#     # Correct feedback preferred
+#     C_gm[2][1, t] = 4
+#     # Neutral feedback is neutral
+#     # C_gm[2][0, t] = -4
+#     if t>=1: # Neutral feedback to avoid from timestep 3
+#         C_gm[2][0, t] = -32
 
 # Initialize the agent's prior beliefs about initial states
 D_gm = utils.obj_array_uniform(num_states) # uniform prior on rule or true color
@@ -146,12 +156,12 @@ D_gm[2] = utils.onehot(3, env.num_locations) #start at the centre location
 D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 
 
-# In[5]: Create agent
-agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=C_gm, D=D_gm,
+# In[5]: Create agent and test
+agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
               num_controls=num_controls, policy_len=1,
               inference_horizon=1, inference_algo='VANILLA')
 
-# In[5]: # Test the agent
+
 n_trials = 1  # Number of trials to run
 trial_length = T  # Length of each trial (same as our planning horizon)
 
@@ -165,7 +175,7 @@ action_history = []
 q_s_history = []
 
 for trial in range(n_trials):
-    print(f"\n=== Trial {trial + 1} ===")
+    print(f"\n=== Trial {trial} ===")
     
     obs = env.reset()  # Reset environment at the start of each trial
     agent.reset()      # Reset agent's beliefs
@@ -186,8 +196,11 @@ for trial in range(n_trials):
     print(f"        location={q_s[2].round(2)}, choice={q_s[3].round(2)}")
     
     for t in range(trial_length):
-        print(f"\n--- Timestep {t + 1} ---")
+        print(f"\n--- Timestep {t} ---")
         
+        if t == 2:  # Change preference for neutral feedback to avoid
+            agent.C[2][0] = -8
+
         # Get agent's action
         q_pi, efe = agent.infer_policies()
         action = agent.sample_action()   
@@ -314,3 +327,6 @@ plt.grid(True)
 plt.show()
 
 # %%
+
+# %%
+

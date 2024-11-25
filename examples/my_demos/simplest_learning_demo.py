@@ -20,7 +20,7 @@ if project_root not in sys.path:
 
 from pymdp.envs.my_envs.simplest_env import SimplestEnv
 from pymdp.agent import Agent
-from pymdp.utils import plot_likelihood
+from pymdp.utils import plot_likelihood, update_matrix
 from pymdp import utils
 
 # In[]:
@@ -29,34 +29,15 @@ A_gp = env.get_likelihood_dist()
 B_gp = env.get_transition_dist()
 
 # In[]:
-def update_matrix(agent, update_method_name, history_list, learning, *args):
-    """
-    Conditionally updates a matrix if learning is enabled, using the specified agent method,
-    and appends the result to the given history list.
-
-    Parameters:
-    - agent: the agent object with update methods for A, B, and D.
-    - update_method_name: name of the method (string) to be called for updating (e.g., "update_A").
-    - history_list: list to append the update result to (e.g., pA_history, pB_history, pD_history).
-    - learning: boolean, whether to perform the update.
-    - *args: additional arguments to pass to the update method.
-    """
-    if learning:
-        update_method = getattr(agent, update_method_name)
-        update = update_method(*args)
-        history_list.append(update)
-
-
-# In[]:
 
 
 # Initialise the likelihood and transition distributions of the generative model
 learning_A=True
-A_gm, pA = utils.init_dirichlet_prior(learning_enabled=learning_A, base_dist=A_gp)
+A_gm, pA = utils.dirichlet_uniform(template_categorical=A_gp, learning_enabled=learning_A)
 learning_B=True
-B_gm, pB = utils.init_dirichlet_prior(learning_enabled=learning_B, base_dist=B_gp)
+B_gm, pB = utils.dirichlet_uniform(template_categorical=B_gp, learning_enabled=learning_B)
 learning_D=True
-D_gm, pD = utils.init_dirichlet_prior(learning_enabled=learning_D, base_dist=utils.obj_array_uniform(env.num_states))
+D_gm, pD = utils.dirichlet_uniform(template_categorical=utils.obj_array_uniform(env.num_states), learning_enabled=learning_D)
 'Learning B and D but not A: works as expected'
 'Learning A and D but not B: does not work because as the agent learns A (correctly), it does not update its past beliefs through smoothing so that additions to pD remain uniform'
 'Learning A and B but not D does not work in the all uniform case because the agent does not have any information to update its beliefs, however if one jiggles D slightly, the agent will learn A and B (interestingly, it will learn in mirror fashion if the jiggling favours the other initial state)'
