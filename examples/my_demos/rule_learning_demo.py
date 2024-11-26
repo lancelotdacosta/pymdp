@@ -56,7 +56,7 @@ print(f"Added to Python path: {project_root}")
 from pymdp.agent import Agent
 from pymdp.utils import plot_beliefs, plot_likelihood, update_matrix
 from pymdp import utils
-from pymdp.envs.my_envs.rule_learning import RuleLearningEnv
+from pymdp.envs.my_envs.rule_learning import RuleLearningEnv, RULE_FACTOR_ID
 
 # Initialize environment
 env = RuleLearningEnv()
@@ -114,28 +114,33 @@ print(f"num_states: {num_states}, type: {type(num_states)}")
 print(f"num_controls: {num_controls}, type: {type(num_controls)}")
 
 # %%
-# Initialize prior beliefs about likelihoods
-# A_gp is the generative process likelihood mapping from the environment
-# We create a Dirichlet prior (pA) that matches A_gp with high confidence (scale=128)
-# This means the agent has accurate prior beliefs about the task structure
-pA = utils.dirichlet_like(template_categorical=A_gp, scale=[128,128,128]) 
+learning_A = False
+if learning_A:
+    # Initialize prior beliefs about likelihoods
+    # A_gp is the generative process likelihood mapping from the environment
+    # We create a Dirichlet prior (pA) that matches A_gp with high confidence (scale=128)
+    # This means the agent has accurate prior beliefs about the task structure
+    pA = utils.dirichlet_like(template_categorical=A_gp, scale=[128,128,128]) 
 
-# However, we only want the agent to have informative priors about the top location (where=1)
-# For all other locations, we set uniform likelihoods (all 1's)
-# This means the agent only has strong beliefs about what colors mean at the top location
-# where the rule is indicated
-for where in range(env.num_locations): 
-    if where != 1: #if location is not top
-        pA[0][:,:,:,where,:] = np.ones_like(pA[0][:,:,:,where,:]) 
+    # However, we only want the agent to have informative priors about the top location (where=1)
+    # For all other locations, we set uniform likelihoods (all 1's)
+    # This means the agent only has strong beliefs about what colors mean at the top location
+    # where the rule is indicated
+    for where in range(env.num_locations): 
+        if where != 1: #if location is not top
+            pA[0][:,:,:,where,:] = np.ones_like(pA[0][:,:,:,where,:]) 
 
-# Convert Dirichlet parameters to normalized probabilities for the generative model
-A_gm = utils.norm_dist_obj_arr(pA)
+    # Convert Dirichlet parameters to normalized probabilities for the generative model
+    A_gm = utils.norm_dist_obj_arr(pA)
+else: 
+    A_gm = copy.deepcopy(A_gp)  # make a copy of the true observation likelihood to initialize the observation model
+
 
 # %%
 # Plot what modality (0) for each rule at the top location (1) with choice red (0)
 # This shows how different rules lead to different color expectations at the top location
-for r in range(env.num_rules):
-    plot_likelihood(A_gm[0][:,r,:,1,0], f'rule {r}, loc {1}, choice {0}')
+# for r in range(env.num_rules):
+#     plot_likelihood(A_gm[0][:,r,:,1,0], f'rule {r}, loc {1}, choice {0}')
 
 # %% Initialize prior beliefs about transitions
 learning_B = False
@@ -177,11 +182,12 @@ D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
               num_controls=num_controls, policy_len=1,
               inference_horizon=1, inference_algo='VANILLA',
-              lr_pA=0.1)  # Set learning rate for A matrix to 0.1
+              lr_pA=0.1,  # Set learning rate for A matrix to 0.1
+              modalities_to_learn=[0])  # Only learn the 'what' modality
 
 # In[5]: Test agent
 
-n_trials = 10  # Number of trials to run
+n_trials = 1000  # Number of trials to run
 trial_length = T  # Length of each trial (same as our planning horizon)
 
 # Simple labels for printing
@@ -194,13 +200,17 @@ action_history = []
 q_s_history = []
 likelihood_history = []  # Store A matrices over time
 pA_history = [pA] # Initialize learning history
+trial_rules = []  # Store the rule for each trial
 
 for trial in range(n_trials):
     print(f"\n=== Trial {trial} ===")
     
     # Reset environment, agent's beliefs and initialize trial records
     obs = env.reset()
+    trial_rules.append(env._state[RULE_FACTOR_ID].argmax())  # Store the rule at the start of each trial
     agent.reset()      # Reset agent's beliefs at start of each trial
+    agent.C[2][0] = 0  # Set preference to be neutral about neutral feedback at start of trial
+    
     trial_obs = [obs]
     trial_actions = []
     trial_q_s = []
@@ -260,125 +270,71 @@ for trial in range(n_trials):
 # In[5]: # Print summary statistics
 correct_choices = 0
 total_choices = 0
+performance_history = []  # Track overall performance per trial
+performance_history_per_rule = [[], [], []]  # Track performance for each rule
 
-for trial_obs in obs_history:
+for trial_idx, trial_obs in enumerate(obs_history):
+    trial_correct = 0
+    trial_total = 0
+    
+    # Get the true rule for this trial from our stored rules
+    true_rule = trial_rules[trial_idx]
+    
     for obs in trial_obs:
         if obs[2] == 1:  # Correct feedback
             correct_choices += 1
+            trial_correct += 1
         if obs[2] != 0:  # Any feedback (excluding neutral)
             total_choices += 1
+            trial_total += 1
+    
+    # Calculate trial performance
+    if trial_total > 0:
+        trial_performance = trial_correct / trial_total
+        performance_history.append(trial_performance)
+        performance_history_per_rule[true_rule].append(trial_performance)
+    else:
+        performance_history.append(0)
+        performance_history_per_rule[true_rule].append(0)
 
 print(f"\nPerformance Summary:")
 print(f"Correct choices: {correct_choices}/{total_choices} ({(correct_choices/total_choices)*100:.2f}%)")
 
 # In[5]: # Visualization of results
+
+# Plot overall performance
 import matplotlib.pyplot as plt
+plt.figure(figsize=(15, 10))
+plt.subplot(2, 2, 1)
+plt.plot(range(len(performance_history)), performance_history, 'b-', label='Performance')
+plt.plot(range(len(performance_history)), 
+         np.convolve(performance_history, np.ones(20)/20, mode='same'),
+         'r-', label='Moving Average (20 trials)')
+plt.xlabel('Trial Number')
+plt.ylabel('Performance (Correct/Total Choices)')
+plt.title('Overall Learning Performance')
+plt.legend()
+plt.grid(True)
 
-# Extract beliefs about rules, colors and choices over time
-rule_beliefs = []
-color_beliefs = []
-choice_beliefs = []
-location_beliefs = []
+# Plot performance for each rule
+rule_names = ['Left Rule', 'Top Rule', 'Right Rule']
+colors = ['red', 'green', 'blue']
 
-for beliefs in q_s_history[0]:
-    rule_beliefs.append(beliefs[0])  # Factor 0 is rule
-    color_beliefs.append(beliefs[1])  # Factor 1 is color
-    location_beliefs.append(beliefs[2])  # Factor 2 is location
-    choice_beliefs.append(beliefs[3])  # Factor 3 is choice
-
-# Convert to numpy arrays for easier plotting
-rule_beliefs = np.array(rule_beliefs)
-color_beliefs = np.array(color_beliefs)
-location_beliefs = np.array(location_beliefs)
-choice_beliefs = np.array(choice_beliefs)
-
-# Create figure with subplots
-fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(10, 16))
-
-# Plot rule beliefs
-ax1.plot(rule_beliefs[:, 0], label='Left Rule', color='red')
-ax1.plot(rule_beliefs[:, 1], label='Top Rule', color='green')
-ax1.plot(rule_beliefs[:, 2], label='Right Rule', color='blue')
-ax1.set_title('Rule Beliefs Over Time')
-ax1.set_xlabel('Time Step')
-ax1.set_ylabel('Belief Probability')
-ax1.legend()
-ax1.grid(True)
-
-# Plot color beliefs
-ax2.plot(color_beliefs[:, 0], label='Red', color='red')
-ax2.plot(color_beliefs[:, 1], label='Green', color='green')
-ax2.plot(color_beliefs[:, 2], label='Blue', color='blue')
-ax2.set_title('Color Beliefs Over Time')
-ax2.set_xlabel('Time Step')
-ax2.set_ylabel('Belief Probability')
-ax2.legend()
-ax2.grid(True)
-
-# Plot location beliefs
-ax3.plot(location_beliefs[:, 0], label='Left', color='red')
-ax3.plot(location_beliefs[:, 1], label='Top', color='green')
-ax3.plot(location_beliefs[:, 2], label='Right', color='blue')
-ax3.plot(location_beliefs[:, 3], label='Centre', color='gray', linestyle='--')
-ax3.set_title('Location Beliefs Over Time')
-ax3.set_xlabel('Time Step')
-ax3.set_ylabel('Belief Probability')
-ax3.legend()
-ax3.grid(True)
-
-# Plot choice beliefs
-ax4.plot(choice_beliefs[:, 0], label='Choose Red', color='red')
-ax4.plot(choice_beliefs[:, 1], label='Choose Green', color='green')
-ax4.plot(choice_beliefs[:, 2], label='Choose Blue', color='blue')
-ax4.plot(choice_beliefs[:, 3], label='Undecided', color='gray', linestyle='--')
-ax4.set_title('Choice Beliefs Over Time')
-ax4.set_xlabel('Time Step')
-ax4.set_ylabel('Belief Probability')
-ax4.legend()
-ax4.grid(True)
-
-plt.tight_layout()
-plt.show()
-
-# Plot likelihood evolution for top location
-plt.figure(figsize=(15, 5))
-timesteps = range(len(likelihood_history[0]))  # Number of timesteps in first trial
-
-# Plot for each rule
-for r in range(env.num_rules):
-    plt.subplot(1, 3, r+1)
-    
-    # Extract likelihood values over time for this rule at top location
-    values = np.array([[trial_A[0][:,r,:,1,0] for trial_A in trial] for trial in likelihood_history])
-    
-    # Plot each color's likelihood
-    for c in range(env.num_colours):
-        plt.plot(values[0, :, c], label=f'Color {colors[c]}')
-    
-    plt.title(f'Rule {r} Likelihood Evolution')
-    plt.xlabel('Timestep')
-    plt.ylabel('Likelihood')
+for rule_idx in range(env.num_rules):
+    plt.subplot(2, 2, rule_idx + 2)
+    perf = performance_history_per_rule[rule_idx]
+    if len(perf) > 0:  # Only plot if we have data for this rule
+        plt.plot(range(len(perf)), perf, '-', color=colors[rule_idx], label='Performance')
+        plt.plot(range(len(perf)), 
+                np.convolve(perf, np.ones(20)/20, mode='same'),
+                'k-', label='Moving Average (20 trials)')
+    plt.xlabel('Trial Number')
+    plt.ylabel('Performance (Correct/Total Choices)')
+    plt.title(f'Learning Performance - {rule_names[rule_idx]}')
     plt.legend()
     plt.grid(True)
 
 plt.tight_layout()
 plt.show()
 
-# Plot performance over trials
-trial_performances = []
-for trial_idx, trial_obs in enumerate(obs_history):
-    correct = sum(1 for obs in trial_obs if obs[2] == 1)  # Count correct feedback
-    total = sum(1 for obs in trial_obs if obs[2] != 0)    # Count non-neutral feedback
-    if total > 0:
-        performance = correct / total
-    else:
-        performance = 0
-    trial_performances.append(performance)
-
-plt.figure(figsize=(10, 5))
-plt.plot(range(1, n_trials + 1), trial_performances, marker='o')
-plt.title('Performance Over Trials')
-plt.xlabel('Trial Number')
-plt.ylabel('Proportion Correct')
-plt.grid(True)
-plt.show()
+# %%
