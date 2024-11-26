@@ -173,14 +173,13 @@ D_gm[2] = utils.onehot(3, env.num_locations) #start at the centre location
 D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 
 
-# In[5]: Create agent and test
+# In[5]: Create agent
 agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
               num_controls=num_controls, policy_len=1,
               inference_horizon=1, inference_algo='VANILLA',
               lr_pA=0.1)  # Set learning rate for A matrix to 0.1
 
-# Initialize learning history
-pA_history = [pA]
+# In[5]: Test agent
 
 n_trials = 10  # Number of trials to run
 trial_length = T  # Length of each trial (same as our planning horizon)
@@ -194,11 +193,12 @@ obs_history = []
 action_history = []
 q_s_history = []
 likelihood_history = []  # Store A matrices over time
+pA_history = [pA] # Initialize learning history
 
 for trial in range(n_trials):
     print(f"\n=== Trial {trial} ===")
     
-    # Reset environment and initialize trial records
+    # Reset environment, agent's beliefs and initialize trial records
     obs = env.reset()
     agent.reset()      # Reset agent's beliefs at start of each trial
     trial_obs = [obs]
@@ -211,16 +211,13 @@ for trial in range(n_trials):
     
     # infer states  
     q_s = agent.infer_states(obs)
+    trial_q_s.append(q_s)  # Log beliefs about states 
     
     # Update A matrix after initial observation
     update_matrix(agent, "update_A", pA_history, True, obs)
     
     # Store updated likelihood
     trial_likelihoods.append(copy.deepcopy(agent.A))
-    
-    # Log observation and beliefs about states 
-    trial_obs.append(obs)
-    trial_q_s.append(q_s)
     
     print(f"\nInitial observation: sees {colors[int(obs[0])]} at {locations[int(obs[1])]}, feedback: {feedback[int(obs[2])]}")
     print(f"Beliefs: rule={q_s[0].round(2)}, color={q_s[1].round(2)}")
