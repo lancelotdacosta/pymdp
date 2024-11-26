@@ -94,8 +94,6 @@ B_gp = env.get_transition_dist()
 #     plot_likelihood(A_gp[0][:,2,:,2,l],'.')
 
 
-
-
 # In[5]: Test initial state sample
 obs=env.reset()
 D_gp = env.get_state()
@@ -116,25 +114,44 @@ print(f"num_states: {num_states}, type: {type(num_states)}")
 print(f"num_controls: {num_controls}, type: {type(num_controls)}")
 
 # %%
-# Initialize prior beliefs about transitions and likelihoods
-learning_A = True
-A_gm, pA = utils.dirichlet_like(template_categorical=A_gp, scale=[1,128,128])
-for i in range(len(pA)):
-    print_likelihood(pA[i][:,:])
+# Initialize prior beliefs about likelihoods
+# A_gp is the generative process likelihood mapping from the environment
+# We create a Dirichlet prior (pA) that matches A_gp with high confidence (scale=128)
+# This means the agent has accurate prior beliefs about the task structure
+pA = utils.dirichlet_like(template_categorical=A_gp, scale=[128,128,128]) 
+
+# However, we only want the agent to have informative priors about the top location (where=1)
+# For all other locations, we set uniform likelihoods (all 1's)
+# This means the agent only has strong beliefs about what colors mean at the top location
+# where the rule is indicated
+for where in range(env.num_locations): 
+    if where != 1: #if location is not top
+        pA[0][:,:,:,where,:] = np.ones_like(pA[0][:,:,:,where,:]) 
+
+# Convert Dirichlet parameters to normalized probabilities for the generative model
+A_gm = utils.norm_dist_obj_arr(pA)
 
 # %%
+# Plot what modality (0) for each rule at the top location (1) with choice red (0)
+# This shows how different rules lead to different color expectations at the top location
+for r in range(env.num_rules):
+    plot_likelihood(A_gm[0][:,r,:,1,0], f'rule {r}, loc {1}, choice {0}')
+
+# %% Initialize prior beliefs about transitions
 learning_B = False
 B_gm, pB = utils.dirichlet_uniform(template_categorical=B_gp, learning_enabled=learning_B)
 
 # %%
 
-# Create (time dependent)prior preferences
+# Create (time dependent) prior preferences
 T = 3  # Number of timesteps in the simulations
 
 C = utils.obj_array_zeros(env.num_obs)
 
 # Incorrect feedback always to avoid, zero preference for correct or neutral feedback (but we will change the preference for neutral feedback at the third timestep, to make it take a decision)
 C[2][2] = -4 
+
+# %%
 
 # # Allow feedback modality preferences to vary over time
 # C_gm[2] = np.zeros((3, T))  # Shape: (num_feedback_obs, num_timesteps)
@@ -325,8 +342,3 @@ plt.xlabel('Trial Number')
 plt.ylabel('Proportion Correct')
 plt.grid(True)
 plt.show()
-
-# %%
-
-# %%
-
