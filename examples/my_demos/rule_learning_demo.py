@@ -133,8 +133,7 @@ if learning_A:
     # Convert Dirichlet parameters to normalized probabilities for the generative model
     A_gm = utils.norm_dist_obj_arr(pA)
 else: 
-    A_gm = copy.deepcopy(A_gp)  # make a copy of the true observation likelihood to initialize the observation model
-
+    A_gm,pA = utils.dirichlet_uniform(template_categorical=A_gp,learning_enabled=learning_A)
 
 # %%
 # Plot what modality (0) for each rule at the top location (1) with choice red (0)
@@ -187,7 +186,7 @@ agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
 
 # In[5]: Test agent
 
-n_trials = 1000  # Number of trials to run
+n_trials = 1  # Number of trials to run
 trial_length = T  # Length of each trial (same as our planning horizon)
 
 # Simple labels for printing
@@ -224,7 +223,7 @@ for trial in range(n_trials):
     trial_q_s.append(q_s)  # Log beliefs about states 
     
     # Update A matrix after initial observation
-    update_matrix(agent, "update_A", pA_history, True, obs)
+    update_matrix(agent, "update_A", pA_history, learning_A, obs)
     
     # Store updated likelihood
     trial_likelihoods.append(copy.deepcopy(agent.A))
@@ -257,7 +256,7 @@ for trial in range(n_trials):
         trial_q_s.append(q_s)  # Log beliefs right after printing them
         
         # Update A matrix after observation
-        update_matrix(agent, "update_A", pA_history, True, obs)
+        update_matrix(agent, "update_A", pA_history, learning_A, obs)
         
         # Store updated likelihood
         trial_likelihoods.append(copy.deepcopy(agent.A))
