@@ -178,6 +178,8 @@ agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
               num_controls=num_controls, policy_len=1,
               inference_horizon=1, inference_algo='VANILLA')
 
+# Initialize learning history
+pA_history = [pA]
 
 n_trials = 1  # Number of trials to run
 trial_length = T  # Length of each trial (same as our planning horizon)
@@ -194,15 +196,18 @@ q_s_history = []
 for trial in range(n_trials):
     print(f"\n=== Trial {trial} ===")
     
-    obs = env.reset()  # Reset environment at the start of each trial
-    agent.reset()      # Reset agent's beliefs
-    
-    trial_obs = []
+    # Reset environment and initialize trial records
+    obs = env.reset()
+    agent.reset()      # Reset agent's beliefs at start of each trial
+    trial_obs = [obs]
     trial_actions = []
     trial_q_s = []
 
     # infer states  
     q_s = agent.infer_states(obs)
+    
+    # Update A matrix after initial observation
+    update_matrix(agent, "update_A", pA_history, True, obs)
 
     # Log observation and beliefs about states 
     trial_obs.append(obs)
@@ -222,20 +227,21 @@ for trial in range(n_trials):
         q_pi, efe = agent.infer_policies()
         action = agent.sample_action()   
         print(f"Action: Look {locations[int(action[2])]}, Choice: {colors[int(action[3])] if int(action[3]) < 3 else 'UNDECIDED'}")
+        trial_actions.append(action)  # Log action right after printing it
         
         # Environment step
         obs = env.step(action)
         print(f"Observation: sees {colors[int(obs[0])]} at {locations[int(obs[1])]}, feedback: {feedback[int(obs[2])]}")
+        trial_obs.append(obs)  # Log observation right after printing it
 
         # Update agent's beliefs
         q_s = agent.infer_states(obs)
         print(f"Beliefs: rule={q_s[0].round(2)}, color={q_s[1].round(2)}")
         print(f"        location={q_s[2].round(2)}, choice={q_s[3].round(2)}")
-
-        # Log observation, beliefs and action
-        trial_actions.append(action)
-        trial_obs.append(obs)
-        trial_q_s.append(q_s)
+        trial_q_s.append(q_s)  # Log beliefs right after printing them
+        
+        # Update A matrix after observation
+        update_matrix(agent, "update_A", pA_history, learning=True, obs)
         
     obs_history.append(trial_obs)
     action_history.append(trial_actions)
