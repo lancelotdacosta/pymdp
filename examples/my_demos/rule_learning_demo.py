@@ -176,12 +176,13 @@ D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 # In[5]: Create agent and test
 agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
               num_controls=num_controls, policy_len=1,
-              inference_horizon=1, inference_algo='VANILLA')
+              inference_horizon=1, inference_algo='VANILLA',
+              lr_pA=0.1)  # Set learning rate for A matrix to 0.1
 
 # Initialize learning history
 pA_history = [pA]
 
-n_trials = 1  # Number of trials to run
+n_trials = 10  # Number of trials to run
 trial_length = T  # Length of each trial (same as our planning horizon)
 
 # Simple labels for printing
@@ -192,6 +193,7 @@ feedback = ['NEUTRAL', 'CORRECT', 'INCORRECT']
 obs_history = []
 action_history = []
 q_s_history = []
+likelihood_history = []  # Store A matrices over time
 
 for trial in range(n_trials):
     print(f"\n=== Trial {trial} ===")
@@ -202,13 +204,20 @@ for trial in range(n_trials):
     trial_obs = [obs]
     trial_actions = []
     trial_q_s = []
-
+    trial_likelihoods = []  # Store A matrices for this trial
+    
+    # Store initial likelihood for this trial
+    trial_likelihoods.append(copy.deepcopy(agent.A))
+    
     # infer states  
     q_s = agent.infer_states(obs)
     
     # Update A matrix after initial observation
     update_matrix(agent, "update_A", pA_history, True, obs)
-
+    
+    # Store updated likelihood
+    trial_likelihoods.append(copy.deepcopy(agent.A))
+    
     # Log observation and beliefs about states 
     trial_obs.append(obs)
     trial_q_s.append(q_s)
@@ -241,11 +250,15 @@ for trial in range(n_trials):
         trial_q_s.append(q_s)  # Log beliefs right after printing them
         
         # Update A matrix after observation
-        update_matrix(agent, "update_A", pA_history, learning=True, obs)
+        update_matrix(agent, "update_A", pA_history, True, obs)
+        
+        # Store updated likelihood
+        trial_likelihoods.append(copy.deepcopy(agent.A))
         
     obs_history.append(trial_obs)
     action_history.append(trial_actions)
     q_s_history.append(trial_q_s)
+    likelihood_history.append(trial_likelihoods)
 
 # In[5]: # Print summary statistics
 correct_choices = 0
@@ -326,6 +339,30 @@ ax4.set_xlabel('Time Step')
 ax4.set_ylabel('Belief Probability')
 ax4.legend()
 ax4.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+# Plot likelihood evolution for top location
+plt.figure(figsize=(15, 5))
+timesteps = range(len(likelihood_history[0]))  # Number of timesteps in first trial
+
+# Plot for each rule
+for r in range(env.num_rules):
+    plt.subplot(1, 3, r+1)
+    
+    # Extract likelihood values over time for this rule at top location
+    values = np.array([[trial_A[0][:,r,:,1,0] for trial_A in trial] for trial in likelihood_history])
+    
+    # Plot each color's likelihood
+    for c in range(env.num_colours):
+        plt.plot(values[0, :, c], label=f'Color {colors[c]}')
+    
+    plt.title(f'Rule {r} Likelihood Evolution')
+    plt.xlabel('Timestep')
+    plt.ylabel('Likelihood')
+    plt.legend()
+    plt.grid(True)
 
 plt.tight_layout()
 plt.show()
