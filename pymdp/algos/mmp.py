@@ -235,7 +235,6 @@ def run_mmp_factorized(
                 if t < past_len:
                     for m in A_modality_list[f]:
                         lnA += spm_log_single(spm_dot(lh_seq[t][m], qs_seq[t][A_factor_list[m]], [A_factor_list[m].index(f)]))  
-                    print(f'Factorized version: lnA at time {t}: {lnA}')                
                 
                 # past message
                 if t == 0:
