@@ -116,23 +116,36 @@ print(f"num_controls: {num_controls}, type: {type(num_controls)}")
 # %%
 learning_A = False
 if learning_A:
-    # Initialize prior beliefs about likelihoods
-    # A_gp is the generative process likelihood mapping from the environment
-    # We create a Dirichlet prior (pA) that matches A_gp with high confidence (scale=128)
-    # This means the agent has accurate prior beliefs about the task structure
-    pA = utils.dirichlet_like(template_categorical=A_gp, scale=[128,128,128]) 
+    learning_mode_A = 'paper' # 'uniform' or 'paper'
+    print(f"\nLearning A matrix {learning_A} with learning mode: {learning_mode_A}")
+    if learning_mode_A == 'paper': #like in the curiosity paper
+        # Initialize prior beliefs about likelihoods
+        # A_gp is the generative process likelihood mapping from the environment
+        # We create a Dirichlet prior (pA) that matches A_gp with high confidence (scale=128)
+        # This means the agent has accurate prior beliefs about the task structure
+        pA = utils.dirichlet_like(template_categorical=A_gp, scale=[128,128,128]) 
 
-    # However, we only want the agent to have informative priors about the top location (where=1)
-    # For all other locations, we set uniform likelihoods (all 1's)
-    # This means the agent only has strong beliefs about what colors mean at the top location
-    # where the rule is indicated
-    for where in range(env.num_locations): 
-        if where != 1: #if location is not top
-            pA[0][:,:,:,where,:] = np.ones_like(pA[0][:,:,:,where,:]) 
+        # However, we only want the agent to have informative priors about the top location (where=1)
+        # For all other locations, we set uniform likelihoods (all 1's)
+        # This means the agent only has strong beliefs about what colors mean at the top location
+        # where the rule is indicated
+        for where in range(env.num_locations): 
+            if where != 1: #if location is not top
+                pA[0][:,:,:,where,:] = np.ones_like(pA[0][:,:,:,where,:]) 
 
-    # Convert Dirichlet parameters to normalized probabilities for the generative model
-    A_gm = utils.norm_dist_obj_arr(pA)
+        # Convert Dirichlet parameters to normalized probabilities for the generative model
+        A_gm = utils.norm_dist_obj_arr(pA)
+
+        modalities_to_learn=[0]
+
+    elif learning_mode_A == 'uniform':
+        A_gm, pA = utils.dirichlet_uniform(template_categorical=A_gp, scale=1)
+
+        modalities_to_learn=[0,1,2]
+    else: 
+        raise ValueError("learning_mode_A must be 'uniform' or 'paper'")
 else: 
+    print(f"\nLearning A matrix {learning_A}")
     A_gm,pA = utils.dirichlet_uniform(template_categorical=A_gp,learning_enabled=learning_A)
 
 # %%
@@ -178,11 +191,12 @@ D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 
 
 # In[5]: Create agent
+
 agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
               num_controls=num_controls, policy_len=1,
-              inference_horizon=1, inference_algo='VANILLA',
-              lr_pA=0.1,  # Set learning rate for A matrix to 0.1
-              modalities_to_learn=[0])  # Only learn the 'what' modality
+              inference_horizon=1, inference_algo='MMP',
+              lr_pA=0.01,  # Set learning rate for A matrix
+              modalities_to_learn=modalities_to_learn)  # Only learn the 'what' modality
 
 # In[5]: Test agent
 
@@ -193,6 +207,7 @@ trial_length = T  # Length of each trial (same as our planning horizon)
 locations = ['LEFT', 'TOP', 'RIGHT', 'CENTRE']
 colors = ['RED', 'GREEN', 'BLUE', 'WHITE']
 feedback = ['NEUTRAL', 'CORRECT', 'INCORRECT']
+rule_names = ['Left Rule', 'Top Rule', 'Right Rule']
 
 obs_history = []
 action_history = []
@@ -201,11 +216,16 @@ likelihood_history = []  # Store A matrices over time
 pA_history = [pA] # Initialize learning history
 trial_rules = []  # Store the rule for each trial
 
+DEBUG = True
+
 for trial in range(n_trials):
     print(f"\n=== Trial {trial} ===")
     
     # Reset environment, agent's beliefs and initialize trial records
     obs = env.reset()
+    if DEBUG:
+        while env._state[RULE_FACTOR_ID].argmax() != 0: #if rule is not left
+            obs = env.reset()
     trial_rules.append(env._state[RULE_FACTOR_ID].argmax())  # Store the rule at the start of each trial
     agent.reset()      # Reset agent's beliefs at start of each trial
     agent.C[2][0] = 0  # Set preference to be neutral about neutral feedback at start of trial
@@ -266,9 +286,25 @@ for trial in range(n_trials):
     q_s_history.append(trial_q_s)
     likelihood_history.append(trial_likelihoods)
 
-# In[5]: # Print summary statistics
-correct_choices = 0
+# %% Analyze A matrix evolution at top location 
+plotting_A = False
+if learning_A and plotting_A:
+    print("\nA matrix values at top location (every 100 trials):")
+
+    for trial in range(0, n_trials, 100):
+        print(f"\nTrial {trial}:")
+        pA = pA_history[trial]  # what modality (0)
+        A = utils.norm_dist_obj_arr(pA)
+        
+        # Plot what modality (0) for each rule at the top location (1) with choice red (0)
+        # This shows how different rules lead to different color expectations at the top location
+        loc = 0
+        for r in range(env.num_rules):
+            plot_likelihood(A[0][:,r,:,loc,0], f'rule {r}, loc {loc}, choice {0}')
+
+# %% # Calculate performance statistics
 total_choices = 0
+correct_choices = 0
 performance_history = []  # Track overall performance per trial
 performance_history_per_rule = [[], [], []]  # Track performance for each rule
 
@@ -298,8 +334,6 @@ for trial_idx, trial_obs in enumerate(obs_history):
 
 print(f"\nPerformance Summary:")
 print(f"Correct choices: {correct_choices}/{total_choices} ({(correct_choices/total_choices)*100:.2f}%)")
-
-# In[5]: # Visualization of results
 
 # Plot overall performance
 import matplotlib.pyplot as plt
