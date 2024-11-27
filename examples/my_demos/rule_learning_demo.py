@@ -147,6 +147,7 @@ if learning_A:
 else: 
     print(f"\nLearning A matrix {learning_A}")
     A_gm,pA = utils.dirichlet_uniform(template_categorical=A_gp,learning_enabled=learning_A)
+    modalities_to_learn = None
 
 # %%
 # Plot what modality (0) for each rule at the top location (1) with choice red (0)
@@ -194,13 +195,13 @@ D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 
 agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
               num_controls=num_controls, policy_len=1,
-              inference_horizon=1, inference_algo='MMP',
+              inference_horizon=1, inference_algo='VANILLA',
               lr_pA=0.01,  # Set learning rate for A matrix
               modalities_to_learn=modalities_to_learn)  # Only learn the 'what' modality
 
 # In[5]: Test agent
 
-n_trials = 1  # Number of trials to run
+n_trials = 1000  # Number of trials to run
 trial_length = T  # Length of each trial (same as our planning horizon)
 
 # Simple labels for printing
@@ -216,7 +217,7 @@ likelihood_history = []  # Store A matrices over time
 pA_history = [pA] # Initialize learning history
 trial_rules = []  # Store the rule for each trial
 
-DEBUG = True
+DEBUG = False
 
 for trial in range(n_trials):
     print(f"\n=== Trial {trial} ===")
