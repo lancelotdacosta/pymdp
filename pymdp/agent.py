@@ -43,7 +43,7 @@ class Agent(object):
         pD=None,
         num_controls=None,
         policy_len=1,
-        inference_horizon=1,
+        inference_horizon=1, # how many timesteps in the past to infer hidden states -1
         control_fac_idx=None,
         policies=None,
         gamma=16.0,
