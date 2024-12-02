@@ -42,8 +42,8 @@ class Agent(object):
         pB=None,
         pD=None,
         num_controls=None,
-        policy_len=1,
-        inference_horizon=1, # how many timesteps in the past to infer hidden states -1
+        policy_len=1, #this is the planning horizon, or how many timesteps the agent plans ahead
+        inference_horizon=1, # how many timesteps in the past to infer hidden states -1. i.e. if inference_horizon=1 the agent only infers the present, if 2, infers the present and one timestep in the past, etc
         control_fac_idx=None,
         policies=None,
         gamma=16.0,
