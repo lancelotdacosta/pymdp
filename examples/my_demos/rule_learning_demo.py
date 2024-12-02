@@ -138,7 +138,7 @@ if learning_A:
 
         modalities_to_learn=[0]
 
-    elif learning_mode_A == 'uniform':
+    elif learning_mode_A == 'uniform': #uniform priors on A
         A_gm, pA = utils.dirichlet_uniform(template_categorical=A_gp, scale=1)
 
         modalities_to_learn=[0,1,2]
@@ -190,19 +190,45 @@ D_gm = utils.obj_array_uniform(num_states) # uniform prior on rule or true color
 D_gm[2] = utils.onehot(3, env.num_locations) #start at the centre location
 D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 
+# %% print routine for beliefs about states
+def print_q_s(q_s, inference_algo, timestep, policy_len=1):
+    """
+    Print beliefs about states based on inference algorithm
+    
+    Parameters:
+    -----------
+    q_s : object array
+        Beliefs about states. Structure depends on inference algorithm
+    inference_algo : str
+        'VANILLA' or 'MMP'
+    """
+    def print_q_s_time(q_s, timestep):
+        print(f"Beliefs for s_{timestep}: rule={q_s[0].round(2)}, color={q_s[1].round(2)}")
+        print(f"                 location={q_s[2].round(2)}, choice={q_s[3].round(2)}")
+        return ""
 
-# In[5]: Create agent
+    if inference_algo == "VANILLA":
+        print_q_s_time(q_s, timestep)  
+    else:  # MMP
+        effective_inference_horizon = len(q_s[0]) - policy_len
+        for tau in range(effective_inference_horizon):  # Loop through all past timesteps up to present (inclusive)
+            abs_time = timestep - (effective_inference_horizon -1 ) + tau
+            if abs_time >= 0:
+                print_q_s_time(q_s[0][tau], abs_time) # Get beliefs from first policy (past and present beliefs are invariant under policies)
+
+# In[5]: Create agent and test
+
+n_trials = 1  # Number of trials to run
+trial_length = T  # Length of each trial
+inference_algo = 'MMP'  # 'MMP' or 'VANILLA'
+inference_horizon = T+1 # Number of timesteps in the past to infer states over (including present)
+policy_len = 1 # Planning horizon
 
 agent = Agent(A=A_gm, pA=pA, B=B_gm, pB=pB, C=copy.deepcopy(C), D=D_gm,
-              num_controls=num_controls, policy_len=1,
-              inference_horizon=1, inference_algo='VANILLA',
+              num_controls=num_controls, policy_len=policy_len,
+              inference_horizon=inference_horizon, inference_algo=inference_algo,
               lr_pA=0.01,  # Set learning rate for A matrix
               modalities_to_learn=modalities_to_learn)  # Only learn the 'what' modality
-
-# In[5]: Test agent
-
-n_trials = 1000  # Number of trials to run
-trial_length = T  # Length of each trial (same as our planning horizon)
 
 # Simple labels for printing
 locations = ['LEFT', 'TOP', 'RIGHT', 'CENTRE']
@@ -220,7 +246,7 @@ trial_rules = []  # Store the rule for each trial
 DEBUG = False
 
 for trial in range(n_trials):
-    print(f"\n=== Trial {trial} ===")
+    print(f"\n=== Trial {trial} =========================================")
     
     # Reset environment, agent's beliefs and initialize trial records
     obs = env.reset()
@@ -249,14 +275,13 @@ for trial in range(n_trials):
     # Store updated likelihood
     trial_likelihoods.append(copy.deepcopy(agent.A))
     
-    print(f"\nInitial observation: sees {colors[int(obs[0])]} at {locations[int(obs[1])]}, feedback: {feedback[int(obs[2])]}")
-    print(f"Beliefs: rule={q_s[0].round(2)}, color={q_s[1].round(2)}")
-    print(f"        location={q_s[2].round(2)}, choice={q_s[3].round(2)}")
+    print(f"Initial observation: sees {colors[int(obs[0])]} at {locations[int(obs[1])]}, feedback: {feedback[int(obs[2])]}")
+    print_q_s(q_s, inference_algo, 0,policy_len) # Print beliefs about states
     
-    for t in range(trial_length):
-        print(f"\n--- Timestep {t} ---")
+    for t in range(1,trial_length+1):
+        print(f"--- Timestep {t} ---")
         
-        if t == 2:  # Change preference for neutral feedback to avoid
+        if t == 3:  # Change preference for neutral feedback to avoid
             agent.C[2][0] = -8
 
         # Get agent's action
@@ -272,8 +297,7 @@ for trial in range(n_trials):
 
         # Update agent's beliefs
         q_s = agent.infer_states(obs)
-        print(f"Beliefs: rule={q_s[0].round(2)}, color={q_s[1].round(2)}")
-        print(f"        location={q_s[2].round(2)}, choice={q_s[3].round(2)}")
+        print_q_s(q_s, inference_algo, t, policy_len) # Print beliefs about states
         trial_q_s.append(q_s)  # Log beliefs right after printing them
         
         # Update A matrix after observation
