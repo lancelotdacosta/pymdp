@@ -370,7 +370,7 @@ class Agent(object):
             else: # in the case you're doing MMP (i.e. you have an inference_horizon > 1), we have to account for policy- and timestep-conditioned posterior beliefs
                 self.qs = utils.obj_array(len(self.policies))
                 for p_i, _ in enumerate(self.policies):
-                    self.qs[p_i] = utils.obj_array(self.inference_horizon + self.policy_len + 1) # + 1 to include belief about current timestep
+                    self.qs[p_i] = utils.obj_array(self.inference_horizon + self.policy_len + 1) # + 1 to include belief about current timestep (TODO: but this is already included in the inference horizo as seen in simulations)
                     self.qs[p_i][0] = utils.obj_array_uniform(self.num_states)
                 
                 first_belief = utils.obj_array(len(self.policies))
