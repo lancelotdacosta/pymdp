@@ -192,7 +192,7 @@ D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 
 # In[5]: Create agent and test
 
-n_trials = 1  # Number of trials to run
+n_trials = 100  # Number of trials to run
 trial_length = T  # Length of each trial
 inference_algo = 'MMP'  # 'MMP' or 'VANILLA'
 inference_horizon = T+1 # Number of timesteps in the past to infer states over (including present)
@@ -223,7 +223,7 @@ trial_rules = []  # Store the rule for each trial
 DEBUG = False
 
 for trial in range(n_trials):
-    print(f"\n=== Trial {trial} =========================================")
+    print(f"\n=== Trial {trial+1} =========================================")
     
     # Reset environment, agent's beliefs and initialize trial records
     obs = env.reset()
@@ -232,6 +232,7 @@ for trial in range(n_trials):
             obs = env.reset()
     trial_rules.append(env._state[RULE_FACTOR_ID].argmax())  # Store the rule at the start of each trial
     agent.reset()      # Reset agent's beliefs at start of each trial
+    agent.reset_prev_actions(), agent.reset_prev_observations()
     agent.C[2][0] = 0  # Set preference to be neutral about neutral feedback at start of trial
     
     trial_obs = [obs]
@@ -253,7 +254,7 @@ for trial in range(n_trials):
     trial_likelihoods.append(copy.deepcopy(agent.A))
     
     print(f"Initial observation: sees {colors[int(obs[0])]} at {locations[int(obs[1])]}, feedback: {feedback[int(obs[2])]}")
-    env.print_q_s(q_s, inference_algo, 0,policy_len) # Print beliefs about states
+    env.print_q_s(q_s, inference_algo, 0, policy_len) # Print beliefs about states
     
     for t in range(1,trial_length+1):
         print(f"--- Timestep {t} ---")
