@@ -393,6 +393,18 @@ class Agent(object):
 
         return self.qs
 
+    def reset_prev_actions(self):
+        """
+        Resets the previous action history of the agent
+        """
+        self.prev_actions = None
+
+    def reset_prev_observations(self):
+        """
+        Resets the previous observation history of the agent
+        """
+        self.prev_obs = []
+
     def step_time(self):
         """
         Advances time by one step. This involves updating the ``self.prev_actions``, and in the case of a moving
