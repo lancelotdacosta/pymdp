@@ -338,6 +338,9 @@ class RuleLearningEnv(Env):
                 if policy[t, WHERE_FACTOR_ID] != CENTRE and policy[t, CHOICE_FACTOR_ID] != CHOICE_UNDECIDED:
                     valid = False
                     break
+                if policy[t, WHERE_FACTOR_ID] == CENTRE and policy[t, CHOICE_FACTOR_ID] == CHOICE_UNDECIDED:
+                    valid = False
+                    break
             if valid:
                 valid_policies.append(policy)
 
