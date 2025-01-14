@@ -1,10 +1,13 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # # Active Inference Demo: Rule Learning Environment
 # This demo implements an active inference agent that must learn to follow different rules through 
 # interaction with the environment. The task involves understanding the relationship between colors 
-# and locations to infer the current rule and make correct choices.
+# and locations to infer the current rule and make correct choices. The paper describing the simulation is:
+# 'Active Inference, Curiosity and Insight' by K. Friston et al (http://www.mitpressjournals.org/doi/abs/10.1162/neco_a_00999)
+
+#TODO: Here is what still needs to be implemented to match the rule learning paper:
+# Currently the agent is doing rule inference with the generative model that is the generative process
+# There is no learning of the likelihood A, and indeed if one sets the learning to ON, it is not sure that the agent will learn appropriately. One needs to figure the right scheduling of the learning with MMP and smoothing.
+# After that, one needs to implement Bayesian model reduction (the insight component) for the likelihood A. Apparently there is some trick in the original SPM code for doing this without having to test for too many reduced models. One would need to look into this and translate it into pymdp.
 
 # ### Environment Structure
 
@@ -35,6 +38,10 @@
 # 3. Results visualization:
 #    - Belief evolution for all state factors
 #    - Trial-by-trial performance
+
+# In[1]:
+#!/usr/bin/env python
+# coding: utf-8
 
 # ### Imports
 import os
@@ -125,7 +132,7 @@ if learning_A:
         # This means the agent has accurate prior beliefs about the task structure
         pA = utils.dirichlet_like(template_categorical=A_gp, scale=[128,128,128]) 
 
-        # However, we only want the agent to have informative priors about the top location (where=1)
+        # However, we only want the agent to have informative priors about the top location (ie where==1)
         # For all other locations, we set uniform likelihoods (all 1's)
         # This means the agent only has strong beliefs about what colors mean at the top location
         # where the rule is indicated
@@ -168,22 +175,9 @@ C = utils.obj_array_zeros(env.num_obs)
 
 # Incorrect feedback always to avoid, zero preference for correct or neutral feedback (but we will change the preference for neutral feedback at the third timestep, to make it take a decision)
 C[2][2] = -4 
+#The paper features time dependent preferences--we will implement this by varying these static preferences at the requisite timesteps within the agent loop
 
 # %%
-
-# # Allow feedback modality preferences to vary over time
-# C_gm[2] = np.zeros((3, T))  # Shape: (num_feedback_obs, num_timesteps)
-
-# # evolving over time
-# for t in range(T):
-#     # Incorrect feedback always to avoid
-#     C_gm[2][2, t] = -4
-#     # Correct feedback preferred
-#     C_gm[2][1, t] = 4
-#     # Neutral feedback is neutral
-#     # C_gm[2][0, t] = -4
-#     if t>=1: # Neutral feedback to avoid from timestep 3
-#         C_gm[2][0, t] = -32
 
 # Initialize the agent's prior beliefs about initial states
 D_gm = utils.obj_array_uniform(num_states) # uniform prior on rule or true color
@@ -192,7 +186,7 @@ D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 
 # In[5]: Create agent and test
 
-n_trials = 100  # Number of trials to run
+n_trials = 1  # Number of trials to run
 trial_length = T  # Length of each trial
 inference_algo = 'MMP'  # 'MMP' or 'VANILLA'
 inference_horizon = T+1 # Number of timesteps in the past to infer states over (including present)
@@ -229,7 +223,7 @@ for trial in range(n_trials):
     obs = env.reset()
     if DEBUG:
         while env._state[RULE_FACTOR_ID].argmax() != 0: #if rule is not left
-            obs = env.reset()
+            obs = env.reset() # reset the environment until rule is left
     trial_rules.append(env._state[RULE_FACTOR_ID].argmax())  # Store the rule at the start of each trial
     agent.reset()      # Reset agent's beliefs at start of each trial
     agent.reset_prev_actions(), agent.reset_prev_observations()
@@ -259,7 +253,7 @@ for trial in range(n_trials):
     for t in range(1,trial_length+1):
         print(f"--- Timestep {t} ---")
         
-        if t == 3:  # Change preference for neutral feedback to avoid
+        if t == 3:  # Change preference to avoid neutral feedback at timestep 3, and hence entice the agent to make a decision
             agent.C[2][0] = -8
 
         # Get agent's action

@@ -311,7 +311,7 @@ class RuleLearningEnv(Env):
 
     def construct_policies(self, policy_len=1):
         """
-        Construct the set of policies that the agent is allowed to take.Policies are sequences of actions that the agent can take over a specified planning horizon (policy_len).
+        Construct the set of policies that the agent is allowed to take. Policies are sequences of actions that the agent can take over a specified planning horizon (policy_len).
         In this environment, the agent is constrained such that non-undecided choices can only be made
         when the agent is at the center location. This means that for any time step in the policy,
         if the agent is not at the center, it must choose the 'undecided' action.
