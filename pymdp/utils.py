@@ -225,7 +225,8 @@ def dirichlet_like(template_categorical, scale = 1.0):
 
 def dirichlet_uniform(template_categorical, scale=1, learning_enabled=True):
     """
-    Initialises a Dirichlet prior with UNIFORM parameters if learning is enabled, otherwise returnsusing a template categorical distribution.
+    If learning is enabled, initialises a Dirichlet prior with UNIFORM parameters, whose magnitude is given by the scale parameter
+    Otherwise returns a copy of the categorical template
     
     Parameters
     ----------
