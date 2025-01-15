@@ -1,13 +1,15 @@
 # # Active Inference Demo: Rule Learning Environment
-# This demo implements an active inference agent that must learn to follow different rules through 
+# This demo implements an active inference agent that infers the hidden rule that underlies the latent states of the environment--through 
 # interaction with the environment. The task involves understanding the relationship between colors 
 # and locations to infer the current rule and make correct choices. The paper describing the simulation is:
 # 'Active Inference, Curiosity and Insight' by K. Friston et al (http://www.mitpressjournals.org/doi/abs/10.1162/neco_a_00999)
 
 #TODO: Here is what still needs to be implemented to match the rule learning paper:
 # Currently the agent is doing rule inference with the generative model that is the generative process
-# There is no learning of the likelihood A, and indeed if one sets the learning to ON, it is not sure that the agent will learn appropriately. One needs to figure the right scheduling of the learning with MMP and smoothing.
-# After that, one needs to implement Bayesian model reduction (the insight component) for the likelihood A. Apparently there is some trick in the original SPM code for doing this without having to test for too many reduced models. One would need to look into this and translate it into pymdp.
+# There is no learning of the likelihood A, and indeed if one sets the learning to ON, the agent will not learn appropriately at the moment. Because one needs to do learning at the end of each trial
+# by accumulating all *smoothed* beliefs about latent states afforded by the MMP algorithm. Indeed, currently the numpy version only allows for learning with the current filtered belief.
+# After that, one needs to implement Bayesian model reduction (the insight component of the process) for learning the likelihood A. 
+# Apparently there is some trick in the original SPM code for doing this without having to test for too many reduced models. One would need to look into this and translate it into pymdp.
 
 # ### Environment Structure
 
@@ -168,8 +170,7 @@ B_gm, pB = utils.dirichlet_uniform(template_categorical=B_gp, learning_enabled=l
 
 # %%
 
-# Create (time dependent) prior preferences
-T = 3  # Number of timesteps in the simulations
+# Create prior preferences
 
 C = utils.obj_array_zeros(env.num_obs)
 
@@ -186,6 +187,7 @@ D_gm[3] = utils.onehot(3, env.num_choices) #start undecided about choice
 
 # In[5]: Create agent and test
 
+T = 3  # Number of timesteps in the simulations
 n_trials = 1  # Number of trials to run
 trial_length = T  # Length of each trial
 inference_algo = 'MMP'  # 'MMP' or 'VANILLA'
@@ -232,20 +234,10 @@ for trial in range(n_trials):
     trial_obs = [obs]
     trial_actions = []
     trial_q_s = []
-    trial_likelihoods = []  # Store A matrices for this trial
-    
-    # Store initial likelihood for this trial
-    trial_likelihoods.append(copy.deepcopy(agent.A))
     
     # infer states  
     q_s = agent.infer_states(obs)
     trial_q_s.append(q_s)  # Log beliefs about states 
-    
-    # Update A matrix after initial observation
-    update_matrix(agent, "update_A", pA_history, learning_A, obs)
-    
-    # Store updated likelihood
-    trial_likelihoods.append(copy.deepcopy(agent.A))
     
     print(f"Initial observation: sees {colors[int(obs[0])]} at {locations[int(obs[1])]}, feedback: {feedback[int(obs[2])]}")
     env.print_q_s(q_s, inference_algo, 0, policy_len) # Print beliefs about states
@@ -272,11 +264,11 @@ for trial in range(n_trials):
         env.print_q_s(q_s, inference_algo, t, policy_len) # Print beliefs about states
         trial_q_s.append(q_s)  # Log beliefs right after printing them
         
-        # Update A matrix after observation
-        update_matrix(agent, "update_A", pA_history, learning_A, obs)
-        
-        # Store updated likelihood
-        trial_likelihoods.append(copy.deepcopy(agent.A))
+    # Update A matrix after observation
+    update_matrix(agent, "update_A", pA_history, learning_A, obs)
+    
+    # Store updated likelihood
+    trial_likelihoods.append(copy.deepcopy(agent.A))
         
     obs_history.append(trial_obs)
     action_history.append(trial_actions)
