@@ -11,15 +11,7 @@ from pymdp import utils, maths
 import numpy as np
 
 LOCATION_FACTOR_ID = 0
-TRIAL_FACTOR_ID = 1
-
 LOCATION_MODALITY_ID = 0
-REWARD_MODALITY_ID = 1
-CUE_MODALITY_ID = 2
-
-REWARD_IDX = 1
-LOSS_IDX = 2
-
 
 class SimplestEnv(Env):
     """ Implementation of the simplest environment """
@@ -92,12 +84,13 @@ class SimplestEnv(Env):
         return B
 
     def _construct_likelihood_dist(self):
+        # Initialize A matrix with correct shape for a single modality
+        A = utils.obj_array(1)  # One modality
+        A[LOCATION_MODALITY_ID] = np.zeros((self.num_locations, self.num_locations))  # Shape: (num_obs[0], num_states[0])
 
-        A = utils.obj_array_zeros([[obs_dim] + self.num_states for obs_dim in self.num_obs])
-
+        # Set up the identity mapping between states and observations
         for loc in range(self.num_states[LOCATION_FACTOR_ID]):
 
-            # The agent always observes its location
             A[LOCATION_MODALITY_ID][loc, loc] = 1.0
 
         return A
