@@ -1,5 +1,7 @@
 import os
 import math
+from typing import List, Tuple
+
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -73,7 +75,7 @@ class TMaze(Env):
 
         super().__init__(params, dependencies)
 
-    def generate_A(self):
+    def generate_A(self) -> Tuple[List[jnp.ndarray], List[List[int]]]:
         """
         Generate observation likelihood tensors.
         

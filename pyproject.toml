@@ -33,6 +33,8 @@ dependencies = [
     'mctx>=0.0.5',
     'networkx>=3.3',
     'pytest>=6.2.1',
+    'imageio>=2.37.0',
+    'mediapy>=1.2.2'
 ]
 
 [project.optional-dependencies]

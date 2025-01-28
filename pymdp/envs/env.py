@@ -44,7 +44,9 @@ class Env(Module):
         self.current_obs = jtu.tree_map(lambda x: jnp.zeros([x.shape[0], x.shape[1]]), self.params["A"])
 
     @vmap
-    def reset(self, key: Optional[PRNGKeyArray], state: Optional[List[Array]] = None):
+    def reset(self, state: Optional[List[Array]] = None):
+        # TODO , key: PRNGKeyArray this used to be passed as parameters seems to break with vmap decorator
+        key = jr.PRNGKey(0)  # TODO this was not here, replace parameter
         if state is None:
             probs = self.params["D"]
             keys = list(jr.split(key, len(probs) + 1))
@@ -55,7 +57,7 @@ class Env(Module):
 
         new_obs = self._sample_obs(key, state)
         env = tree_at(lambda x: x.current_obs, env, new_obs)
-        return new_obs, env
+        return new_obs, env  # TODO what is going on here? why do we return the env?
 
     def render(self, mode="human"):
         """
@@ -70,7 +72,9 @@ class Env(Module):
         pass
 
     @vmap
-    def step(self, rng_key: PRNGKeyArray, actions: Optional[Array] = None):
+    def step(self, actions: Optional[Array] = None):
+        # TODO , rng_key: PRNGKeyArray this used to be passed as parameters seems to break with vmap decorator
+        rng_key = jr.PRNGKey(0)  # TODO this was not here, replace parameter
         # return a list of random observations and states
         key_state, key_obs = jr.split(rng_key)
         state = self.state

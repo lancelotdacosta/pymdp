@@ -10,3 +10,5 @@ env/
 pymdp.egg-info
 inferactively_pymdp.egg-info
 venv/
+data/
+.idea/

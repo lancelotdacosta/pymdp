@@ -399,7 +399,7 @@ class Agent(Module):
             num_iter=self.num_iter,
             method=self.inference_algo,
         )
-        
+
         output = vmap(infer_states)(
             A,
             self.B,
