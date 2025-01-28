@@ -24,6 +24,8 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import mediapy
+from PIL import Image
 
 from jax import random as jr
 from pymdp.envs.simplest import SimplestEnv
@@ -63,6 +65,8 @@ B_gm = [b.copy() for b in B]
 # The agent prefers to be in the right state (state 1)
 num_obs = [a.shape[0] for a in A]
 C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # Prefer right state
+# C = [jnp.zeros((batch_size, 2), dtype=jnp.float32)]  # All states equally preferred
+#TODO: when C is uniform, the agent stays in the initial state. Why is this?
 
 # Set up initial beliefs (D)
 # Start with certainty about being in the left state (matching the environment's initial state)
@@ -91,7 +95,7 @@ agent = Agent(
 
 # Run simulation
 key = jr.PRNGKey(0)  # Random key for the aif loop
-T = 5  # Number of timesteps to rollout
+T = 10  # Number of timesteps to rollout
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
 
 # ### 4. Plot results
@@ -126,4 +130,31 @@ plt.ylim(0, 1)
 
 plt.tight_layout()
 plt.show()
+
+# %%
+# Rendering the results
+frames = []
+for t in range(info["observation"][0].shape[0]):  # iterate over timesteps
+    # get observations for this timestep
+    observations_t = [info["observation"][0][t, :, :]]  # Only one observation modality (location)
+       
+    frame = env.render(mode="rgb_array", observations=observations_t)  # render the environment using the observations for this timestep
+    frame = jnp.asarray(frame, dtype=jnp.uint8)
+    plt.close()  # close the figure to prevent memory leak
+    frames.append(frame)
+
+frames = jnp.array(frames, dtype=jnp.uint8)
+mediapy.show_video(frames, fps=1)
+
+# # uncomment the following lines to save the video as a gif
+# os.makedirs("figures", exist_ok=True)
+# pil_frames = [Image.fromarray(frame) for frame in frames]
+# filename = os.path.join("figures", f"simplest_{batch_size}.gif")
+# pil_frames[0].save(
+#     filename,
+#     save_all=True,
+#     append_images=pil_frames[1:],
+#     duration=1000,  # 1000ms per frame
+#     loop=0
+# )
 # %%
