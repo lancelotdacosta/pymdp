@@ -18,7 +18,13 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
     num_timesteps: how many timesteps to simulate
     rng_key: random key for sampling
     policy_search: optional custom policy inference function such as sophisticated inference
-    
+
+    Inner workings
+    ----------
+    rollout first gets the initial observation and prior over states (D)
+    it then uses a scan (jax for loop) to iterate step_fn over num_timesteps 
+    step_fn computes beliefs about states given observations (qs), belief over policies (qpi), samples an action and a corresponding observation from the environment, it then updates the belief over states and the empirical prior (forward message over states given observation and action)
+
     Returns
     ----------
     last: ``dict``
@@ -53,8 +59,8 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
 
         # perform state inference using variational inference (FPI) - uses A matrix to map between hidden states and observations
         qs = agent.infer_states(
-            observations=observation_t,
-            empirical_prior=empirical_prior,
+            observations=observation_t, # This is observation_0 in first step
+            empirical_prior=empirical_prior, # This is agent.D in first step
         )
 
         rng_key, key = jr.split(rng_key)
@@ -87,7 +93,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         rng_key = keys[0]
         observation_t, env = env.step(rng_key=keys[1:], actions=action_t) # step environment forward with chosen action
 
-        empirical_prior, qs = agent.update_empirical_prior(action_t, qs) # updating the prior over hidden states and using B matrix to predict next state given action
+        empirical_prior, qs = agent.update_empirical_prior(action_t, qs) # updating the prior over hidden states (Bayesian model average?) and using B matrix to predict next state given action
 
         # carrying the next timestep's action, observation, beliefs, empirical prior, environment state, and random key
         carry = {
