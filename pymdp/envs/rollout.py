@@ -136,7 +136,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         "rng_key": rng_key,
     }
 
-    # run the active inference loop for num_timesteps using jax.lax.scan
+    # run the active inference loop for num_timesteps using jax.lax.scan (jax version of for loop)
     last, info = jax.lax.scan(step_fn, initial_carry, jnp.arange(num_timesteps))
 
     # prepare initial info to concatenate with trajectory
