@@ -28,7 +28,7 @@ import mediapy
 from PIL import Image
 
 from jax import random as jr
-from pymdp.envs.simplest import SimplestEnv
+from pymdp.envs.simplest import SimplestEnv, print_rollout
 from pymdp.envs import rollout
 from pymdp.agent import Agent
 
@@ -71,7 +71,9 @@ C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # Prefer 
 # Set up initial beliefs (D)
 # Start with certainty about being in the left state (matching the environment's initial state)
 num_states = [b.shape[0] for b in B]
-D = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 0].set(1.0)]  # Certain about starting in left state
+# D = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 0].set(1.0)]  # Certain about starting in left state
+D = [jnp.ones((batch_size, 2), dtype=jnp.float32) * 0.5]  # Equal probability for left and right states
+
 
 # ### 3. Initialize the agent and run simulation
 #
@@ -95,15 +97,19 @@ agent = Agent(
 
 # Run simulation
 key = jr.PRNGKey(0)  # Random key for the aif loop
-T = 10  # Number of timesteps to rollout
+T = 2  # Number of timesteps to rollout
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+
 
 # ### 4. Plot results
 #
 # Let's visualize the agent's initial beliefs, final beliefs, and preferences.
 
 # In[5]:
+# Print the trajectory
+print_rollout(info)
 
+# In[6]:
 # Plot results
 plt.figure(figsize=(12, 4))
 

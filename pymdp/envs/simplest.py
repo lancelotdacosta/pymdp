@@ -173,3 +173,61 @@ class SimplestEnv(Env):
             img = fig2img(fig)
             plt.close(fig)
             return img
+
+def print_rollout(info, batch_idx=0):
+    """
+    Print a detailed summary of an agent's trajectory through the simplest environment.
+    
+    Args:
+        info: Dictionary containing rollout information from the active inference loop
+        batch_idx: Which batch to print information for (default=0)
+    """
+    location_observations = ['Left', 'Right']
+    action_names = ['Left', 'Right']
+    
+    # Get relevant arrays for the specified batch
+    observations = info["observation"][0]  # Shape: (T, batch_size, 1)
+    actions = info["action"]               # Shape: (T, batch_size)
+    beliefs = info["qs"][0]                # Shape: (T, batch_size, 2)
+    policies = info["qpi"]                 # Shape: (T, batch_size, num_policies)
+    
+    # Print initial setup
+    print("\n=== Starting Active Inference Experiment ===")
+    print(f"Number of timesteps: {observations.shape[0]-1}")
+    print(f"Batch size: {observations.shape[1]}")
+    print(f"Number of policies: {policies.shape[-1]}")
+    print("\n=== Initial Setup ===")
+    print(f"Prior state beliefs (D): Left: {float(beliefs[0, batch_idx, 0]):.3f}, Right: {float(beliefs[0, batch_idx, 1]):.3f}")
+    print(f"Initial observation: [{location_observations[int(observations[0, batch_idx, 0])]}]")
+
+    # Print trajectory
+    print("\n=== Trajectory ===")
+    num_timesteps = observations.shape[0]
+    for t in range(num_timesteps - 1):  # -1 because final observation doesn't have corresponding inference
+        print(f"\n[Timestep {t}]")
+
+        
+        # Print state beliefs after observing
+        left_belief, right_belief = beliefs[t, batch_idx]
+        print(f"State beliefs:")
+        print(f"  Left:  {float(left_belief):.3f}")
+        print(f"  Right: {float(right_belief):.3f}")
+        
+        # Print policy distribution
+        print(f"Policy distribution:")
+        for p_idx, p_prob in enumerate(policies[t, batch_idx]):
+            print(f"  Policy {p_idx}: {float(p_prob):.3f}")
+        
+        # Print action and next observation
+        next_action = int(actions[t+1, batch_idx].item())  # Use .item() to get scalar value
+        next_obs = int(observations[t+1, batch_idx, 0].item())  # Use .item() to get scalar value
+        
+        print(f"Action taken: [Move to {action_names[next_action]}]")
+        print(f"Next observation: [{location_observations[next_obs]}]")
+    
+    # Print final observation
+    print(f"\n[Final Observation]")
+    final_obs = int(observations[-1, batch_idx, 0])
+    print(f"Final observation: [{location_observations[final_obs]}]")
+    
+    print("\n=== End of Experiment ===")
