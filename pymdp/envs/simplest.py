@@ -1,4 +1,8 @@
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from pymdp.utils import fig2img
 from equinox import field
 from .env import Env
 
@@ -101,3 +105,71 @@ class SimplestEnv(Env):
         D.append(initial_location)
         
         return D
+
+    def render(self, mode="human", observations=None):
+        """
+        Render the environment.
+        
+        Args:
+            mode: 'human' displays plot, 'rgb_array' returns image array
+            observations: List of observation arrays from environment
+        
+        Returns:
+            Image array if mode=='rgb_array', else None
+        """
+        # Get batch size from observations or params
+        if observations is not None:
+            current_obs = observations
+            batch_size = observations[0].shape[0]
+        else:
+            current_obs = self.current_obs
+            batch_size = self.params["A"][0].shape[0]
+
+        # Create figure with subplots (one per batch)
+        n = int(jnp.ceil(jnp.sqrt(batch_size)))  # Square grid
+        fig, axes = plt.subplots(n, n, figsize=(6, 6))
+
+        # For each environment in the batch
+        for i in range(batch_size):
+            row = i // n
+            col = i % n
+            if batch_size == 1:
+                ax = axes
+            else:
+                ax = axes[row, col]
+            
+            # Set up the plot
+            ax.set_xlim(-0.5, 1.5)
+            ax.set_ylim(-0.5, 0.5)
+            ax.set_xticks([0, 1])
+            ax.set_xticklabels(['Left', 'Right'])
+            ax.set_yticks([])
+            ax.set_aspect('equal')
+            
+            # Draw the two positions
+            left_pos = patches.Circle((0, 0), 0.2, facecolor='lightgray', edgecolor='black')
+            right_pos = patches.Circle((1, 0), 0.2, facecolor='lightgray', edgecolor='black')
+            ax.add_patch(left_pos)
+            ax.add_patch(right_pos)
+            
+            # Show agent position
+            loc = current_obs[0][i, 0]
+            agent_pos = patches.Circle((loc, 0), 0.1, facecolor='red')
+            ax.add_patch(agent_pos)
+            
+            # Add arrow to show agent direction (this is just for aesthetics)
+            ax.arrow(loc, 0, 0.15 if loc == 0 else -0.15, 0,
+                    head_width=0.1, head_length=0.1, fc='red', ec='red')
+
+        # Hide any extra subplots if batch_size isn't a perfect square
+        for i in range(batch_size, n * n):
+            fig.delaxes(axes.flatten()[i])
+
+        plt.tight_layout()
+
+        if mode == "human":
+            plt.show()
+        elif mode == "rgb_array":
+            img = fig2img(fig)
+            plt.close(fig)
+            return img
