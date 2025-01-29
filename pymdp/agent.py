@@ -128,7 +128,7 @@ class Agent(Module):
         onehot_obs=False,
         action_selection="deterministic",
         sampling_mode="full",
-        inference_algo="fpi",
+        inference_algo="fpi", # OPTIONS:'fpi' (fixed point iteration), 'vmp' (variational message passing), 'mmp' (marginal message passing), 'ovf' (online variational filtering?)
         num_iter=16,
         apply_batch=True,
         learn_A=True,
