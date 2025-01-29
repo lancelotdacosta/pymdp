@@ -203,15 +203,11 @@ def print_rollout(info, batch_idx=0):
     # Print trajectory
     print("\n=== Trajectory ===")
     num_timesteps = observations.shape[0]
-    for t in range(num_timesteps - 1):  # -1 because final observation doesn't have corresponding inference
+    for t in range(1, num_timesteps):
         print(f"\n[Timestep {t}]")
-
-        
+      
         # Print state beliefs after observing
-        left_belief, right_belief = beliefs[t, batch_idx]
-        print(f"State beliefs:")
-        print(f"  Left:  {float(left_belief):.3f}")
-        print(f"  Right: {float(right_belief):.3f}")
+        print(f"State beliefs: Left: {float(beliefs[t, batch_idx, 0]):.3f}, Right: {float(beliefs[t, batch_idx, 1]):.3f}")
         
         # Print policy distribution
         print(f"Policy distribution:")
@@ -219,15 +215,10 @@ def print_rollout(info, batch_idx=0):
             print(f"  Policy {p_idx}: {float(p_prob):.3f}")
         
         # Print action and next observation
-        next_action = int(actions[t+1, batch_idx].item())  # Use .item() to get scalar value
-        next_obs = int(observations[t+1, batch_idx, 0].item())  # Use .item() to get scalar value
+        next_action = int(actions[t, batch_idx].item())  # Use .item() to get scalar value
+        next_obs = int(observations[t, batch_idx, 0].item())  # Use .item() to get scalar value
         
         print(f"Action taken: [Move to {action_names[next_action]}]")
         print(f"Next observation: [{location_observations[next_obs]}]")
-    
-    # Print final observation
-    print(f"\n[Final Observation]")
-    final_obs = int(observations[-1, batch_idx, 0])
-    print(f"Final observation: [{location_observations[final_obs]}]")
     
     print("\n=== End of Experiment ===")
