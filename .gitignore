@@ -12,3 +12,6 @@ inferactively_pymdp.egg-info
 venv/
 data/
 .idea/
+examples/envs/simplest_numpy_demo.py
+examples/envs/tmaze_demo.py
+pymdp/envs/simplest_numpy.py
