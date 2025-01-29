@@ -22,7 +22,7 @@
 # importing necessary libraries
 import jax.numpy as jnp
 from jax import random as jr
-from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_learning_progress, render_rollout
+from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, render_rollout
 from pymdp.envs import rollout
 from pymdp.agent import Agent
 
@@ -141,6 +141,6 @@ final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
 # Print rollout and visualize results
 print("\nRollout with parameter learning:")
 print_rollout(info)
-plot_learning_progress(agent, info, env)
+plot_A_learning(agent, info, env)
 
 # In[8]:

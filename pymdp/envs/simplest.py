@@ -218,8 +218,8 @@ def plot_beliefs(info, agent=None, show=True):
     return plt
 
 
-def plot_learning(agent, info, env):
-    """Plot the agent's learning progress for A and B matrices.
+def plot_A_learning(agent, info, env):
+    """Plot the agent's learning progress for A matrix.
     
     Args:
         agent: Agent instance with parameter learning enabled
@@ -248,10 +248,10 @@ def plot_learning(agent, info, env):
         # Plot individual elements on right y-axis
         A_array = jnp.array(A_hist)
         lines = []
-        lines.append(ax2.plot(timesteps, A_array[:, 0, 0], 'b-', label='A[0,0])', alpha=0.5)[0])
-        lines.append(ax2.plot(timesteps, A_array[:, 0, 1], 'r-', label='A[0,1])', alpha=0.5)[0])
-        lines.append(ax2.plot(timesteps, A_array[:, 1, 0], 'g-', label='A[1,0])', alpha=0.5)[0])
-        lines.append(ax2.plot(timesteps, A_array[:, 1, 1], 'm-', label='A[1,1])', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 0, 0], 'b-', label='A[0,0]', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 0, 1], 'r-', label='A[0,1]', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 1, 0], 'g-', label='A[1,0]', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 1, 1], 'm-', label='A[1,1]', alpha=0.5)[0])
         ax2.set_ylabel('Belief')
         
         # Merge legends
