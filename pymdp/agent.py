@@ -100,42 +100,42 @@ class Agent(Module):
 
     def __init__(
         self,
-        A: Union[List[Array], List[Distribution]],
-        B: Union[List[Array], List[Distribution]],
-        C: Optional[List[Array]] = None,
-        D: Optional[List[Array]] = None,
-        E: Optional[Array] = None,
-        pA=None,
-        pB=None,
-        H=None,
-        I=None,
-        A_dependencies=None,
-        B_dependencies=None,
-        B_action_dependencies=None,
-        num_controls=None,
-        control_fac_idx=None,
-        policy_len=1,
-        policies=None,
-        gamma=1.0,
-        alpha=1.0,
-        inductive_depth=1,
-        inductive_threshold=0.1,
-        inductive_epsilon=1e-3,
-        use_utility=True,
-        use_states_info_gain=True,
-        use_param_info_gain=False,
-        use_inductive=False,
-        onehot_obs=False,
-        action_selection="deterministic",
-        sampling_mode="full",
-        inference_algo="fpi", # OPTIONS:'fpi' (fixed point iteration), 'vmp' (variational message passing), 'mmp' (marginal message passing), 'ovf' (online variational filtering?)
-        num_iter=16,
-        apply_batch=True,
-        learn_A=True,
-        learn_B=True,
-        learn_C=False,
-        learn_D=True,
-        learn_E=False,
+        A: Union[List[Array], List[Distribution]],  # Observation likelihood matrix/tensor mapping hidden states to observations
+        B: Union[List[Array], List[Distribution]],  # Transition likelihood matrix/tensor defining dynamics of hidden states given actions/policies
+        C: Optional[List[Array]] = None,  # Prior preferences over observations (goals/log utilities)
+        D: Optional[List[Array]] = None,  # Prior beliefs over initial hidden states
+        E: Optional[Array] = None,  # Prior beliefs over policies
+        pA=None,  # Parameters of Dirichlet prior over A (observation model learning)
+        pB=None,  # Parameters of Dirichlet prior over B (transition model learning)
+        H=None,  # (Uncertain about exact purpose) Possibly related to inductive inference
+        I=None,  # (Uncertain about exact purpose) Possibly related to inductive inference
+        A_dependencies=None,  # Specifies dependencies between hidden state factors in observation model
+        B_dependencies=None,  # Specifies dependencies between hidden state factors in transition model
+        B_action_dependencies=None,  # Specifies dependencies between actions and state transitions
+        num_controls=None,  # Number of control states (actions) available for each factor
+        control_fac_idx=None,  # Indices of controllable state factors
+        policy_len=1,  # Length of policies (number of time steps in the future)
+        policies=None,  # Custom policy specifications (if None, constructs all policies)
+        gamma=1.0,  # Policy precision parameter
+        alpha=1.0,  # Action selection precision parameter (higher values make action selection more deterministic)
+        inductive_depth=1,  # Depth of inductive inference
+        inductive_threshold=0.1,  # Threshold for inductive inference
+        inductive_epsilon=1e-3,  # Small constant for numerical stability in inductive inference
+        use_utility=True,  # Whether to use utility in policy evaluation
+        use_states_info_gain=True,  # Whether to use states information gain in policy evaluation
+        use_param_info_gain=False,  # Whether to use parameter information gain in policy evaluation
+        use_inductive=False,  # Whether to use inductive inference
+        onehot_obs=False,  # Whether observations are provided in one-hot format
+        action_selection="deterministic",  # Method for selecting actions ('deterministic' or 'stochastic')
+        sampling_mode="full",  # Mode for sampling ('full' or other options)
+        inference_algo="fpi",  # Algorithm for state inference (fpi=fixed point iteration, vmp=variational message passing, mmp=marginal message passing, ovf=online variational filtering)
+        num_iter=16,  # Number of variational update iterations for inference algorithm
+        apply_batch=True,  # Whether to broadcast model parameters to batch size 1 (True) or use natural batch size from input A matrix (False)
+        learn_A=True,  # Whether to learn/update the A matrix (observation model)
+        learn_B=True,  # Whether to learn/update the B matrix (transition model)
+        learn_C=False,  # Whether to learn/update the C matrix (preferences)
+        learn_D=True,  # Whether to learn/update the D matrix (initial state prior)
+        learn_E=False,  # Whether to learn/update the E matrix (policy prior)
     ):
         if B_action_dependencies is not None:
             assert num_controls is not None, "Please specify num_controls for complex action dependencies"
