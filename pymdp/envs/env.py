@@ -44,9 +44,7 @@ class Env(Module):
         self.current_obs = jtu.tree_map(lambda x: jnp.zeros([x.shape[0], x.shape[1]]), self.params["A"])
 
     @vmap
-    def reset(self, state: Optional[List[Array]] = None):
-        # TODO , key: PRNGKeyArray this used to be passed as parameters seems to break with vmap decorator
-        key = jr.PRNGKey(0)  # TODO this was not here, replace parameter
+    def reset(self, key: PRNGKeyArray, state: Optional[List[Array]] = None):
         if state is None:
             probs = self.params["D"]
             keys = list(jr.split(key, len(probs) + 1))
@@ -71,10 +69,8 @@ class Env(Module):
         """
         pass
 
-    @vmap
-    def step(self, actions: Optional[Array] = None):
-        # TODO , rng_key: PRNGKeyArray this used to be passed as parameters seems to break with vmap decorator
-        rng_key = jr.PRNGKey(0)  # TODO this was not here, replace parameter
+    @vmap 
+    def step(self, rng_key: PRNGKeyArray, actions: Optional[Array] = None):
         # return a list of random observations and states
         key_state, key_obs = jr.split(rng_key)
         state = self.state
