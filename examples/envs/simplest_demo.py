@@ -27,6 +27,7 @@ import os
 import mediapy
 from PIL import Image
 
+from jax import nn
 from jax import random as jr
 from pymdp.envs.simplest import SimplestEnv, print_rollout
 from pymdp.envs import rollout
@@ -133,7 +134,7 @@ plt.ylim(0, 1)
 
 # Plot preferences as a bar plot
 plt.subplot(133)
-plt.bar([0, 1], agent.C[0][0])
+plt.bar([0, 1], nn.softmax(agent.C[0][0]))
 plt.title('Preferences')
 plt.xticks([0, 1], ['Left', 'Right'])
 plt.ylim(0, 1)
