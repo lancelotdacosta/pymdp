@@ -5,6 +5,9 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from pymdp.utils import fig2img
 from equinox import field
 from .env import Env
+import matplotlib.pyplot as plt
+from jax import nn
+
 
 class SimplestEnv(Env):
     """
@@ -174,6 +177,95 @@ class SimplestEnv(Env):
             plt.close(fig)
             return img
 
+def plot_beliefs(info, agent=None, show=True):
+    """Plot the agent's initial beliefs, final beliefs, and (if agent provided) preferences.
+     
+    Args:
+        info: Rollout info dict with 'qs' for belief history
+        agent: Agent instance (optional)
+        show: Whether to call plt.show()
+    """
+    
+    n_plots = 3 if agent is not None else 2
+    plt.figure(figsize=(4 * n_plots, 4))
+
+    # Plot initial beliefs as a bar plot
+    plt.subplot(1, n_plots, 1)
+    plt.bar([0, 1], info['qs'][0][0][0])
+    plt.title('Initial Beliefs')
+    plt.xticks([0, 1], ['Left', 'Right'])
+    plt.ylim(0, 1)
+
+    # Plot final beliefs as a bar plot
+    plt.subplot(1, n_plots, 2)
+    plt.bar([0, 1], info['qs'][0][-1][0])  # Using qs instead of belief_hist
+    plt.title('Final Beliefs')
+    plt.xticks([0, 1], ['Left', 'Right'])
+    plt.ylim(0, 1)
+
+    # Plot preferences as a bar plot
+    if agent is not None:
+        plt.subplot(1, n_plots, 3)
+        plt.bar([0, 1], agent.C[0][0])
+        plt.title('Preferences')
+        plt.xticks([0, 1], ['Left', 'Right'])
+        plt.ylim(0, 1)
+
+    plt.tight_layout()
+    if show:
+        plt.show()
+    
+    return plt
+
+
+def plot_learning(agent, info, env):
+    """Plot the agent's learning progress for A and B matrices.
+    
+    Args:
+        agent: Agent instance with parameter learning enabled
+        info: Dict containing rollout info with parameter history
+        env: Environment instance containing true parameters
+    """
+    
+    plt.figure(figsize=(12, 5))
+    plt.clf()  # Clear the current figure
+    
+    if agent.learn_A:
+        # Create subplot for A matrix
+        ax1 = plt.subplot(121)
+        
+        # Plot distance on left y-axis
+        A_hist = info["agent"].A[0]
+        timesteps = range(len(A_hist))
+        distances = [jnp.linalg.norm(A - env.params["A"][0]) for A in A_hist]
+        dist_line = ax1.plot(timesteps, distances, 'k--', label='Distance to true A', linewidth=2)[0]
+        ax1.set_xlabel('Timestep')
+        ax1.set_ylabel('Distance to true parameters')
+        
+        # Create twin axis for probabilities
+        ax2 = ax1.twinx()
+        
+        # Plot individual elements on right y-axis
+        A_array = jnp.array(A_hist)
+        lines = []
+        lines.append(ax2.plot(timesteps, A_array[:, 0, 0], 'b-', label='A[0,0])', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 0, 1], 'r-', label='A[0,1])', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 1, 0], 'g-', label='A[1,0])', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 1, 1], 'm-', label='A[1,1])', alpha=0.5)[0])
+        ax2.set_ylabel('Belief')
+        
+        # Merge legends
+        all_lines = [dist_line] + lines
+        labs = [l.get_label() for l in all_lines]
+        ax1.legend(all_lines, labs, loc='center left')
+        
+        plt.title('A Matrix Learning')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return plt
+
 def print_rollout(info, batch_idx=0):
     """
     Print a detailed summary of an agent's trajectory through the simplest environment.
@@ -222,3 +314,41 @@ def print_rollout(info, batch_idx=0):
         print(f"Next observation: [{location_observations[next_obs]}]")
     
     print("\n=== End of Experiment ===")
+
+def render_rollout(env, info, save_gif=False, filename=None):
+    """Render a video of the agent's trajectory through the environment.
+    
+    Args:
+        env: SimplestEnv instance
+        info: Dict containing rollout info
+        save_gif: Whether to save the animation as a gif
+        filename: Path to save the gif (if save_gif is True)
+    """
+    import mediapy
+    from PIL import Image
+    import os
+    import jax.numpy as jnp
+    
+    frames = []
+    for t in range(info["observation"][0].shape[0]):  # iterate over timesteps
+        # get observations for this timestep
+        observations_t = [info["observation"][0][t, :, :]]  # Only one observation modality (location)
+
+        frame = env.render(mode="rgb_array", observations=observations_t)
+        frame = jnp.asarray(frame, dtype=jnp.uint8)
+        plt.close()  # close the figure to prevent memory leak
+        frames.append(frame)
+
+    frames = jnp.array(frames, dtype=jnp.uint8)
+    mediapy.show_video(frames, fps=1)
+
+    if save_gif:
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        pil_frames = [Image.fromarray(frame) for frame in frames]
+        pil_frames[0].save(
+            filename,
+            save_all=True,
+            append_images=pil_frames[1:],
+            duration=1000,  # 1000ms per frame
+            loop=0
+        )
