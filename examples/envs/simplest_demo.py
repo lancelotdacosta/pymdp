@@ -25,7 +25,7 @@ from jax import random as jr
 from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, render_rollout
 from pymdp.envs import rollout
 from pymdp.agent import Agent
-from pymdp.utils import dirichlet_like, dirichlet_uniform, dirichlet_random
+from pymdp.priors import dirichlet_prior
 
 
 # if __name__ == "__main__":
@@ -116,17 +116,9 @@ print_rollout(info)
 learn_A = True  # Enable learning of observation model
 learn_B = False  # Enable learning of transition model
 
-# Set up uniform priors over A and B
-# pA = dirichlet_uniform(template_categorical=env.params["A"], scale=1.0, learning_enabled=learn_A)
-# pB = dirichlet_uniform(template_categorical=env.params["B"], scale=1.0, learning_enabled=learn_B)
-
-# Set up scaled priors over A and B
-# pA = dirichlet_like(template_categorical=env.params["A"], scale=1.0, learning_enabled=learn_A)
-# pB = dirichlet_like(template_categorical=env.params["B"], scale=1.0, learning_enabled=learn_B)
-
 # Set up random priors over A and B
-pA = dirichlet_random(template_categorical=env.params["A"], scale=10.0, learning_enabled=learn_A, key=key)
-pB = dirichlet_random(template_categorical=env.params["B"], scale=1.0, learning_enabled=learn_B, key=key)
+pA = dirichlet_prior(env.params["A"], init="like", scale=10.0, learning_enabled=learn_A, key=key)
+pB = dirichlet_prior(env.params["B"], init="like", scale=10.0, learning_enabled=learn_B, key=key)
 
 # Set up same parameter priors (pA and pB)
 # pA = [jnp.array(a, dtype=jnp.float32) for a in env.params["A"]]  # Prior over observation model
