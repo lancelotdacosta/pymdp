@@ -3,7 +3,7 @@
 
 """ Utility functions
 
-__author__: Conor Heins, Alexander Tschantz, Brennan Klein
+__author__: Conor Heins, Alexander Tschantz, Brennan Klein, Lancelot Da Costa
 """
 
 import jax
@@ -35,6 +35,11 @@ ShapeList = list[Shape]
 def norm_dist(dist: Tensor) -> Tensor:
     """Normalizes a Categorical probability distribution"""
     return dist / dist.sum(0)
+
+
+def dirichlet_expectation(arr: jnp.ndarray) -> jnp.ndarray:
+    """Normalize Dirichlet parameters to get expected probabilities."""
+    return arr / arr.sum(axis=-2, keepdims=True)
 
 
 def list_array_uniform(shape_list: ShapeList) -> Vector:
@@ -134,4 +139,3 @@ def fig2img(fig):
     im = data.reshape((int(h), int(w), -1))
     plt.close(fig)
     return im[:, :, :3]
-
