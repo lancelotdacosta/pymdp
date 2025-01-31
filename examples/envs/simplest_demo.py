@@ -117,13 +117,8 @@ learn_A = True  # Enable learning of observation model
 learn_B = False  # Enable learning of transition model
 
 # Set up random priors over A and B
-pA, A_gm = dirichlet_prior(env.params["A"], init="uniform", scale=1.0, learning_enabled=learn_A, key=key)
+pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key)
 pB, B_gm = dirichlet_prior(env.params["B"], init="like", scale=1.0, learning_enabled=learn_B, key=key)
-
-# Set up same parameter priors (pA and pB)
-# pA = [jnp.array(a, dtype=jnp.float32) for a in env.params["A"]]  # Prior over observation model
-# pB = [jnp.array(b, dtype=jnp.float32) for b in env.params["B"]]  # Prior over transition model
-
 
 
 # In[6]:
