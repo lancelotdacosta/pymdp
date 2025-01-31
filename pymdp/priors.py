@@ -2,7 +2,13 @@ from typing import List, Union, Tuple, Literal
 import jax.numpy as jnp
 import jax.random as jr
 import warnings
-from .utils import list_array_scaled, norm_dist
+from .utils import list_array_scaled, dirichlet_expectation
+
+""" Functions for setting up Dirichlet priors
+
+__author__: Lancelot Da Costa
+"""
+
 
 
 def dirichlet_prior(template: List[jnp.ndarray],
@@ -38,11 +44,8 @@ def dirichlet_prior(template: List[jnp.ndarray],
         concentration = _dirichlet_random(template, scale, key)
     else:
         raise ValueError(f"Unknown initialization method: {init}. Must be one of: uniform, like, random")
-
-    # Expectation of dirichlet distribution is obtained through normalization
-    expectation = [norm_dist(arr) for arr in concentration]
     
-    return concentration, expectation
+    return concentration, [dirichlet_expectation(arr) for arr in concentration]
 
 
 def _dirichlet_uniform(template: List[jnp.ndarray], scale: float = 1.0) -> List[jnp.ndarray]:
