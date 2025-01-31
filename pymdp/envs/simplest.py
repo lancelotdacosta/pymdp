@@ -241,6 +241,7 @@ def plot_A_learning(agent, info, env):
         dist_line = ax1.plot(timesteps, distances, 'k--', label='Distance to true A', linewidth=2)[0]
         ax1.set_xlabel('Timestep')
         ax1.set_ylabel('Distance to true parameters')
+        ax1.set_ylim(bottom=0) # Set y-axis to include 0 
         
         # Create twin axis for probabilities
         ax2 = ax1.twinx()
@@ -248,10 +249,10 @@ def plot_A_learning(agent, info, env):
         # Plot individual elements on right y-axis
         A_array = jnp.array(A_hist)
         lines = []
-        lines.append(ax2.plot(timesteps, A_array[:, 0, 0], 'b-', label='A[0,0]', alpha=0.5)[0])
-        lines.append(ax2.plot(timesteps, A_array[:, 0, 1], 'r-', label='A[0,1]', alpha=0.5)[0])
-        lines.append(ax2.plot(timesteps, A_array[:, 1, 0], 'g-', label='A[1,0]', alpha=0.5)[0])
-        lines.append(ax2.plot(timesteps, A_array[:, 1, 1], 'm-', label='A[1,1]', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 0, 0], label='A[0,0]', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 0, 1], label='A[0,1]', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 1, 0], label='A[1,0]', alpha=0.5)[0])
+        lines.append(ax2.plot(timesteps, A_array[:, 1, 1], label='A[1,1]', alpha=0.5)[0])
         ax2.set_ylabel('Belief')
         
         # Merge legends
