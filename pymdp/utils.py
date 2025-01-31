@@ -10,6 +10,7 @@ import jax
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import numpy as np
+import jax.random as jr
 
 import io
 import matplotlib.pyplot as plt
@@ -133,3 +134,102 @@ def fig2img(fig):
     im = data.reshape((int(h), int(w), -1))
     plt.close(fig)
     return im[:, :, :3]
+
+
+def dirichlet_uniform(template_categorical: List[jnp.ndarray], scale: float = 1.0, learning_enabled: bool = True) -> Union[List[jnp.ndarray], None]:
+    """Initialize uniform Dirichlet concentration parameters or return None.
+
+    If learning is enabled, initializes uniform Dirichlet concentration parameters 
+    alpha_i = scale for all i. Note that the corresponding Dirichlet distribution has template_categorical
+    as its expectation.
+
+    Args:
+        template_categorical: List of categorical distributions used to determine the shape
+        scale: Concentration parameter for the uniform Dirichlet distribution (default=1.0)
+        learning_enabled: Whether to initialize concentration parameters (True) or return None (False)
+
+    Returns:
+        List of Dirichlet concentration parameters if learning_enabled is True, None otherwise
+
+    #TODO: Potential todo: support per-factor scales
+    """
+    if not learning_enabled:
+        return None
+
+    # Get shapes from template
+    shapes = [arr.shape for arr in template_categorical]
+    
+    # Create scaled uniform priors (these are the concentration parameters of the Dirichlet distribution)
+    return list_array_scaled(shapes, scale)
+
+
+def dirichlet_like(template_categorical: List[jnp.ndarray], scale: float = 1.0, learning_enabled: bool = True) -> Union[List[jnp.ndarray], None]:
+    """Initialize Dirichlet concentration parameters by scaling the template or return None.
+
+    If learning is enabled, initializes Dirichlet concentration parameters by scaling the template,
+    i.e. alpha = scale * template_categorical. Note that the corresponding Dirichlet distribution
+    has template_categorical as its expectation.
+
+    Args:
+        template_categorical: List of categorical distributions used as the template
+        scale: Scale factor for the concentration parameters (default=1.0)
+        learning_enabled: Whether to initialize concentration parameters (True) or return None (False)
+
+    Returns:
+        List of Dirichlet concentration parameters if learning_enabled is True, None otherwise
+
+    #TODO: Potential todo: support per-factor scales
+    """
+    if not learning_enabled:
+        return None
+
+    # Check that template is normalized
+    non_normalized = []
+    for i, arr in enumerate(template_categorical):
+        if not jnp.allclose(arr.sum(axis=-1), 1.0):
+            non_normalized.append(i)
+    
+    # Print indices at which it is not normalized
+    if non_normalized:
+        import warnings
+        warnings.warn(f"Template categorical distributions at indices {non_normalized} are not normalized")
+    
+    # Scale the template to get concentration parameters
+    return [scale * jnp.array(arr) for arr in template_categorical]
+
+
+def dirichlet_random(template_categorical: List[jnp.ndarray], 
+                    scale: float = 1.0, 
+                    learning_enabled: bool = True,
+                    key: jr.PRNGKey = None) -> Union[List[jnp.ndarray], None]:
+    """Initialize Dirichlet concentration parameters with random uniform values or return None.
+
+    If learning is enabled, initializes Dirichlet concentration parameters by sampling uniform
+    random values and scaling them. Note that unlike dirichlet_like and dirichlet_uniform,
+    the corresponding Dirichlet distribution will NOT have template_categorical as its expectation.
+
+    Args:
+        template_categorical: List of categorical distributions used to determine shapes
+        scale: Scale factor for the concentration parameters (default=1.0)
+        learning_enabled: Whether to initialize concentration parameters (True) or return None (False)
+        key: JAX random key for generating random values (required if learning_enabled=True)
+
+    Returns:
+        List of Dirichlet concentration parameters if learning_enabled is True, None otherwise
+
+    #TODO: Potential todo: support per-factor scales
+    """
+    if not learning_enabled:
+        return None
+
+    if key is None:
+        raise ValueError("Random key must be provided when learning is enabled")
+
+    # Get shapes from template
+    shapes = [arr.shape for arr in template_categorical]
+    
+    # Generate a random key for each shape
+    keys = jr.split(key, len(shapes))
+    
+    # Create random uniform parameters for each shape
+    return [scale * jr.uniform(k, shape=shape) for k, shape in zip(keys, shapes)]
