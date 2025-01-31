@@ -62,9 +62,9 @@ B_gm = [b.copy() for b in B]
 # Set up preference (C) matrix
 # The agent prefers to be in the right state (state 1)
 num_obs = [a.shape[0] for a in A]
-C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # Prefer right state
-# C = [jnp.zeros((batch_size, 2), dtype=jnp.float32)]  # All states equally preferred
-#TODO: when C is set to uniform, the agent stays in the left state. Why is this?
+# C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # Prefer right state
+C = [jnp.zeros((batch_size, 2), dtype=jnp.float32)]  # All states equally preferred
+#TODO: when C is set to uniform, the agent stays in the left state (when action_selection param is deterministic). Why is this?
 
 # Set up initial beliefs (D)
 # Start with certainty about being in the left state (matching the environment's initial state)
@@ -117,8 +117,8 @@ learn_A = True  # Enable learning of observation model
 learn_B = False  # Enable learning of transition model
 
 # Set up random priors over A and B
-pA = dirichlet_prior(env.params["A"], init="like", scale=10.0, learning_enabled=learn_A, key=key)
-pB = dirichlet_prior(env.params["B"], init="like", scale=10.0, learning_enabled=learn_B, key=key)
+pA, A_gm = dirichlet_prior(env.params["A"], init="uniform", scale=1.0, learning_enabled=learn_A, key=key)
+pB, B_gm = dirichlet_prior(env.params["B"], init="like", scale=1.0, learning_enabled=learn_B, key=key)
 
 # Set up same parameter priors (pA and pB)
 # pA = [jnp.array(a, dtype=jnp.float32) for a in env.params["A"]]  # Prior over observation model
@@ -138,17 +138,22 @@ agent = Agent(A=A_gm,
              B_dependencies=B_dependencies,
              learn_A=learn_A,  # Enable learning of observation model
              learn_B=learn_B,  # Enable learning of transition model
-             apply_batch=False)
+             apply_batch=False,
+             action_selection="stochastic")
 
 # Run simulation with parameter learning
 key = jr.PRNGKey(0)
-T = 10  # More timesteps to allow for learning
+T = 50  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
 
 # In[7]:
-# Print rollout and visualize results
+# Print rollout
 print("\nRollout with parameter learning:")
 print_rollout(info)
-plot_A_learning(agent, info, env)
 
-# In[8]:
+# Print and visualize A learning
+if learn_A:
+    print('\n Final matrix A:\n',jnp.array(info["agent"].A[0])[-1,:])
+    plot_A_learning(agent, info, env)
+
+# %%
