@@ -42,6 +42,7 @@ class Agent(Module):
     E: Array
     pA: List[Array]
     pB: List[Array]
+    pD: List[Array]
     gamma: Array
     alpha: Array
 
@@ -107,6 +108,7 @@ class Agent(Module):
         E: Optional[Array] = None,  # Prior beliefs over policies
         pA=None,  # Parameters of Dirichlet prior over A (observation model learning)
         pB=None,  # Parameters of Dirichlet prior over B (transition model learning)
+        pD=None,  # Parameters of Dirichlet prior over D (initial state prior learning)
         H=None,  # (Uncertain about exact purpose) Possibly related to inductive inference
         I=None,  # (Uncertain about exact purpose) Possibly related to inductive inference
         A_dependencies=None,  # Specifies dependencies between hidden state factors in observation model
@@ -240,6 +242,9 @@ class Agent(Module):
         if pB is not None and apply_batch:
             pB = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), pB)
 
+        if pD is not None and apply_batch:
+            pD = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), pD)
+
         if C is None:
             C = [jnp.ones((self.batch_size, self.num_obs[m])) / self.num_obs[m] for m in range(self.num_modalities)]
         elif apply_batch:
@@ -270,6 +275,7 @@ class Agent(Module):
         self.I = I
         self.pA = pA
         self.pB = pB
+        self.pD = pD
 
         self.gamma = jnp.broadcast_to(gamma, (self.batch_size,))
         self.alpha = jnp.broadcast_to(alpha, (self.batch_size,))
@@ -299,7 +305,7 @@ class Agent(Module):
         size = pymath.prod(self.num_controls)
         return jnp.unique(self.policies[:, 0], axis=0, size=size, fill_value=-1)
 
-    def infer_parameters(self, beliefs_A, outcomes, actions, beliefs_B=None, lr_pA=1., lr_pB=1., **kwargs):
+    def infer_parameters(self, beliefs_A, outcomes, actions, beliefs_B=None, lr_pA=1., lr_pB=1., lr_pD=1., **kwargs):
         agent = self
         beliefs_B = beliefs_A if beliefs_B is None else beliefs_B
         if self.inference_algo == 'ovf':
@@ -331,14 +337,14 @@ class Agent(Module):
             )
             
             agent = tree_at(lambda x: (x.A, x.pA), agent, (E_qA, qA))
-            
+
         if self.learn_B:
             assert beliefs_B[0].shape[1] == actions.shape[1] + 1
             update_B = partial(
                 learning.update_state_transition_dirichlet,
                 num_controls=self.num_controls
             )
-
+            
             lr = jnp.broadcast_to(lr_pB, (self.batch_size,))
             qB, E_qB = vmap(update_B)(
                 self.pB,
@@ -354,6 +360,21 @@ class Agent(Module):
                 agent = tree_at(lambda x: (x.B, x.pB, x.I), agent, (E_qB, qB, I_updated))
             else:
                 agent = tree_at(lambda x: (x.B, x.pB), agent, (E_qB, qB))
+
+        if self.learn_D:
+            update_D = partial(
+                learning.update_state_prior_dirichlet,
+            )
+            
+            lr = jnp.broadcast_to(lr_pD, (self.batch_size,))
+            qD, E_qD = vmap(update_D)(
+                self.pD,
+                self.D,
+                marginal_beliefs,  # Using initial beliefs from sequence
+                lr=lr
+            )
+            self.pD = qD
+            self.D = E_qD
 
         return agent
 

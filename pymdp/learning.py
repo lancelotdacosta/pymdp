@@ -103,7 +103,84 @@ def update_state_transition_dirichlet(pB, B, joint_beliefs, actions, *, num_cont
             E_qB.append(r[1])
 
     return qB, E_qB
+
+def update_state_prior_dirichlet_f(pD_f, qs_f, lr=1.0):
+    """JAX version of factor-specific D learning update
     
+    Parameters
+    ----------
+    pD_f: Array
+        Prior Dirichlet parameters for a specific factor
+    qs_f: Array
+        Marginal posterior beliefs for that factor
+    lr: float
+        Learning rate
+        
+    Returns
+    -------
+    qD_f: Array
+        Updated Dirichlet parameters
+    D_f: Array
+        Expected probabilities under updated parameters
+    """
+    # Only update where prior probability > 0
+    mask = (pD_f > 0).astype(pD_f.dtype)
+    dfdd = qs_f * mask
+    qD_f = pD_f + lr * dfdd
+    
+    return qD_f, dirichlet_expected_value(qD_f)
+
+def update_state_prior_dirichlet(pD, D, qs, *, lr, factors_to_update='all'):
+    """Update Dirichlet parameters of initial state distribution
+    
+    Parameters
+    ----------
+    pD: List[Array]
+        Prior Dirichlet parameters over initial hidden state prior
+    D: List[Array]
+        Current expected probabilities of initial hidden states
+    qs: List[Array]
+        Marginal posterior beliefs over hidden states
+    lr: float
+        Learning rate
+    factors_to_update: List[int] or str
+        Indices of the hidden state factors to include in learning
+        
+    Returns
+    -------
+    qD: List[Array]
+        Updated Dirichlet parameters
+    E_qD: List[Array]
+        Expected probabilities under updated parameters
+    """
+    nf = len(pD)
+    
+    if factors_to_update == 'all':
+        factors_to_update = list(range(nf))
+    
+    update_D_fn = lambda pD_f, qs_f: None if pD_f is None else update_state_prior_dirichlet_f(
+        pD_f, qs_f, lr=lr
+    )
+    
+    result = tree_map(
+        update_D_fn,
+        pD, qs,
+        is_leaf=lambda x: x is None
+    )
+    
+    qD = []
+    E_qD = []
+    
+    for i, r in enumerate(result):
+        if r is None:
+            qD.append(r)
+            E_qD.append(D[i])
+        else:
+            qD.append(r[0])
+            E_qD.append(r[1])
+            
+    return qD, E_qD
+
 # def update_state_prior_dirichlet(
 #     pD, qs, lr=1.0, factors="all"
 # ):
