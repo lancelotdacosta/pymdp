@@ -906,7 +906,7 @@ class Agent(object):
             if qs_t0 is None:
                 
                 try:
-                    qs_t0 = self.qs_hist[0]
+                    qs_t0 = self.qs_hist[0] #in this case, qs_t0 is assumed is the initial beliefs about hidden states. This stays constant because there is no smoothing in this method.
                 except ValueError:
                     print("qs_t0 must either be passed as argument to `update_D` or `save_belief_hist` must be set to True!")             
 
