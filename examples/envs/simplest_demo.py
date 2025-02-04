@@ -130,7 +130,7 @@ agent = Agent(A=A_gm,
              pA=pA,  # Prior over A
              pB=pB,  # Prior over B
              A_dependencies=A_dependencies,
-             B_dependencies=B_dependencies,
+             B_dependencies=B_dependencies, #
              learn_A=learn_A,  # Enable learning of observation model
              learn_B=learn_B,  # Enable learning of transition model
              apply_batch=False,
@@ -138,7 +138,7 @@ agent = Agent(A=A_gm,
 
 # Run simulation with parameter learning
 key = jr.PRNGKey(0)
-T = 500  # More timesteps to allow for learning
+T = 50  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
 
 # In[7]:
@@ -160,5 +160,45 @@ if learn_B:
 
 # Results:
 # Joint A, B learning works under random initialization, not under strictly uniform initialization (as expected). Later could try noisy uniform initialization
-# %%
 
+# In[ ]:
+# ## Testing D Learning
+# Now let's test learning of the initial state distribution (D) while keeping A and B fixed
+
+# Create environment
+
+# Let's start by defining what parameters we want to learn
+learn_D = True   # Enable learning of initial state distribution
+
+# Set up random priors over D
+
+pD, D_gm = dirichlet_prior(D, init="like", scale=1.0, learning_enabled=learn_D, key=key)
+
+# Create agent
+agent = Agent(
+    A=A_gm,
+    B=B_gm,
+    C=C,
+    D=D_gm,
+    pD=pD,
+    learn_D=learn_D
+    A_dependencies=A_dependencies,
+    B_dependencies=B_dependencies,
+    apply_batch=False,
+    action_selection="stochastic"
+)
+
+# Run simulation with parameter learning
+key = jr.PRNGKey(0)
+T = 1  # More timesteps to allow for learning
+final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+
+# Print and visualize D learning
+if learn_D:
+    print('\n Initial D matrix:\n', env.params["D"][0])  # True initial state distribution
+    print('\n Final learned D matrix:\n', jnp.array(info["agent"].D[0])[-1])  # Learned initial state distribution
+
+# Results:
+# Let's see how well the agent learns the true initial state distribution
+
+# %%
