@@ -114,11 +114,11 @@ print_rollout(info)
 
 # Let's start by defining what parameters we want to learn
 learn_A = True  # Enable learning of observation model
-learn_B = False  # Enable learning of transition model
+learn_B = True  # Enable learning of transition model
 
 # Set up random priors over A and B
 pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key)
-pB, B_gm = dirichlet_prior(env.params["B"], init="like", scale=1.0, learning_enabled=learn_B, key=key)
+pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=learn_B, key=key)
 
 
 # In[6]:
@@ -138,7 +138,7 @@ agent = Agent(A=A_gm,
 
 # Run simulation with parameter learning
 key = jr.PRNGKey(0)
-T = 50  # More timesteps to allow for learning
+T = 500  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
 
 # In[7]:
@@ -148,7 +148,17 @@ print_rollout(info)
 
 # Print and visualize A learning
 if learn_A:
-    print('\n Final matrix A:\n',jnp.array(info["agent"].A[0])[-1,:])
     plot_A_learning(agent, info, env)
+    print('\n Final matrix A:\n',jnp.array(info["agent"].A[0])[-1,0,:]) #-1 for last timestep, 0 for first factor
 
+# Print and visualize B learning
+if learn_B:
+    actions = ['Left', 'Right']
+    for a in range(2): 
+        print('\n Final matrix B under action', actions[a], ':\n',jnp.array(info["agent"].B[0])[-1,0,:,:,a]) 
+        # plot_B_learning(agent, info, env)
+
+# Results:
+# Joint A, B learning works under random initialization, not under strictly uniform initialization (as expected), now we'll try noisy uniform initialization
 # %%
+
