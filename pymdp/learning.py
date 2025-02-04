@@ -125,6 +125,11 @@ def update_state_prior_dirichlet_f(pD_f, qs_f, lr=1.0):
     """
     # Only update where prior probability > 0
     mask = (pD_f > 0).astype(pD_f.dtype)
+    
+    # qs_f has shape [batch, time, states], take initial timestep to use for D learning
+    if len(qs_f.shape) > len(pD_f.shape):
+        qs_f = qs_f[..., 0, :]
+    
     dfdd = qs_f * mask
     qD_f = pD_f + lr * dfdd
     

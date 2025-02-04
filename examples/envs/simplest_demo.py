@@ -177,7 +177,6 @@ D_gm = D
 #TODO: there is a mistake in the way dirichlet prior normalises pD to obtain D_gm
 
 # %%
-
 # Create agent
 agent = Agent(
     A=env.params["A"],  # Use true A
@@ -196,12 +195,16 @@ agent = Agent(
 
 # Run simulation with parameter learning
 key = jr.PRNGKey(0)
-T = 1  # More timesteps to allow for learning
+T = 10  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+
+# Rollout with D learning
+print("\nRollout with D learning:")
+print_rollout(info)
 
 # Print and visualize D learning
 if learn_D:
-    print('\n Initial D matrix:\n', env.params["D"][0])  # True initial state distribution
+    print('\n Initial D matrix:\n', jnp.array(info["agent"].D[0])[0])  # True initial state distribution
     print('\n Final learned D matrix:\n', jnp.array(info["agent"].D[0])[-1])  # Learned initial state distribution
 
 # Results:

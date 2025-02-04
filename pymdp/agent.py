@@ -374,8 +374,8 @@ class Agent(Module):
                 marginal_beliefs,  # Using initial beliefs from sequence
                 lr=lr
             )
-            self.pD = qD
-            self.D = E_qD
+            
+            agent = tree_at(lambda x: (x.D, x.pD), agent, (E_qD, qD))
 
         return agent
 
