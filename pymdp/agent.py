@@ -114,6 +114,7 @@ class Agent(Module):
         A_dependencies=None,  # Specifies dependencies between hidden state factors in observation model
         B_dependencies=None,  # Specifies dependencies between hidden state factors in transition model
         B_action_dependencies=None,  # Specifies dependencies between actions and state transitions
+        #D_dependencies=None,  # TODO: should this be implemented? A: probably not
         num_controls=None,  # Number of control states (actions) available for each factor
         control_fac_idx=None,  # Indices of controllable state factors
         policy_len=1,  # Length of policies (number of time steps in the future)
