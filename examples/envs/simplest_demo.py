@@ -159,6 +159,6 @@ if learn_B:
         # plot_B_learning(agent, info, env)
 
 # Results:
-# Joint A, B learning works under random initialization, not under strictly uniform initialization (as expected), now we'll try noisy uniform initialization
+# Joint A, B learning works under random initialization, not under strictly uniform initialization (as expected). Later could try noisy uniform initialization
 # %%
 
