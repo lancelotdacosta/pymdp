@@ -2,7 +2,7 @@ from typing import List, Union, Tuple, Literal
 import jax.numpy as jnp
 import jax.random as jr
 import warnings
-from .utils import list_array_scaled, 
+from .utils import list_array_scaled
 from .maths import dirichlet_expectation
 
 """ Functions for setting up Dirichlet priors
