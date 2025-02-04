@@ -79,9 +79,9 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
             
             # Update parameters
             agent = agent.infer_parameters(
-                beliefs_A=qs, 
-                outcomes=observation_t, 
-                actions=action_t,
+                qs, 
+                observation_t, 
+                action_B if agent.learn_B else action_t,
                 beliefs_B=beliefs_B
             )
 
