@@ -125,6 +125,31 @@ def joint_dist_factor(b: ArrayLike, filtered_qs: list[Array], actions: Array):
 
 
 def smoothing_ovf(filtered_post, B, past_actions):
+    """
+    Performs smoothing inference for online variational filtering (OVF) to compute smoothed beliefs used in parameter learning.
+    
+    This function computes the smoothed posterior distributions by combining filtered beliefs with transition dynamics.
+    The smoothed beliefs are particularly important for learning the parameters (A and B matrices) as they provide
+    a more accurate estimate of the hidden state sequence by incorporating both past and current information.
+    
+    Args:
+        filtered_post (list): List of filtered posterior distributions q(s_t|o_{<=t}) for each hidden state factor,
+                            where each distribution is shaped (batch_size, num_timesteps, num_states)
+        B (list): List of transition likelihood arrays (one per factor) encoding P(s_{t+1}|s_t, a_t) for each factor,
+                 where each B[f] has shape (num_states_f, num_states_f, num_controls_f)
+        past_actions (Array): Array of past actions with shape (batch_size, num_timesteps-1, num_factors)
+        
+    Returns:
+        tuple: A 2-tuple (marginals_and_joints) where:
+            - marginals_and_joints[0] (list): Smoothed marginal distributions q(s_t|o_{<=T}) for each factor
+            - marginals_and_joints[1] (list): Joint distributions q(s_t, s_{t+1}|o_{<=T}) for each factor
+            
+    Notes:
+        - Used specifically in the OVF algorithm for more accurate parameter learning
+        - The smoothed beliefs incorporate both filtering (forward pass) and smoothing (backward pass)
+        - The joint distributions are crucial for learning transition parameters (B matrix)
+        - The marginal distributions are used for learning observation parameters (A matrix)
+    """
     assert len(filtered_post) == len(B)
     nf = len(B)  # number of factors
 
@@ -137,6 +162,3 @@ def smoothing_ovf(filtered_post, B, past_actions):
         marginals_and_joints[1].append(joints)
 
     return marginals_and_joints
-
-
-    
