@@ -180,8 +180,8 @@ D_gm = D
 
 # Create agent
 agent = Agent(
-    A=A_gm,
-    B=B_gm,
+    A=env.params["A"],  # Use true A
+    B=env.params["B"],  # Use true B
     C=C,
     D=D_gm,
     pD=pD,
