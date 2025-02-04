@@ -137,7 +137,7 @@ class Agent(Module):
         learn_A=True,  # Whether to learn/update the A matrix (observation model)
         learn_B=True,  # Whether to learn/update the B matrix (transition model)
         learn_C=False,  # Whether to learn/update the C matrix (preferences)
-        learn_D=True,  # Whether to learn/update the D matrix (initial state prior)
+        learn_D=False,  # Whether to learn/update the D matrix (initial state prior)
         learn_E=False,  # Whether to learn/update the E matrix (policy prior)
     ):
         if B_action_dependencies is not None:
