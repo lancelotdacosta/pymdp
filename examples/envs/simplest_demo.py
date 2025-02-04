@@ -130,7 +130,7 @@ agent = Agent(A=A_gm,
              pA=pA,  # Prior over A
              pB=pB,  # Prior over B
              A_dependencies=A_dependencies,
-             B_dependencies=B_dependencies, #
+             B_dependencies=B_dependencies,
              learn_A=learn_A,  # Enable learning of observation model
              learn_B=learn_B,  # Enable learning of transition model
              apply_batch=False,
@@ -173,6 +173,10 @@ learn_D = True   # Enable learning of initial state distribution
 # Set up random priors over D
 
 pD, D_gm = dirichlet_prior(D, init="like", scale=1.0, learning_enabled=learn_D, key=key)
+D_gm = D 
+#TODO: there is a mistake in the way dirichlet prior normalises pD to obtain D_gm
+
+# %%
 
 # Create agent
 agent = Agent(
@@ -181,7 +185,7 @@ agent = Agent(
     C=C,
     D=D_gm,
     pD=pD,
-    learn_D=learn_D
+    learn_D=learn_D,
     A_dependencies=A_dependencies,
     B_dependencies=B_dependencies,
     apply_batch=False,
