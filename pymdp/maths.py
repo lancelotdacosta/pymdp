@@ -194,6 +194,11 @@ def dirichlet_expected_value(dir_arr):
     return expected_val
 
 
+def dirichlet_expectation(arr: jnp.ndarray) -> jnp.ndarray:
+    """Normalize Dirichlet parameters to get expected probabilities."""
+    return arr / arr.sum(axis=-2, keepdims=True)
+
+
 if __name__ == "__main__":
     obs = [0, 1, 2]
     obs_vec = [nn.one_hot(o, 3) for o in obs]
