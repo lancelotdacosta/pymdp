@@ -109,8 +109,7 @@ print_rollout(info)
 
 # ### 5. Parameter Learning Demo
 #
-# Now we'll demonstrate how the agent can learn the observation (A) and transition (B) matrices.
-# We'll start by setting up priors over A and B that match the true parameters.
+# Now we'll demonstrate how the agent can learn the observation (A) and transition (B) and (later) initial state (D) tensors.
 
 # Let's start by defining what parameters we want to learn
 learn_A = True  # Enable learning of observation model
@@ -210,5 +209,72 @@ if learn_D:
 
 # Results:
 # Let's see how well the agent learns the true initial state distribution
+
+# %%
+#Let's investigate joint A, B, D learning.
+
+# Let's start by defining what parameters we want to learn
+learn_A = True  # Enable learning of observation model
+learn_B = True  # Enable learning of transition model
+learn_D = True  # Enable learning of initial state distribution
+
+# Set up random priors over A and B
+pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key)
+pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=learn_B, key=key)
+pD, D_gm = dirichlet_prior(D, init="random", scale=1.0, learning_enabled=learn_D, key=key)
+
+# In[6]:
+# Initialize agent with parameter learning enabled
+agent = Agent(A=A_gm,
+             B=B_gm,
+             C=C,
+             D=D,
+             pA=pA,  # Prior over A
+             pB=pB,  # Prior over B
+             pD=pD,
+             A_dependencies=A_dependencies,
+             B_dependencies=B_dependencies,
+             learn_A=learn_A,  # Enable learning of observation model
+             learn_B=learn_B,  # Enable learning of transition model
+             learn_D=learn_D,
+             apply_batch=False,
+             action_selection="stochastic")
+
+# Run simulation with parameter learning
+key = jr.PRNGKey(1)
+T = 1000  # More timesteps to allow for learning
+final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+
+# In[7]:
+# Print rollout
+print("\nRollout with parameter learning:")
+print_rollout(info)
+
+# Print and visualize A learning
+if learn_A:
+    print('\n ====Parameter A learning====')
+    plot_A_learning(agent, info, env)
+    print('\n Initial matrix A:\n', info["agent"].A[0][0,0,:])
+    print('\n Final matrix A:\n', info["agent"].A[0][-1,0,:]) # -1 for last timestep, 0 for first factor
+
+# Print and visualize B learning
+if learn_B:
+    print('\n ====Parameter B learning====')
+    actions = ['Left', 'Right']
+    for a in range(2): 
+        print('\n Initial matrix B under action', actions[a], ':\n', info["agent"].B[0][0,0,:,:,a])
+    for a in range(2): 
+        print('\n Final matrix B under action', actions[a], ':\n', info["agent"].B[0][-1,0,:,:,a]) 
+        # plot_B_learning(agent, info, env)
+
+if learn_D:
+    print('\n ====Parameter D learning====')
+    print('\n Initial D matrix:\n', info["agent"].D[0][0])  # True initial state distribution
+    print('\n Final learned D matrix:\n', info["agent"].D[0][-1])  # Learned initial state distribution
+    #DEBUG PRINT:
+    # for t in range(T+1):
+    #     print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
+
+#Result: joint A, B, D learning works as best it can under random initialization. The only thing is that the agent does not learn D well because qs_1 is really imprecise (and is not updated later because there is no smoothing) and that is the only thing the agent uses to learn D.
 
 # %%
