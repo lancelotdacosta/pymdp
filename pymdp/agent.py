@@ -306,7 +306,7 @@ class Agent(Module):
         size = pymath.prod(self.num_controls)
         return jnp.unique(self.policies[:, 0], axis=0, size=size, fill_value=-1)
 
-    def infer_parameters(self, beliefs_A, outcomes, actions, beliefs_B=None, lr_pA=1., lr_pB=1., lr_pD=1., **kwargs):
+    def infer_parameters(self, beliefs_A, outcomes, actions, beliefs_B=None,beliefs_D=None, lr_pA=1., lr_pB=1., lr_pD=1., **kwargs):
         agent = self
         beliefs_B = beliefs_A if beliefs_B is None else beliefs_B
         if self.inference_algo == 'ovf':
@@ -368,10 +368,12 @@ class Agent(Module):
             )
             
             lr = jnp.broadcast_to(lr_pD, (self.batch_size,))
+            # Use the fixed initial belief if provided, otherwise use the marginal beliefs at current timestep
+            d_input = beliefs_D if beliefs_D is not None else marginal_beliefs
             qD, E_qD = vmap(update_D)(
                 self.pD,
                 self.D,
-                marginal_beliefs,  # Using initial beliefs from sequence
+                d_input,  # Using fixed initial belief for D learning
                 lr=lr
             )
             

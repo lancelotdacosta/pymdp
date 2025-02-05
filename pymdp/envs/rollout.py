@@ -56,6 +56,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         env = carry["env"]
         agent = carry["agent"]
         rng_key = carry["rng_key"]
+        qs_1 = carry["qs_1"]
 
         # perform state inference using variational inference (FPI) - uses A matrix to map between hidden states and observations
         qs = agent.infer_states(
@@ -63,6 +64,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
             empirical_prior=empirical_prior, # This is agent.D in first step
         )
 
+        # compute policy posterior and sample action
         rng_key, key = jr.split(rng_key)
         qpi, _ = policy_search(agent, qs, key) # compute policy posterior using EFE - uses C to consider preferred outcomes
         
@@ -82,9 +84,9 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
                 qs, 
                 observation_t, 
                 action_B if agent.learn_B else action_t,
-                beliefs_B=beliefs_B
+                beliefs_B=beliefs_B,
+                beliefs_D=qs_1
             )
-
 
         keys = jr.split(rng_key, batch_size + 1)
         rng_key = keys[0]
@@ -105,6 +107,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
             "env": env,
             "agent": agent,
             "rng_key": rng_key,
+            "qs_1": qs_1
         }
         info = {
             "qpi": qpi,
@@ -122,7 +125,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
     rng_key = keys[0]
     observation_0, env = env.reset(keys[1:])
 
-    # specify initial beliefs using D 
+    # specify prior beliefs using D 
     qs_0 = jtu.tree_map(lambda x: jnp.expand_dims(x, -2), agent.D)
 
     # get initial policy and action distribution - unused, just for shape matching
@@ -131,6 +134,12 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
     rng_key = keys[0]
     action_t = agent.sample_action(qpi_0, rng_key=keys[1:])
     action_t *= 0 # zero out initial action as no action taken yet
+
+    # compute and store posterior state beliefs after initial observation (used for D learning)
+    qs_1 = agent.infer_states(
+        observations=observation_0,
+        empirical_prior=agent.D, 
+    )
 
     # set up initial state to carry through timesteps
     initial_carry = {
@@ -141,6 +150,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         "env": env,
         "agent": agent,
         "rng_key": rng_key,
+        "qs_1": qs_1,
     }
 
     # run the active inference loop for num_timesteps using jax.lax.scan (jax version of for loop)
