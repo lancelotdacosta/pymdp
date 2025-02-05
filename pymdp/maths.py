@@ -196,7 +196,7 @@ def dirichlet_expected_value(dir_arr):
 
 def dirichlet_expectation(arr: jnp.ndarray) -> jnp.ndarray:
     """Normalize Dirichlet parameters to get expected probabilities."""
-    return arr / arr.sum(axis=-2, keepdims=True)
+    return arr / arr.sum(axis=1, keepdims=True)
 
 
 if __name__ == "__main__":
