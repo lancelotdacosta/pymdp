@@ -206,7 +206,7 @@ def plot_beliefs(info, agent=None, show=True):
     # Plot preferences as a bar plot
     if agent is not None:
         plt.subplot(1, n_plots, 3)
-        plt.bar([0, 1], agent.C[0][0])
+        plt.bar([0, 1], nn.softmax(agent.C[0][0]))
         plt.title('Preferences')
         plt.xticks([0, 1], ['Left', 'Right'])
         plt.ylim(0, 1)
