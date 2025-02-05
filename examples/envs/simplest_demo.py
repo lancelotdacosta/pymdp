@@ -193,7 +193,7 @@ agent = Agent(
 
 # Run simulation with parameter learning
 key = jr.PRNGKey(0)
-T = 10  # More timesteps to allow for learning
+T = 5  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
 
 # Rollout with D learning
@@ -202,8 +202,11 @@ print_rollout(info)
 
 # Print and visualize D learning
 if learn_D:
-    print('\n Initial D matrix:\n', jnp.array(info["agent"].D[0])[0])  # True initial state distribution
-    print('\n Final learned D matrix:\n', jnp.array(info["agent"].D[0])[-1])  # Learned initial state distribution
+    print('\n Parameter D learning:\n')  # True initial state distribution
+    # print('\n Initial D matrix:\n', jnp.array(info["agent"].D[0])[0])  # True initial state distribution
+    # print('\n Final learned D matrix:\n', jnp.array(info["agent"].D[0])[-1])  # Learned initial state distribution
+    for t in range(T+1):
+        print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
 
 # Results:
 # Let's see how well the agent learns the true initial state distribution
