@@ -173,8 +173,6 @@ learn_D = True   # Enable learning of initial state distribution
 # Set up random priors over D
 
 pD, D_gm = dirichlet_prior(D, init="like", scale=1.0, learning_enabled=learn_D, key=key)
-D_gm = D 
-#TODO: there is a mistake in the way dirichlet prior normalises pD to obtain D_gm
 
 # %%
 # Create agent
