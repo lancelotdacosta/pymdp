@@ -294,6 +294,7 @@ def print_rollout(info, batch_idx=0):
     print(f"Number of policies: {policies.shape[-1]}")
     print("\n=== Initial Setup ===")
     print(f"Prior state beliefs (D): Left: {float(beliefs[0, 0, 0, 0]):.3f}, Right: {float(beliefs[0, 0, 0, 1]):.3f}")
+    #skip policies and action at time zero as they are zeroed out (just included for shape matching)
     print(f"Initial observation: [{location_observations[int(observations[0, batch_idx, 0])]}]")
 
     # Print trajectory
