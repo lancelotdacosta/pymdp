@@ -102,7 +102,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         carry = {
             "action_t": action_t,
             "observation_t": observation_t,
-            "qs": jtu.tree_map(lambda x: x[:, -1:, ...], qs), # keep only latest belief
+            "qs": qs, # Store full belief state
             "empirical_prior": empirical_prior,
             "env": env,
             "agent": agent,
@@ -111,11 +111,12 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         }
         info = {
             "qpi": qpi,
-            "qs": jtu.tree_map(lambda x: x[:, 0, ...], qs),
+            "qs": qs,  # Store full belief state
             "env": env,
             "agent": agent,
             "observation": observation_t,
             "action": action_t,
+            "empirical_prior": empirical_prior  # Store prior for free energy computation
         }
 
         return carry, info
@@ -164,6 +165,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         "qpi": jnp.expand_dims(qpi_0, 0),  
         "env": env,
         "agent": agent,
+        "empirical_prior": agent.D  # Initial prior is just D
     }
     
     # helper function to concatenate initial state with trajectory by dealing with different shapes and data types
