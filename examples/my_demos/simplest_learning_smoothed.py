@@ -69,7 +69,7 @@ C[0][1] = 0.0
 T = 2  # number of timesteps
 
 inference_algo = 'MMP'  # Enable MMP for smoothing
-inference_horizon = T+1  # Infer states over entire trial length
+inference_horizon = T+1  # Smoothing over entire trial length
 controllable_indices = [0]  # this is a list of the indices of the hidden state factors that are controllable
 
 
