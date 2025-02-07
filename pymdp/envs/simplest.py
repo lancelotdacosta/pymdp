@@ -272,20 +272,24 @@ def print_rollout(info, batch_idx=0):
     
     Args:
         info: Dictionary containing rollout information from the active inference loop
+              - observation: List[Array] with len=num_modalities, each array shape (T+1, batch_size, obs_dim)
+              - action: Array with shape (T+1, batch_size, action_dim)
+              - qs: List[Array] with len=num_factors, each array shape (T+1, batch_size, 1, num_states)
+              - qpi: Array with shape (T+1, batch_size, num_policies)
         batch_idx: Which batch to print information for (default=0)
     """
     location_observations = ['Left', 'Right']
     action_names = ['Left', 'Right']
     
     # Get relevant arrays for the specified batch
-    observations = info["observation"][0]  # Shape: (T, batch_size, 1) #TODO: check 0 indexing, may have to replace with batch_idx
-    actions = info["action"]               # Shape: (T, batch_size)
-    beliefs = info["qs"][batch_idx]        # Shape: (T+1, 1, 1, 2)
-    policies = info["qpi"]                 # Shape: (T, batch_size, num_policies)
+    observations = info["observation"][0]  # First modality, shape: (T+1, batch_size, 1)
+    actions = info["action"]               # Shape: (T+1, batch_size, 1)
+    beliefs = info["qs"][0]                # First factor, shape: (T+1, batch_size, 1, 2)
+    policies = info["qpi"]                 # Shape: (T+1, batch_size, num_policies)
     
     # Print initial setup
     print("\n=== Starting Active Inference Experiment ===")
-    print(f"Number of timesteps: {observations.shape[0]-1}")
+    print(f"Number of timesteps: {observations.shape[0]-1}")  # -1 because includes initial observation
     print(f"Batch size: {observations.shape[1]}")
     print(f"Number of policies: {policies.shape[-1]}")
     print("\n=== Initial Setup ===")
@@ -307,8 +311,8 @@ def print_rollout(info, batch_idx=0):
             print(f"  Policy {p_idx}: {float(p_prob):.3f}")
         
         # Print action and next observation
-        next_action = int(actions[t, batch_idx].item())  # Use .item() to get scalar value
-        next_obs = int(observations[t, batch_idx, 0].item())  # Use .item() to get scalar value # 0 indexing to print first (and only) observationmodality
+        next_action = int(actions[t, batch_idx, 0].item())  # Use .item() to get scalar value
+        next_obs = int(observations[t, batch_idx, 0].item())  # Use .item() to get scalar value
 
         print(f"Action taken: [Move to {action_names[next_action]}]")
         print(f"Next observation: [{location_observations[next_obs]}]")
