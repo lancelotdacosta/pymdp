@@ -191,14 +191,14 @@ def plot_beliefs(info, agent=None, show=True):
 
     # Plot initial beliefs as a bar plot
     plt.subplot(1, n_plots, 1)
-    plt.bar([0, 1], info['qs'][0][0][0])
+    plt.bar([0, 1], info['qs'][0][0, 0, 0])  # (T+1, 1, 1, 2) -> get first timestep's beliefs
     plt.title('Initial Beliefs')
     plt.xticks([0, 1], ['Left', 'Right'])
     plt.ylim(0, 1)
 
     # Plot final beliefs as a bar plot
     plt.subplot(1, n_plots, 2)
-    plt.bar([0, 1], info['qs'][0][-1][0])  # Using qs instead of belief_hist
+    plt.bar([0, 1], info['qs'][0][-1, 0, 0])  # (T+1, 1, 1, 2) -> get last timestep's beliefs
     plt.title('Final Beliefs')
     plt.xticks([0, 1], ['Left', 'Right'])
     plt.ylim(0, 1)
@@ -216,7 +216,6 @@ def plot_beliefs(info, agent=None, show=True):
         plt.show()
     
     return plt
-
 
 def plot_A_learning(agent, info, env):
     """Plot the agent's learning progress for A matrix.
@@ -281,7 +280,7 @@ def print_rollout(info, batch_idx=0):
     # Get relevant arrays for the specified batch
     observations = info["observation"][0]  # Shape: (T, batch_size, 1)
     actions = info["action"]               # Shape: (T, batch_size)
-    beliefs = info["qs"][0]                # Shape: (T, batch_size, 2)
+    beliefs = info["qs"][batch_idx]        # Shape: (T+1, 1, 1, 2)
     policies = info["qpi"]                 # Shape: (T, batch_size, num_policies)
     
     # Print initial setup
@@ -290,7 +289,7 @@ def print_rollout(info, batch_idx=0):
     print(f"Batch size: {observations.shape[1]}")
     print(f"Number of policies: {policies.shape[-1]}")
     print("\n=== Initial Setup ===")
-    print(f"Prior state beliefs (D): Left: {float(beliefs[0, batch_idx, 0]):.3f}, Right: {float(beliefs[0, batch_idx, 1]):.3f}")
+    print(f"Prior state beliefs (D): Left: {float(beliefs[0, 0, 0, 0]):.3f}, Right: {float(beliefs[0, 0, 0, 1]):.3f}")
     print(f"Initial observation: [{location_observations[int(observations[0, batch_idx, 0])]}]")
 
     # Print trajectory
@@ -298,9 +297,9 @@ def print_rollout(info, batch_idx=0):
     num_timesteps = observations.shape[0]
     for t in range(1, num_timesteps):
         print(f"\n[Timestep {t}]")
-      
+        
         # Print state beliefs after observing
-        print(f"State beliefs: Left: {float(beliefs[t, batch_idx, 0]):.3f}, Right: {float(beliefs[t, batch_idx, 1]):.3f}")
+        print(f"State beliefs: Left: {float(beliefs[t, 0, 0, 0]):.3f}, Right: {float(beliefs[t, 0, 0, 1]):.3f}")
         
         # Print policy distribution
         print(f"Policy distribution:")
@@ -309,8 +308,8 @@ def print_rollout(info, batch_idx=0):
         
         # Print action and next observation
         next_action = int(actions[t, batch_idx].item())  # Use .item() to get scalar value
-        next_obs = int(observations[t, batch_idx, 0].item())  # Use .item() to get scalar value
-        
+        next_obs = int(observations[t, batch_idx, 0].item())  # Use .item() to get scalar value # 0 indexing to print first (and only) observationmodality
+
         print(f"Action taken: [Move to {action_names[next_action]}]")
         print(f"Next observation: [{location_observations[next_obs]}]")
     
