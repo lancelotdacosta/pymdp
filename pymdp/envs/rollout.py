@@ -133,8 +133,8 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
     qpi_0, _ = agent.infer_policies(qs_0)
     keys = jr.split(rng_key, batch_size + 1)
     rng_key = keys[0]
-    action_t = agent.sample_action(qpi_0, rng_key=keys[1:])
-    action_t *= 0 # zero out initial action as no action taken yet
+    action_0 = agent.sample_action(qpi_0, rng_key=keys[1:])
+    action_0 *= 0 # zero out initial action as no action taken yet
 
     # compute and store posterior state beliefs after initial observation (used for D learning)
     qs_1 = agent.infer_states(
@@ -145,7 +145,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
     # set up initial state to carry through timesteps
     initial_carry = {
         "qs": qs_0,
-        "action_t": action_t,
+        "action_t": action_0,
         "observation_t": observation_0,
         "empirical_prior": agent.D,
         "env": env,
