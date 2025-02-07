@@ -278,7 +278,7 @@ def print_rollout(info, batch_idx=0):
     action_names = ['Left', 'Right']
     
     # Get relevant arrays for the specified batch
-    observations = info["observation"][0]  # Shape: (T, batch_size, 1)
+    observations = info["observation"][0]  # Shape: (T, batch_size, 1) #TODO: check 0 indexing, may have to replace with batch_idx
     actions = info["action"]               # Shape: (T, batch_size)
     beliefs = info["qs"][batch_idx]        # Shape: (T+1, 1, 1, 2)
     policies = info["qpi"]                 # Shape: (T, batch_size, num_policies)
