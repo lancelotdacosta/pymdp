@@ -21,16 +21,29 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
 
     Inner workings
     ----------
-    rollout first gets the initial observation and prior over states (D)
-    it then uses a scan (jax for loop) to iterate step_fn over num_timesteps 
-    step_fn computes beliefs about states given observations (qs), belief over policies (qpi), samples an action and a corresponding observation from the environment, it then updates the belief over states and the empirical prior (forward message over states given observation and action)
+    Initialization (t=0):
+    1. Set initial beliefs as prior (D)
+    2. Initialize policy distribution and action (zeroed)
+    3. Get initial observation from environment reset
+    4. Update beliefs after seeing initial observation (just for storing as these are computed again at timestep 1)
+
+    For each timestep t (1 to T):
+    1. State inference: update beliefs using previous observation
+    2. Policy inference: compute policy distribution using expected free energy
+    3. Action selection: sample action from policy distribution
+    4. Environment step: execute action and get new observation
+    5. Empirical prior update: compute empirical prior for next timestep
 
     Returns
     ----------
     last: ``dict``
         dictionary from the last timestep about the rollout, i.e., the final action, observation, beliefs, etc.
     info: ``dict``
-        dictionary containing information about the rollout, i.e. executed actions, observations, beliefs, etc.
+        dictionary containing information about the rollout with arrays of shape (T+1, batch_size, ...):
+        - qs[0]: prior beliefs (D), qs[t]: beliefs after seeing observation[t-1]
+        - action[0]: zeros (no action), action[t]: action chosen based on beliefs[t]
+        - observation[0]: initial observation, observation[t]: result of taking action[t]
+        - qpi[t]: policy distribution at time t
     env: ``Env``
         environment state after the rollout
     """
