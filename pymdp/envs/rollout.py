@@ -159,7 +159,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
 
     # prepare initial info to concatenate with trajectory
     initial_info = {
-        "action": jnp.expand_dims(action_t, 0),
+        "action": jnp.expand_dims(action_0, 0),
         "observation": [jnp.expand_dims(o, 0) for o in observation_0],  
         "qs": jtu.tree_map(lambda x: jnp.transpose(x, (1, 0) + tuple(range(2, x.ndim))), qs_0), 
         "qpi": jnp.expand_dims(qpi_0, 0),  
