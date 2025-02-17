@@ -234,7 +234,7 @@ def plot_A_learning(agent, info, env):
         ax1 = plt.subplot(121)
         
         # Plot distance on left y-axis
-        A_hist = info["agent"].A[0]
+        A_hist = info["agent"].A[0] # is the 0 indexing because of the batch-index? # TODO: check and add batch_idx=0 as argument
         timesteps = range(len(A_hist))
         distances = [jnp.linalg.norm(A - env.params["A"][0]) for A in A_hist]
         dist_line = ax1.plot(timesteps, distances, 'k--', label='Distance to true A', linewidth=2)[0]
