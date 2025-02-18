@@ -259,8 +259,8 @@ import matplotlib.pyplot as plt
 
 # Get variables from rollout info
 observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
-beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
-empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
+beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
+empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
 
 # Get A matrix history if available
 A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
