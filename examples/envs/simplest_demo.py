@@ -29,6 +29,7 @@ from pymdp.priors import dirichlet_prior
 
 
 # if __name__ == "__main__":
+key = jr.PRNGKey(0)  # Initialize master random key at the start
 
 # ### 1. Initialize environment and get its parameters
 #
@@ -95,9 +96,9 @@ agent = Agent(
 )
 
 # Run simulation
-key = jr.PRNGKey(0)  # Random key for the aif loop
+key, rollout_key = jr.split(key)  # Split key for rollout
 T = 3  # Number of timesteps to rollout
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 # In[5]:
 # Print rollout and visualize results
@@ -116,8 +117,10 @@ learn_A = True  # Enable learning of observation model
 learn_B = True  # Enable learning of transition model
 
 # Set up random priors over A and B
-pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key)
-pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=learn_B, key=key)
+key, key_A = jr.split(key)
+key, key_B = jr.split(key)
+pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key_A)
+pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=learn_B, key=key_B)
 
 
 # In[6]:
@@ -136,9 +139,9 @@ agent = Agent(A=A_gm,
              action_selection="stochastic")
 
 # Run simulation with parameter learning
-key = jr.PRNGKey(0)
+key, rollout_key = jr.split(key)  # Split key for rollout
 T = 50  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 # In[7]:
 # Print rollout
@@ -160,18 +163,16 @@ if learn_B:
 # Results:
 # Joint A, B learning works under random initialization, not under strictly uniform initialization (as expected). Later could try noisy uniform initialization
 
-# In[ ]:
+# %%
 # ## Testing D Learning
 # Now let's test learning of the initial state distribution (D) while keeping A and B fixed
-
-# Create environment
 
 # Let's start by defining what parameters we want to learn
 learn_D = True   # Enable learning of initial state distribution
 
 # Set up random priors over D
-
-pD, D_gm = dirichlet_prior(D, init="like", scale=1.0, learning_enabled=learn_D, key=key)
+key, key_D = jr.split(key)
+pD, D_gm = dirichlet_prior(D, init="like", scale=1.0, learning_enabled=learn_D, key=key_D)
 
 # %%
 # Create agent
@@ -191,9 +192,9 @@ agent = Agent(
 )
 
 # Run simulation with parameter learning
-key = jr.PRNGKey(0)
+key, rollout_key = jr.split(key)  # Split key for rollout
 T = 5  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 # Rollout with D learning
 print("\nRollout with D learning:")
@@ -222,10 +223,13 @@ learn_D = True  # Enable learning of initial state distribution
 # D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
 learn_A = False 
 
-# Set up random priors over A and B
-pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key)
-pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=learn_B, key=key)
-pD, D_gm = dirichlet_prior(D, init="random", scale=1.0, learning_enabled=learn_D, key=key)
+# Set up random priors over A, B, and D
+key, key_A = jr.split(key)
+key, key_B = jr.split(key)
+key, key_D = jr.split(key)
+pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key_A)
+pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=learn_B, key=key_B)
+pD, D_gm = dirichlet_prior(D, init="random", scale=1.0, learning_enabled=learn_D, key=key_D)
 
 # In[6]:
 # Initialize agent with parameter learning enabled
@@ -245,9 +249,9 @@ agent = Agent(A=A_gm,
              action_selection="stochastic")
 
 # Run simulation with parameter learning
-key = jr.PRNGKey(1)
+key, rollout_key = jr.split(key)  # Split key for rollout
 T = 10  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 #%% Compute prediction errors
 from pymdp.maths import compute_free_energy
