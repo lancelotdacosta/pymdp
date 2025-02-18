@@ -141,6 +141,7 @@ def compute_accuracy(qs, obs, A):
     joint = log_likelihood * x
     return joint.sum()
 
+
 def compute_complexity(qs, prior):
     """
     Computes the complexity term of the variational free energy:
@@ -152,6 +153,7 @@ def compute_complexity(qs, prior):
         H_qp = stable_cross_entropy(q, p)
         complexity += -H_q + H_qp
     return complexity
+
 
 def compute_free_energy(qs, prior, obs, A):
     """
