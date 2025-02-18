@@ -129,10 +129,11 @@ def compute_log_likelihood_per_modality(obs, A, distr_obs=True):
     return ll_all
 
 
-def compute_accuracy(qs, obs, A):
-    """Compute the accuracy portion of the variational free energy (expected log likelihood under the variational posterior)"""
+def compute_accuracy(qs, obs, A, distr_obs=True):
+    """Compute the accuracy portion of the variational free energy (expected log likelihood under the variational posterior)
+    distr_obs : boolean, True if the observations are a distribution (eg one hot vector), False if they are the observation index"""
 
-    log_likelihood = compute_log_likelihood(obs, A)
+    log_likelihood = compute_log_likelihood(obs, A, distr_obs=distr_obs)
 
     x = qs[0]
     for q in qs[1:]:
@@ -155,14 +156,15 @@ def compute_complexity(qs, prior):
     return complexity
 
 
-def compute_free_energy(qs, prior, obs, A):
+def compute_free_energy(qs, prior, obs, A, distr_obs=True):
     """
     Calculate variational free energy by breaking its computation down into three steps:
     1. computation of the complexity term: -H[Q(s)] + H_{Q(s)}[-lnP(s)]
     2. computation of the accuracy term: E_{Q(s)}[lnP(o|s)]
     Then return 1. minus 2.
+    distr_obs : boolean, True if the observations are a distribution (eg one hot vector), False if they are the observation index
     """
-    vfe = compute_complexity(qs, prior) - compute_accuracy(qs, obs, A)
+    vfe = compute_complexity(qs, prior) - compute_accuracy(qs, obs, A, distr_obs=distr_obs)
     return vfe
 
 
