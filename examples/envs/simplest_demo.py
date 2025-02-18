@@ -254,7 +254,7 @@ T = 10  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 #%% Compute prediction errors
-from pymdp.maths import compute_free_energy
+from pymdp.maths import compute_free_energy, compute_accuracy, compute_complexity
 import matplotlib.pyplot as plt
 
 # Get variables from rollout info
@@ -267,7 +267,9 @@ A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_
 
 # Initialize array to store free energy for each timestep
 num_timesteps = observations[0].shape[0]
-pe_t = jnp.zeros(num_timesteps)
+pe_t = jnp.zeros(num_timesteps) #initializes prediction error array
+negacc_t = jnp.zeros(num_timesteps) #initializes negative accuracy array
+comp_t = jnp.zeros(num_timesteps) #initializes complexity array
 
 # Compute prediction error at each timestep
 for t in range(num_timesteps):
@@ -275,12 +277,12 @@ for t in range(num_timesteps):
     obs_t = [o[t] for o in observations]  # Current observation (list of arrays)
     qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
     prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
+    A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
     
-    # Use historical A matrix if available, otherwise use current A
-    A_t = [A_hist_mod[t] for A_hist_mod in A_hist]
-    
-    # Compute prediction error
+    # Compute prediction error and components
     pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t))
+    negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t))
+    comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
 
 # Compute accumulated prediction error
 pe_accumulated = jnp.cumsum(pe_t)
@@ -288,11 +290,13 @@ pe_accumulated = jnp.cumsum(pe_t)
 # Plot prediction error over time
 plt.figure(figsize=(10, 5))
 plt.plot(pe_t, label='Prediction error')
-plt.plot(pe_accumulated, label='Accumulated prediction errors')
+plt.plot(comp_t, label='Complexity')
+plt.plot(negacc_t, label='Negative accuracy')
+# plt.plot(pe_accumulated, label='Accumulated prediction errors')
 plt.legend()
 plt.xlabel('Timestep')
 plt.ylabel('Prediction error (log-nats)')
-plt.yscale('log')
+# plt.yscale('log')
 plt.grid(True)
 plt.show()
 
