@@ -146,7 +146,7 @@ def compute_free_energy(qs, prior, obs, A):
     """
     Calculate variational free energy by breaking its computation down into three steps:
     1. computation of the negative entropy of the posterior -H[Q(s)]
-    2. computation of the cross entropy of the posterior with the prior H_{Q(s)}[P(s)]
+    2. computation of the cross entropy of the posterior with the prior H_{Q(s)}[-lnP(s)]
     3. computation of the (negative) accuracy E_{Q(s)}[-lnP(o|s)]
 
     Then add them all together
