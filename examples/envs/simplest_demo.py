@@ -219,9 +219,10 @@ learn_B = True  # Enable learning of transition model
 learn_D = True  # Enable learning of initial state distribution
 
 #DEBUG LINES
-# learn_D = False  # Enable learning of initial state distribution
-# D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
-# learn_A = False 
+learn_D = False  # Enable learning of initial state distribution
+D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
+learn_A = False 
+learn_B = False
 
 # Set up random priors over A, B, and D
 key, key_A = jr.split(key)
@@ -274,14 +275,14 @@ comp_t = jnp.zeros(num_timesteps) #initializes complexity array
 # Compute prediction error at each timestep
 for t in range(num_timesteps):
     # Get current variables
-    obs_t = [o[t] for o in observations]  # Current observation (list of arrays)
+    obs_t = [jnp.array(o[t].squeeze(), dtype=jnp.int32) for o in observations]  # Current observation (list of arrays)
     qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
     prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
     A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
     
     # Compute prediction error and components
-    pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t))
-    negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t))
+    pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t,distr_obs=False))
+    negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t,distr_obs=False))
     comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
 
 # Compute accumulated prediction error
