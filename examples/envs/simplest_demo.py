@@ -218,9 +218,9 @@ learn_B = True  # Enable learning of transition model
 learn_D = True  # Enable learning of initial state distribution
 
 #DEBUG LINES
-learn_D = False  # Enable learning of initial state distribution
-D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
-# learn_A = False 
+# learn_D = False  # Enable learning of initial state distribution
+# D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
+learn_A = False 
 
 # Set up random priors over A and B
 pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key)
@@ -259,11 +259,11 @@ beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size,
 empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
 
 # Get A matrix history if available
-A_hist = info["agent"].A[0] # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
+A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
 
 # Initialize array to store free energy for each timestep
 num_timesteps = observations[0].shape[0]
-fe_t = jnp.zeros(num_timesteps)
+pe_t = jnp.zeros(num_timesteps)
 
 # Compute free energy for each timestep
 for t in range(num_timesteps):
@@ -273,23 +273,22 @@ for t in range(num_timesteps):
     prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
     
     # Use historical A matrix if available, otherwise use current A
-    A_t = [A_hist[t]] if A_hist is not None else agent.A
+    A_t = [A_hist_mod[t] for A_hist_mod in A_hist]
     
     # Compute free energy
-    fe_t = fe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t))
+    pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t))
 
 # Compute cumulative sum of free energy
-fe_accumulated = jnp.cumsum(fe_t)
+pe_accumulated = jnp.cumsum(pe_t)
 
 # Plot free energy over time
 plt.figure(figsize=(10, 5))
-plt.plot(fe_t, label='Prediction error')
-# plt.plot(fe_accumulated, label='Accumulated prediction errors')
-
-plt.legend()
-plt.title('Free Energy')
+plt.plot(pe_t, label='Prediction error')
+plt.plot(pe_accumulated, label='Accumulated prediction errors')
+plt.legend('Prediction errors')
 plt.xlabel('Timestep')
-plt.ylabel('Free Energy')
+plt.ylabel('Prediction error (log-nats)')
+plt.yscale('log')
 plt.grid(True)
 plt.show()
 
