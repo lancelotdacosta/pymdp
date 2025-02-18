@@ -109,7 +109,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         rng_key = keys[0]
         observation_t, env = env.step(rng_key=keys[1:], actions=action_t) # step environment forward with chosen action
 
-        empirical_prior, qs = agent.update_empirical_prior(action_t, qs) # updating the prior over hidden states (Bayesian model average?) and using B matrix to predict next state given action
+        empirical_prior, _ = agent.update_empirical_prior(action_t, qs) # return empirical_prior. The empirical prior is D for mmp, vmp and it is the last posterior times transition matrix given the last action for fpi, ovf.  
 
         # carrying the next timestep's action, observation, beliefs, empirical prior, environment state, and random key
         carry = {
@@ -164,7 +164,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         "env": env,
         "agent": agent,
         "rng_key": rng_key,
-        "qs_1": qs_1,
+        "qs_1": qs_1, #this is used for D learning #TODO: is this redundant with qs which now stores whole belief histories?
     }
 
     # run the active inference loop for num_timesteps using jax.lax.scan (jax version of for loop)
