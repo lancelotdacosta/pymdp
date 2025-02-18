@@ -141,25 +141,26 @@ def compute_accuracy(qs, obs, A):
     joint = log_likelihood * x
     return joint.sum()
 
+def compute_complexity(qs, prior):
+    """
+    Computes the complexity term of the variational free energy:
+    Takes in list of qs and list of (empirical) priors, returns sum of KL(q||p)
+    """
+    complexity = 0.0
+    for q, p in zip(qs, prior):
+        H_q = stable_entropy(q)
+        H_qp = stable_cross_entropy(q, p)
+        complexity += -H_q + H_qp
+    return complexity
 
 def compute_free_energy(qs, prior, obs, A):
     """
     Calculate variational free energy by breaking its computation down into three steps:
-    1. computation of the negative entropy of the posterior -H[Q(s)]
-    2. computation of the cross entropy of the posterior with the prior H_{Q(s)}[-lnP(s)]
-    3. computation of the (negative) accuracy E_{Q(s)}[-lnP(o|s)]
-
-    Then add them all together
+    1. computation of the complexity term: -H[Q(s)] + H_{Q(s)}[-lnP(s)]
+    2. computation of the accuracy term: E_{Q(s)}[lnP(o|s)]
+    Then return 1. minus 2.
     """
-
-    vfe = 0.0  # initialize variational free energy
-    for q, p in zip(qs, prior):
-        negH_qs = - stable_entropy(q)
-        xH_qp = stable_cross_entropy(q, p)
-        vfe += (negH_qs + xH_qp)
-    
-    vfe -= compute_accuracy(qs, obs, A)
-
+    vfe = compute_complexity(qs, prior) - compute_accuracy(qs, obs, A)
     return vfe
 
 
