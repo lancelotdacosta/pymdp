@@ -221,7 +221,7 @@ learn_D = True  # Enable learning of initial state distribution
 #DEBUG LINES
 # learn_D = False  # Enable learning of initial state distribution
 # D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
-learn_A = False 
+# learn_A = False 
 
 # Set up random priors over A, B, and D
 key, key_A = jr.split(key)
@@ -269,7 +269,7 @@ A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_
 num_timesteps = observations[0].shape[0]
 pe_t = jnp.zeros(num_timesteps)
 
-# Compute free energy for each timestep
+# Compute prediction error at each timestep
 for t in range(num_timesteps):
     # Get current variables
     obs_t = [o[t] for o in observations]  # Current observation (list of arrays)
@@ -279,17 +279,17 @@ for t in range(num_timesteps):
     # Use historical A matrix if available, otherwise use current A
     A_t = [A_hist_mod[t] for A_hist_mod in A_hist]
     
-    # Compute free energy
+    # Compute prediction error
     pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t))
 
-# Compute cumulative sum of free energy
+# Compute accumulated prediction error
 pe_accumulated = jnp.cumsum(pe_t)
 
-# Plot free energy over time
+# Plot prediction error over time
 plt.figure(figsize=(10, 5))
 plt.plot(pe_t, label='Prediction error')
 plt.plot(pe_accumulated, label='Accumulated prediction errors')
-plt.legend('Prediction errors')
+plt.legend()
 plt.xlabel('Timestep')
 plt.ylabel('Prediction error (log-nats)')
 plt.yscale('log')
