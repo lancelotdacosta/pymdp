@@ -210,8 +210,7 @@ if learn_D:
 # Results:
 # Let's see how well the agent learns the true initial state distribution
 
-# %%
-#Let's investigate joint A, B, D learning.
+# %% #Let's investigate joint A, B, D learning.
 
 # Let's start by defining what parameters we want to learn
 learn_A = True  # Enable learning of observation model
@@ -242,10 +241,50 @@ agent = Agent(A=A_gm,
 
 # Run simulation with parameter learning
 key = jr.PRNGKey(1)
-T = 1000  # More timesteps to allow for learning
+T = 10  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
 
-# In[7]:
+# %%
+# Compute free energy over time
+from pymdp.maths import compute_free_energy
+import matplotlib.pyplot as plt
+
+# Get variables from rollout info
+observations = info["observation"]  # shape: (T+1, batch_size, obs_dim)
+beliefs = info["qs"]  # shape: (T+1, batch_size, 1, num_states)
+empirical_priors = info["empirical_prior"]  # shape: (T+1, batch_size, 1, num_states)
+
+# Get A matrix history if available
+A_hist = info["agent"].A[0] if hasattr(info["agent"], "A") else None
+
+# Initialize array to store free energy for each timestep
+num_timesteps = observations[0].shape[0]
+free_energies = []
+
+# Compute free energy for each timestep
+for t in range(num_timesteps):
+    # Get current variables
+    obs_t = [o[t] for o in observations]  # Current observation (list of arrays)
+    qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
+    prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
+    
+    # Use historical A matrix if available, otherwise use current A
+    A_t = [A_hist[t]] if A_hist is not None else agent.A
+    
+    # Compute free energy
+    fe_t = compute_free_energy(qs_t, prior_t, obs_t, A_t)
+    free_energies.append(float(fe_t))  # Convert to float for plotting
+
+# Plot free energy over time
+plt.figure(figsize=(10, 5))
+plt.plot(free_energies, '-o')
+plt.title('Free Energy over Time')
+plt.xlabel('Timestep')
+plt.ylabel('Free Energy')
+plt.grid(True)
+plt.show()
+
+# %%
 # Print rollout
 print("\nRollout with parameter learning:")
 print_rollout(info)
