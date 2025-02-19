@@ -26,10 +26,12 @@ from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A
 from pymdp.envs import rollout
 from pymdp.agent import Agent
 from pymdp.priors import dirichlet_prior
+from pymdp.maths import compute_free_energy, compute_accuracy, compute_complexity
+import matplotlib.pyplot as plt
 
 
 # if __name__ == "__main__":
-key = jr.PRNGKey(0)  # Initialize master random key at the start
+key = jr.PRNGKey(2)  # Initialize master random key at the start
 
 # ### 1. Initialize environment and get its parameters
 #
@@ -139,7 +141,7 @@ agent = Agent(A=A_gm,
 
 # Run simulation with parameter learning
 key, rollout_key = jr.split(key)  # Split key for rollout
-T = 50  # More timesteps to allow for learning
+T = 1  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 # In[7]:
@@ -254,8 +256,6 @@ T = 10  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 #%% Compute prediction errors
-from pymdp.maths import compute_free_energy, compute_accuracy, compute_complexity
-import matplotlib.pyplot as plt
 
 # Get variables from rollout info
 observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
@@ -310,7 +310,7 @@ print_rollout(info)
 # Print and visualize A learning
 if learn_A:
     print('\n ====Parameter A learning====')
-    plot_A_learning(agent, info, env)
+    # plot_A_learning(agent, info, env)
     print('\n Initial matrix A:\n', info["agent"].A[0][0,0,:])
     print('\n Final matrix A:\n', info["agent"].A[0][-1,0,:]) # -1 for last timestep, 0 for first factor
 
