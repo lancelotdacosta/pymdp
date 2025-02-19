@@ -220,10 +220,10 @@ learn_B = True  # Enable learning of transition model
 learn_D = True  # Enable learning of initial state distribution
 
 #DEBUG LINES
-learn_D = False  # Enable learning of initial state distribution
-D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
-learn_A = False 
-learn_B = False
+# learn_D = False  # Enable learning of initial state distribution
+# D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
+# learn_A = False 
+# learn_B = False
 
 # Set up random priors over A, B, and D
 key, key_A = jr.split(key)
@@ -252,7 +252,7 @@ agent = Agent(A=A_gm,
 
 # Run simulation with parameter learning
 key, rollout_key = jr.split(key)  # Split key for rollout
-T = 10  # More timesteps to allow for learning
+T = 100  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 #%% Compute prediction errors
@@ -271,6 +271,7 @@ num_timesteps = observations[0].shape[0]
 pe_t = jnp.zeros(num_timesteps) #initializes prediction error array
 negacc_t = jnp.zeros(num_timesteps) #initializes negative accuracy array
 comp_t = jnp.zeros(num_timesteps) #initializes complexity array
+comp_l2_t = jnp.zeros(num_timesteps)
 
 # Compute prediction error at each timestep
 for t in range(num_timesteps):
@@ -285,20 +286,22 @@ for t in range(num_timesteps):
     pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, distr_obs=False))
     negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t, distr_obs=False))
     comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
+    comp_l2_t = comp_l2_t.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
 
 # Compute accumulated prediction error
 pe_accumulated = jnp.cumsum(pe_t)
 
 # Plot prediction error over time
 plt.figure(figsize=(10, 5))
-plt.plot(pe_t, label='Prediction error')
-plt.plot(comp_t, label='Complexity')
-plt.plot(negacc_t, label='Negative accuracy')
-# plt.plot(pe_accumulated, label='Accumulated prediction errors')
+plt.plot(pe_t, label='Prediction error', alpha=1.0)
+plt.plot(comp_t, label='Complexity', alpha=0.7)
+plt.plot(negacc_t, label='Negative accuracy', alpha=0.7)
+plt.plot(comp_l2_t, label='L2 norm Complexity', alpha=0.4)
+plt.plot(pe_accumulated, label='Accumulated prediction errors')
 plt.legend()
 plt.xlabel('Timestep')
-plt.ylabel('Prediction error (log-nats)')
-# plt.yscale('log')
+plt.ylabel('nats')
+plt.yscale('log')
 plt.grid(True)
 plt.show()
 
