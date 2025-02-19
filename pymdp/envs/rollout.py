@@ -7,7 +7,7 @@ import jax.lax
 from pymdp.agent import Agent
 from pymdp.envs.env import Env
 
-
+#TODO: introduced many changes to rollout beyond v1alpha branch including a reordering of inferences. May need to put old rollout back with a legacy flag to ensure backward compatibility.
 def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, policy_search=None) -> Tuple[Dict, Dict, Env]:
     """
     Rollout an agent in an environment for a number of timesteps following the active inference cycle.
