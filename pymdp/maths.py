@@ -100,12 +100,30 @@ def factor_dot_flex(M, xs, dims: List[Tuple[int]], keep_dims: Optional[Tuple[int
 
 
 def get_likelihood_single_modality(o_m, A_m, distr_obs=True):
-    """Return observation likelihood for a single observation modality m"""
+    """Return observation likelihood for a single observation modality m
+    
+    Parameters
+    ----------
+    o_m : Array
+        If distr_obs=True: distribution over observations, shape (num_obs)
+        If distr_obs=False: observation index 
+    A_m : Array
+        Likelihood mapping, shape (batch, num_obs, num_states)
+    distr_obs : bool
+        Whether observations are distributions (True) or indices (False)
+    
+    Returns
+    -------
+    likelihood : Array
+        Likelihood of observation under each hidden state, shape (batch, num_states)
+    """
     if distr_obs:
+        #TODO: check if this is correct in the batched version
         expanded_obs = jnp.expand_dims(o_m, tuple(range(1, A_m.ndim)))
         likelihood = (expanded_obs * A_m).sum(axis=0)
     else:
-        likelihood = A_m[o_m]
+        # Index observation dimension while preserving batch
+        likelihood = A_m[:, o_m]
 
     return likelihood
 
@@ -117,7 +135,7 @@ def compute_log_likelihood_single_modality(o_m, A_m, distr_obs=True):
 def compute_log_likelihood(obs, A, distr_obs=True):
     """Compute likelihood over hidden states across observations from different modalities"""
     result = tree_util.tree_map(lambda o, a: compute_log_likelihood_single_modality(o, a, distr_obs=distr_obs), obs, A)
-    ll = jnp.sum(jnp.stack(result), 0)
+    ll = jnp.sum(jnp.stack(result), axis=0)
 
     return ll
 
