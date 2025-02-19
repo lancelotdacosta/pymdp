@@ -191,7 +191,7 @@ def plot_beliefs(info, agent=None, show=True):
 
     # Plot initial beliefs as a bar plot
     plt.subplot(1, n_plots, 1)
-    plt.bar([0, 1], info['qs'][0][0, 0, 0])  # (T+1, 1, 1, 2) -> get first timestep's beliefs
+    plt.bar([0, 1], info['empirical_prior'][0][0, 0, 0])  # (T+1, 1, 1, 2) -> get first timestep's beliefs
     plt.title('Initial Beliefs')
     plt.xticks([0, 1], ['Left', 'Right'])
     plt.ylim(0, 1)
