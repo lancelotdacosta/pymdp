@@ -158,7 +158,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         carry = {
             "action_t": action_t,
             "observation_t": observation_t,
-            "qs": qs, # Store full belief state
+            "qs": qs,
             "empirical_prior": empirical_prior,
             "env": env,
             "agent": agent,
