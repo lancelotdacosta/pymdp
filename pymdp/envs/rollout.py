@@ -63,6 +63,43 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
     elif not callable(policy_search):
         raise TypeError("policy_search must be callable or None")
 
+    # get initial policy and action distribution - unused and meaningless - just for shape matching
+    D_reshaped = jtu.tree_map(lambda x: jnp.expand_dims(x, -2), agent.D) #reshaping to match the shape of qs
+    qpi_0, _ = agent.infer_policies(D_reshaped)
+    keys = jr.split(rng_key, batch_size + 1)
+    rng_key = keys[0]
+    action_0 = agent.sample_action(qpi_0, rng_key=keys[1:])
+    action_0 *= 0 # zero out initial action as no action taken yet
+
+    # get initial prior belief using D
+    p0 = agent.D
+
+    # specify prior beliefs using D 
+    # qs_0 = 
+   
+    # initialise first observation from environment
+    keys = jr.split(rng_key, batch_size + 1)
+    rng_key = keys[0]
+    observation_0, env = env.reset(keys[1:])
+
+    # compute and store posterior state beliefs after initial observation (used for D learning)
+    qs_0 = agent.infer_states(
+        observations=observation_0,
+        empirical_prior=p0, 
+    )
+
+    # set up initial state to carry through timesteps
+    initial_carry = {
+        "qs": qs_0,
+        "action_t": action_0,
+        "observation_t": observation_0,
+        "empirical_prior": p0,
+        "env": env,
+        "agent": agent,
+        "rng_key": rng_key,
+        "qs_0": qs_0
+    }
+
     def step_fn(carry, x):
         # carrying the current timestep's action, observation, beliefs, empirical prior, environment state, and random key
         action_t = carry["action_t"]
@@ -139,43 +176,6 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         }
 
         return carry, info
-
-    # get initial policy and action distribution - unused and meaningless - just for shape matching
-    D_reshaped = jtu.tree_map(lambda x: jnp.expand_dims(x, -2), agent.D) #reshaping to match the shape of qs
-    qpi_0, _ = agent.infer_policies(D_reshaped)
-    keys = jr.split(rng_key, batch_size + 1)
-    rng_key = keys[0]
-    action_0 = agent.sample_action(qpi_0, rng_key=keys[1:])
-    action_0 *= 0 # zero out initial action as no action taken yet
-
-    # get initial prior belief using D
-    p0 = agent.D
-
-    # specify prior beliefs using D 
-    # qs_0 = 
-   
-    # initialise first observation from environment
-    keys = jr.split(rng_key, batch_size + 1)
-    rng_key = keys[0]
-    observation_0, env = env.reset(keys[1:])
-
-    # compute and store posterior state beliefs after initial observation (used for D learning)
-    qs_0 = agent.infer_states(
-        observations=observation_0,
-        empirical_prior=p0, 
-    )
-
-    # set up initial state to carry through timesteps
-    initial_carry = {
-        "qs": qs_0,
-        "action_t": action_0,
-        "observation_t": observation_0,
-        "empirical_prior": p0,
-        "env": env,
-        "agent": agent,
-        "rng_key": rng_key,
-        "qs_0": qs_0
-    }
 
     # run the active inference loop for num_timesteps using jax.lax.scan (jax version of for loop)
     last, info = jax.lax.scan(step_fn, initial_carry, jnp.arange(num_timesteps))
