@@ -267,56 +267,59 @@ def plot_A_learning(agent, info, env):
     return plt
 
 def print_rollout(info, batch_idx=0):
-    """
-    Print a detailed summary of an agent's trajectory through the simplest environment.
+    """Print a human-readable version of the rollout."""
+    # Extract variables from info dictionary
+    observations = info["observation"][0] # First modality, shape: (T+1, batch_size, 1)
+    beliefs = info["qs"][0] # First factor, shape: (T+1, batch_size, 1, 2)
+    policies = info["qpi"] # Shape: (T+1, batch_size, num_policies)
+    actions = info["action"] # Shape: (T+1, batch_size, 1)
+    empirical_priors = info["empirical_prior"][0]
     
-    Args:
-        info: Dictionary containing rollout information from the active inference loop
-              - observation: List[Array] with len=num_modalities, each array shape (T+1, batch_size, obs_dim)
-              - action: Array with shape (T+1, batch_size, action_dim)
-              - qs: List[Array] with len=num_factors, each array shape (T+1, batch_size, 1, num_states)
-              - qpi: Array with shape (T+1, batch_size, num_policies)
-        batch_idx: Which batch to print information for (default=0)
-    """
-    location_observations = ['Left', 'Right']
-    action_names = ['Left', 'Right']
+    # Get dimensions
+    num_timesteps = observations.shape[0]
     
-    # Get relevant arrays for the specified batch
-    observations = info["observation"][0]  # First modality, shape: (T+1, batch_size, 1)
-    actions = info["action"]               # Shape: (T+1, batch_size, 1)
-    beliefs = info["qs"][0]                # First factor, shape: (T+1, batch_size, 1, 2)
-    policies = info["qpi"]                 # Shape: (T+1, batch_size, num_policies)
-    
-    # Print initial setup
-    print("\n=== Starting Active Inference Experiment ===")
+    # Print experiment setup
+    print("\n=== Experiment Setup ===")
     print(f"Number of timesteps: {observations.shape[0]-1}")  # -1 because includes initial observation
     print(f"Batch size: {observations.shape[1]}")
     print(f"Number of policies: {policies.shape[-1]}")
-    print("\n=== Initial Setup ===")
-    print(f"Prior state beliefs (D): Left: {float(beliefs[0, 0, 0, 0]):.3f}, Right: {float(beliefs[0, 0, 0, 1]):.3f}")
-    #skip policies and action at time zero as they are zeroed out (just included for shape matching)
-    print(f"Initial observation: [{location_observations[int(observations[0, batch_idx, 0])]}]")
+    
+    def format_state_dist(left_prob, right_prob):
+        """Helper to format state distribution nicely"""
+        return f"[L: {float(left_prob):.3f}, R: {float(right_prob):.3f}]"
+    
+    # Print initial timestep info
+    print("\n=== Initial Timestep (t=0) ===")
+    print("Prior beliefs (D):", format_state_dist(beliefs[0, 0, 0, 0], beliefs[0, 0, 0, 1]))
+    print(f"Observation: [{['Left', 'Right'][int(observations[0, batch_idx, 0])]}]")
+    print("Posterior beliefs:", format_state_dist(beliefs[0, 0, 0, 0], beliefs[0, 0, 0, 1]))
+    print("-" * 50)
 
     # Print trajectory
-    print("\n=== Trajectory ===")
-    num_timesteps = observations.shape[0]
     for t in range(1, num_timesteps):
-        print(f"\n[Timestep {t}]")
-        
-        # Print state beliefs after observing
-        print(f"State beliefs: Left: {float(beliefs[t, 0, 0, 0]):.3f}, Right: {float(beliefs[t, 0, 0, 1]):.3f}")
+        print(f"\n=== Timestep {t} ===")
         
         # Print policy distribution
-        print(f"Policy distribution:")
+        print("Policy selection:")
         for p_idx, p_prob in enumerate(policies[t, batch_idx]):
-            print(f"  Policy {p_idx}: {float(p_prob):.3f}")
+            prob_str = f"{float(p_prob):.3f}"
+            print(f"  Policy {p_idx:<15} : {prob_str:>8}")
+ 
+        # Print action and its consequences
+        next_action = int(actions[t, batch_idx, 0].item())
+        print(f"Action: [Move to {['Left', 'Right'][next_action]}]")
         
-        # Print action and next observation
-        next_action = int(actions[t, batch_idx, 0].item())  # Use .item() to get scalar value
-        next_obs = int(observations[t, batch_idx, 0].item())  # Use .item() to get scalar value
-
-        print(f"Action taken: [Move to {action_names[next_action]}]")
-        print(f"Next observation: [{location_observations[next_obs]}]")
+        # Print prediction (empirical prior)
+        print("Predicted next state:", format_state_dist(
+            empirical_priors[t, batch_idx, 0],
+            empirical_priors[t, batch_idx, 1]
+        ))
+        
+        # Print actual observation and posterior
+        next_obs = int(observations[t, batch_idx, 0].item())
+        print(f"Observation: [{['Left', 'Right'][next_obs]}]")
+        print("Posterior beliefs:", format_state_dist(beliefs[t, 0, 0, 0], beliefs[t, 0, 0, 1]))
+        print("-" * 50)
     
     print("\n=== End of Experiment ===")
 

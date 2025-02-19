@@ -262,6 +262,7 @@ import matplotlib.pyplot as plt
 observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
 beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
 empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
+actions=info["action"]
 
 # Get A matrix history if available
 A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
@@ -275,9 +276,10 @@ comp_t = jnp.zeros(num_timesteps) #initializes complexity array
 # Compute prediction error at each timestep
 for t in range(num_timesteps):
     # Get current variables
+    action_t=actions[t]
+    prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
     obs_t = [jnp.array(o[t].squeeze(), dtype=jnp.int32) for o in observations]  # Current observation (list of arrays)
     qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
-    prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
     A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
     
     # Compute prediction error and components
