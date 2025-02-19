@@ -290,9 +290,9 @@ def print_rollout(info, batch_idx=0):
     
     # Print initial timestep info
     print("\n=== Initial Timestep (t=0) ===")
-    print("Prior beliefs (D):", format_state_dist(beliefs[0, 0, 0, 0], beliefs[0, 0, 0, 1]))
+    print("Prior beliefs (D):", format_state_dist(empirical_priors[0, batch_idx, 0], empirical_priors[0, batch_idx, 1]))
     print(f"Observation: [{['Left', 'Right'][int(observations[0, batch_idx, 0])]}]")
-    print("Posterior beliefs:", format_state_dist(beliefs[0, 0, 0, 0], beliefs[0, 0, 0, 1]))
+    print("Posterior beliefs:", format_state_dist(beliefs[0, batch_idx, 0, 0], beliefs[0, batch_idx, 0, 1]))
     print("-" * 50)
 
     # Print trajectory
@@ -318,7 +318,7 @@ def print_rollout(info, batch_idx=0):
         # Print actual observation and posterior
         next_obs = int(observations[t, batch_idx, 0].item())
         print(f"Observation: [{['Left', 'Right'][next_obs]}]")
-        print("Posterior beliefs:", format_state_dist(beliefs[t, 0, 0, 0], beliefs[t, 0, 0, 1]))
+        print("Posterior beliefs:", format_state_dist(beliefs[t, batch_idx, 0, 0], beliefs[t, batch_idx, 0, 1]))
         print("-" * 50)
     
     print("\n=== End of Experiment ===")
