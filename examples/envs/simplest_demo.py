@@ -65,7 +65,6 @@ B_gm = [b.copy() for b in B]
 num_obs = [a.shape[0] for a in A]
 # C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # Prefer right state
 C = [jnp.zeros((batch_size, 2), dtype=jnp.float32)]  # All states equally preferred
-#TODO: when C is set to uniform, the agent stays in the left state (when action_selection param is deterministic). Why is this?
 
 # Set up initial beliefs (D)
 # Start with certainty about being in the left state (matching the environment's initial state)
@@ -97,7 +96,7 @@ agent = Agent(
 
 # Run simulation
 key, rollout_key = jr.split(key)  # Split key for rollout
-T = 3  # Number of timesteps to rollout
+T = 1  # Number of timesteps to rollout
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 # In[5]:
@@ -193,7 +192,7 @@ agent = Agent(
 
 # Run simulation with parameter learning
 key, rollout_key = jr.split(key)  # Split key for rollout
-T = 5  # More timesteps to allow for learning
+T = 1  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 # Rollout with D learning
@@ -283,8 +282,8 @@ for t in range(num_timesteps):
     A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
     
     # Compute prediction error and components
-    pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t,distr_obs=False))
-    negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t,distr_obs=False))
+    pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, distr_obs=False))
+    negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t, distr_obs=False))
     comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
 
 # Compute accumulated prediction error
