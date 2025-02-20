@@ -266,6 +266,31 @@ def plot_A_learning(agent, info, env):
     
     return plt
 
+def print_parameter_learning(info, learn_A=False, learn_B=False, learn_D=False):
+    """Print and analyze parameter learning results"""
+    #TODO: can reuse this for multiple environments and put this in pymdp/analysis/learning.py IF one passes action labels as arguments elif use indices
+
+    if learn_A:
+        print('\n ====Parameter A learning====')
+        print('\n Initial matrix A:\n', info["agent"].A[0][0,0,:])
+        print('\n Final matrix A:\n', info["agent"].A[0][-1,0,:])
+
+    if learn_B:
+        print('\n ====Parameter B learning====')
+        actions = ['Left', 'Right']
+        for a in range(2): 
+            print('\n Initial matrix B under action', actions[a], ':\n', info["agent"].B[0][0,0,:,:,a])
+        for a in range(2): 
+            print('\n Final matrix B under action', actions[a], ':\n', info["agent"].B[0][-1,0,:,:,a])
+
+    if learn_D:
+        print('\n ====Parameter D learning====')
+        print('\n Initial D matrix:\n', info["agent"].D[0][0])
+        print('\n Final learned D matrix:\n', info["agent"].D[0][-1])
+        #TODO: add a verbose argument to print learned parameters at every timestep, such as below
+        # for t in range(T+1):
+        #     print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
+
 def print_rollout(info, batch_idx=0):
     """Print a human-readable version of the rollout."""
     # Extract variables from info dictionary
