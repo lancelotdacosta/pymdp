@@ -26,7 +26,7 @@ from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A
 from pymdp.envs import rollout
 from pymdp.agent import Agent
 from pymdp.priors import dirichlet_prior
-from pymdp.maths import compute_free_energy, compute_accuracy, compute_complexity
+from pymdp.maths import compute_prediction_errors
 import matplotlib.pyplot as plt
 
 
@@ -149,17 +149,12 @@ final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 print("\nRollout with parameter learning:")
 print_rollout(info)
 
-# Print and visualize A learning
+# Print parameter learning
+print_parameter_learning(info, learn_A=learn_A, learn_B=learn_B)
+
+# Visualize A learning
 if learn_A:
     plot_A_learning(agent, info, env)
-    print('\n Final matrix A:\n',jnp.array(info["agent"].A[0])[-1,0,:]) #-1 for last timestep, 0 for first factor
-
-# Print and visualize B learning
-if learn_B:
-    actions = ['Left', 'Right']
-    for a in range(2): 
-        print('\n Final matrix B under action', actions[a], ':\n',jnp.array(info["agent"].B[0])[-1,0,:,:,a]) 
-        # plot_B_learning(agent, info, env)
 
 # Results:
 # Joint A, B learning works under random initialization, not under strictly uniform initialization (as expected). Later could try noisy uniform initialization
@@ -257,47 +252,15 @@ final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 
 #%% Compute prediction errors
 
-# Get variables from rollout info
-observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
-beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
-empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
-actions=info["action"]
-
-# Get A matrix history if available
-A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
-
-# Initialize array to store free energy for each timestep
-num_timesteps = observations[0].shape[0]
-pe_t = jnp.zeros(num_timesteps) #initializes prediction error array
-negacc_t = jnp.zeros(num_timesteps) #initializes negative accuracy array
-comp_t = jnp.zeros(num_timesteps) #initializes complexity array
-comp_l2_t = jnp.zeros(num_timesteps)
-
-# Compute prediction error at each timestep
-for t in range(num_timesteps):
-    # Get current variables
-    action_t=actions[t]
-    prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
-    obs_t = [jnp.array(o[t].squeeze(), dtype=jnp.int32) for o in observations]  # Current observation (list of arrays)
-    qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
-    A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
-    
-    # Compute prediction error and components
-    pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, distr_obs=False))
-    negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t, distr_obs=False))
-    comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
-    comp_l2_t = comp_l2_t.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
-
-# Compute accumulated prediction error
-pe_accumulated = jnp.cumsum(pe_t)
+pe_analysis = compute_prediction_errors(info)
 
 # Plot prediction error over time
 plt.figure(figsize=(10, 5))
-plt.plot(pe_t, label='Prediction error', alpha=1.0)
-plt.plot(comp_t, label='Complexity', alpha=0.7)
-plt.plot(negacc_t, label='Negative accuracy', alpha=0.7)
-plt.plot(comp_l2_t, label='L2 norm Complexity', alpha=0.4)
-plt.plot(pe_accumulated, label='Accumulated prediction errors')
+plt.plot(pe_analysis["pred_error"], label='Prediction error', alpha=1.0)
+plt.plot(pe_analysis["complexity"], label='Complexity', alpha=0.7)
+plt.plot(pe_analysis["neg_accuracy"], label='Negative accuracy', alpha=0.7)
+plt.plot(pe_analysis["complexity_l2"], label='L2 norm Complexity', alpha=0.4)
+plt.plot(pe_analysis["pe_accumulated"], label='Accumulated prediction errors')
 plt.legend()
 plt.xlabel('Timestep')
 plt.ylabel('nats')
@@ -395,41 +358,19 @@ print_rollout(info)
 # Print parameter learning
 print_parameter_learning(info, learn_A=learn_A, learn_B=learn_B, learn_D=learn_D)
 
-#%% Compute prediction errors
+#%% Compute and plot prediction errors
 
-# Get variables from rollout info
-observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
-beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
-empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
-actions=info["action"]
+pe_analysis_miss = compute_prediction_errors(info)
+# plot_prediction_errors(pe_analysis_miss)
 
-# Get A matrix history if available
-A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
+# Compute prediction error and components
+pe_t_miss = pe_analysis_miss["pred_error"]
+negacc_t_miss = pe_analysis_miss["neg_accuracy"]
+comp_t_miss = pe_analysis_miss["complexity"]
+comp_l2_t_miss = pe_analysis_miss["complexity_l2"]
 
-# Initialize array to store free energy for each timestep
-num_timesteps = observations[0].shape[0]
-pe_t_miss = jnp.zeros(num_timesteps) #initializes prediction error array
-negacc_t_miss = jnp.zeros(num_timesteps) #initializes negative accuracy array
-comp_t_miss = jnp.zeros(num_timesteps) #initializes complexity array
-comp_l2_t_miss = jnp.zeros(num_timesteps)
-
-# Compute prediction error at each timestep
-for t in range(num_timesteps):
-    # Get current variables
-    action_t=actions[t]
-    prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
-    obs_t = [jnp.array(o[t].squeeze(), dtype=jnp.int32) for o in observations]  # Current observation (list of arrays)
-    qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
-    A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
-    
-    # Compute prediction error and components
-    pe_t_miss = pe_t_miss.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, distr_obs=False))
-    negacc_t_miss = negacc_t_miss.at[t].set(-compute_accuracy(qs_t, obs_t, A_t, distr_obs=False))
-    comp_t_miss = comp_t_miss.at[t].set(compute_complexity(qs_t, prior_t))
-    comp_l2_t_miss = comp_l2_t_miss.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
-
-# Compute accumulated prediction error
-pe_accumulated_miss = jnp.cumsum(pe_t_miss)
+# Accumulated prediction error
+pe_accumulated_miss = pe_analysis_miss["pe_accumulated"]
 
 # Plot prediction error over time
 plt.figure(figsize=(10, 5))
@@ -451,8 +392,8 @@ plt.show()
 fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
 
 # Plot 1: Accumulated Prediction Error
-ax1.plot(pe_accumulated, label='Well-specified', alpha=0.7)
-ax1.plot(pe_accumulated_miss, label='Misspecified', alpha=0.7)
+ax1.plot(pe_analysis["pe_accumulated"], label='Well-specified', alpha=0.7)
+ax1.plot(pe_analysis_miss["pe_accumulated"], label='Misspecified', alpha=0.7)
 ax1.set_title('Accumulated Prediction Error')
 ax1.set_xlabel('Timestep')
 ax1.set_ylabel('Accumulated PE (nats)')
@@ -461,8 +402,8 @@ ax1.grid(True)
 ax1.set_yscale('log')
 
 # Plot 2: Prediction Error
-ax2.plot(pe_t, label='Well-specified', alpha=0.7)
-ax2.plot(pe_t_miss, label='Misspecified', alpha=0.7)
+ax2.plot(pe_analysis["pred_error"], label='Well-specified', alpha=0.7)
+ax2.plot(pe_analysis_miss["pred_error"], label='Misspecified', alpha=0.7)
 ax2.set_title('Prediction Error')
 ax2.set_xlabel('Timestep')
 ax2.set_ylabel('PE (nats)')
@@ -471,8 +412,8 @@ ax2.grid(True)
 ax2.set_yscale('log')
 
 # Plot 3: Complexity
-ax3.plot(comp_t, label='Well-specified', alpha=0.7)
-ax3.plot(comp_t_miss, label='Misspecified', alpha=0.7)
+ax3.plot(pe_analysis["complexity"], label='Well-specified', alpha=0.7)
+ax3.plot(pe_analysis_miss["complexity"], label='Misspecified', alpha=0.7)
 ax3.set_title('Complexity')
 ax3.set_xlabel('Timestep')
 ax3.set_ylabel('Complexity (nats)')
@@ -481,8 +422,8 @@ ax3.grid(True)
 ax3.set_yscale('log')
 
 # Plot 4: Negative Accuracy
-ax4.plot(negacc_t, label='Well-specified', alpha=0.7)
-ax4.plot(negacc_t_miss, label='Misspecified', alpha=0.7)
+ax4.plot(pe_analysis["neg_accuracy"], label='Well-specified', alpha=0.7)
+ax4.plot(pe_analysis_miss["neg_accuracy"], label='Misspecified', alpha=0.7)
 ax4.set_title('Negative Accuracy')
 ax4.set_xlabel('Timestep')
 ax4.set_ylabel('Negative Accuracy (nats)')

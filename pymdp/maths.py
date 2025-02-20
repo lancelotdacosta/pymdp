@@ -186,6 +186,53 @@ def compute_free_energy(qs, prior, obs, A, distr_obs=True):
     return vfe
 
 
+def compute_prediction_errors(info):
+    """
+    Compute various prediction error metrics from rollout info
+    Designed to work with output of rollout function under fpi inference algorithm
+    """
+
+    # Get variables from rollout info
+    observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
+    beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
+    empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
+    actions=info["action"]
+
+    # Get A matrix history if available
+    A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
+
+    # Initialize array to store free energy for each timestep
+    num_timesteps = observations[0].shape[0]
+    pe_t = jnp.zeros(num_timesteps) #initializes prediction error array
+    negacc_t = jnp.zeros(num_timesteps) #initializes negative accuracy array
+    comp_t = jnp.zeros(num_timesteps) #initializes complexity array
+    comp_l2_t = jnp.zeros(num_timesteps)
+
+    # Compute prediction error at each timestep
+    for t in range(num_timesteps):
+        # Get current variables
+        action_t=actions[t]
+        prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
+        obs_t = [jnp.array(o[t].squeeze(), dtype=jnp.int32) for o in observations]  # Current observation (list of arrays)
+        qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
+        A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
+        
+        # Compute prediction error and components
+        pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, distr_obs=False))
+        negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t, distr_obs=False))
+        comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
+        #TODO: complexity L2 norm will give wrong results outside of the simplest environment, need to extend to multi-factor environments
+        comp_l2_t = comp_l2_t.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
+
+    return {
+        'pred_error': pe_t,
+        'neg_accuracy': negacc_t,
+        'complexity': comp_t,
+        'complexity_l2': comp_l2_t,
+        'pe_accumulated': jnp.cumsum(pe_t)
+    }
+
+
 def multidimensional_outer(arrs):
     """Compute the outer product of a list of arrays by iteratively expanding the first array and multiplying it with the next array"""
 
