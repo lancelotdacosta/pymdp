@@ -535,4 +535,9 @@ ax4.set_yscale('log')
 plt.tight_layout()
 plt.show()
 
+# This is great. 
+# We now have modular code that can be used to do Bayesian model comparison of one layer pomdps
+# in any environment where we can do without retrospective inference (ie smoothing)
+# where it is ok to learn parameters at every timestep (and without smoothing)
+# and where the standard fpi algorithm is enough.
 #%%
