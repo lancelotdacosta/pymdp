@@ -349,8 +349,6 @@ print_parameter_learning(info, learn_A=learn_A, learn_B=learn_B, learn_D=learn_D
 #%% Compute and plot prediction errors
 
 pe_analysis_misspecified = compute_prediction_errors(info)
-
-#%%
 plot_prediction_errors(pe_analysis_misspecified)
 
 #%% Compare well-specified vs misspecified model metrics
