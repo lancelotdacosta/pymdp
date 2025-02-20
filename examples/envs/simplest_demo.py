@@ -27,7 +27,7 @@ from pymdp.envs import rollout
 from pymdp.agent import Agent
 from pymdp.priors import dirichlet_prior
 from pymdp.maths import compute_prediction_errors
-from pymdp.analysis import plot_prediction_errors
+from pymdp.analysis import plot_prediction_errors, plot_model_comparison
 import matplotlib.pyplot as plt
 
 
@@ -349,55 +349,14 @@ print_parameter_learning(info, learn_A=learn_A, learn_B=learn_B, learn_D=learn_D
 #%% Compute and plot prediction errors
 
 pe_analysis_misspecified = compute_prediction_errors(info)
+
+#%%
 plot_prediction_errors(pe_analysis_misspecified)
 
 #%% Compare well-specified vs misspecified model metrics
 
-# Create figure with 4 subplots
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
-
-# Plot 1: Accumulated Prediction Error
-ax1.plot(pe_analysis["pe_accumulated"], label='Well-specified', alpha=0.7)
-ax1.plot(pe_analysis_misspecified["pe_accumulated"], label='Misspecified', alpha=0.7)
-ax1.set_title('Accumulated Prediction Error')
-ax1.set_xlabel('Timestep')
-ax1.set_ylabel('Accumulated PE (nats)')
-ax1.legend()
-ax1.grid(True)
-ax1.set_yscale('log')
-
-# Plot 2: Prediction Error
-ax2.plot(pe_analysis["pred_error"], label='Well-specified', alpha=0.7)
-ax2.plot(pe_analysis_misspecified["pred_error"], label='Misspecified', alpha=0.7)
-ax2.set_title('Prediction Error')
-ax2.set_xlabel('Timestep')
-ax2.set_ylabel('PE (nats)')
-ax2.legend()
-ax2.grid(True)
-ax2.set_yscale('log')
-
-# Plot 3: Complexity
-ax3.plot(pe_analysis["complexity"], label='Well-specified', alpha=0.7)
-ax3.plot(pe_analysis_misspecified["complexity"], label='Misspecified', alpha=0.7)
-ax3.set_title('Complexity')
-ax3.set_xlabel('Timestep')
-ax3.set_ylabel('Complexity (nats)')
-ax3.legend()
-ax3.grid(True)
-ax3.set_yscale('log')
-
-# Plot 4: Negative Accuracy
-ax4.plot(pe_analysis["neg_accuracy"], label='Well-specified', alpha=0.7)
-ax4.plot(pe_analysis_misspecified["neg_accuracy"], label='Misspecified', alpha=0.7)
-ax4.set_title('Negative Accuracy')
-ax4.set_xlabel('Timestep')
-ax4.set_ylabel('Negative Accuracy (nats)')
-ax4.legend()
-ax4.grid(True)
-ax4.set_yscale('log')
-
-plt.tight_layout()
-plt.show()
+plot_model_comparison(pe_analysis, pe_analysis_misspecified, 
+                     labels=('Well-specified', 'Misspecified'))
 
 # This is great. 
 # We now have modular code that can be used to do Bayesian model comparison of one layer pomdps
