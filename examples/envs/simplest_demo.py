@@ -487,4 +487,52 @@ plt.yscale('log')
 plt.grid(True)
 plt.show()
 
+#%% Compare well-specified vs misspecified model metrics
+
+# Create figure with 4 subplots
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+
+# Plot 1: Accumulated Prediction Error
+ax1.plot(pe_accumulated, label='Well-specified', alpha=0.7)
+ax1.plot(pe_accumulated_miss, label='Misspecified', alpha=0.7)
+ax1.set_title('Accumulated Prediction Error')
+ax1.set_xlabel('Timestep')
+ax1.set_ylabel('Accumulated PE (nats)')
+ax1.legend()
+ax1.grid(True)
+ax1.set_yscale('log')
+
+# Plot 2: Prediction Error
+ax2.plot(pe_t, label='Well-specified', alpha=0.7)
+ax2.plot(pe_t_miss, label='Misspecified', alpha=0.7)
+ax2.set_title('Prediction Error')
+ax2.set_xlabel('Timestep')
+ax2.set_ylabel('PE (nats)')
+ax2.legend()
+ax2.grid(True)
+ax2.set_yscale('log')
+
+# Plot 3: Complexity
+ax3.plot(comp_t, label='Well-specified', alpha=0.7)
+ax3.plot(comp_t_miss, label='Misspecified', alpha=0.7)
+ax3.set_title('Complexity')
+ax3.set_xlabel('Timestep')
+ax3.set_ylabel('Complexity (nats)')
+ax3.legend()
+ax3.grid(True)
+ax3.set_yscale('log')
+
+# Plot 4: Negative Accuracy
+ax4.plot(negacc_t, label='Well-specified', alpha=0.7)
+ax4.plot(negacc_t_miss, label='Misspecified', alpha=0.7)
+ax4.set_title('Negative Accuracy')
+ax4.set_xlabel('Timestep')
+ax4.set_ylabel('Negative Accuracy (nats)')
+ax4.legend()
+ax4.grid(True)
+ax4.set_yscale('log')
+
+plt.tight_layout()
+plt.show()
+
 #%%
