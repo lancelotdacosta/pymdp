@@ -27,6 +27,7 @@ from pymdp.envs import rollout
 from pymdp.agent import Agent
 from pymdp.priors import dirichlet_prior
 from pymdp.maths import compute_prediction_errors
+from pymdp.analysis import plot_prediction_errors
 import matplotlib.pyplot as plt
 
 
@@ -253,20 +254,7 @@ final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 #%% Compute prediction errors
 
 pe_analysis = compute_prediction_errors(info)
-
-# Plot prediction error over time
-plt.figure(figsize=(10, 5))
-plt.plot(pe_analysis["pred_error"], label='Prediction error', alpha=1.0)
-plt.plot(pe_analysis["complexity"], label='Complexity', alpha=0.7)
-plt.plot(pe_analysis["neg_accuracy"], label='Negative accuracy', alpha=0.7)
-plt.plot(pe_analysis["complexity_l2"], label='L2 norm Complexity', alpha=0.4)
-plt.plot(pe_analysis["pe_accumulated"], label='Accumulated prediction errors')
-plt.legend()
-plt.xlabel('Timestep')
-plt.ylabel('nats')
-plt.yscale('log')
-plt.grid(True)
-plt.show()
+plot_prediction_errors(pe_analysis)
 
 # %%
 # Print rollout
@@ -360,31 +348,8 @@ print_parameter_learning(info, learn_A=learn_A, learn_B=learn_B, learn_D=learn_D
 
 #%% Compute and plot prediction errors
 
-pe_analysis_miss = compute_prediction_errors(info)
-# plot_prediction_errors(pe_analysis_miss)
-
-# Compute prediction error and components
-pe_t_miss = pe_analysis_miss["pred_error"]
-negacc_t_miss = pe_analysis_miss["neg_accuracy"]
-comp_t_miss = pe_analysis_miss["complexity"]
-comp_l2_t_miss = pe_analysis_miss["complexity_l2"]
-
-# Accumulated prediction error
-pe_accumulated_miss = pe_analysis_miss["pe_accumulated"]
-
-# Plot prediction error over time
-plt.figure(figsize=(10, 5))
-plt.plot(pe_t_miss, label='Prediction error', alpha=1.0)
-plt.plot(comp_t_miss, label='Complexity', alpha=0.7)
-plt.plot(negacc_t_miss, label='Negative accuracy', alpha=0.7)
-plt.plot(comp_l2_t_miss, label='L2 norm Complexity', alpha=0.4)
-plt.plot(pe_accumulated_miss, label='Accumulated prediction errors')
-plt.legend()
-plt.xlabel('Timestep')
-plt.ylabel('nats')
-plt.yscale('log')
-plt.grid(True)
-plt.show()
+pe_analysis_misspecified = compute_prediction_errors(info)
+plot_prediction_errors(pe_analysis_misspecified)
 
 #%% Compare well-specified vs misspecified model metrics
 
@@ -393,7 +358,7 @@ fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
 
 # Plot 1: Accumulated Prediction Error
 ax1.plot(pe_analysis["pe_accumulated"], label='Well-specified', alpha=0.7)
-ax1.plot(pe_analysis_miss["pe_accumulated"], label='Misspecified', alpha=0.7)
+ax1.plot(pe_analysis_misspecified["pe_accumulated"], label='Misspecified', alpha=0.7)
 ax1.set_title('Accumulated Prediction Error')
 ax1.set_xlabel('Timestep')
 ax1.set_ylabel('Accumulated PE (nats)')
@@ -403,7 +368,7 @@ ax1.set_yscale('log')
 
 # Plot 2: Prediction Error
 ax2.plot(pe_analysis["pred_error"], label='Well-specified', alpha=0.7)
-ax2.plot(pe_analysis_miss["pred_error"], label='Misspecified', alpha=0.7)
+ax2.plot(pe_analysis_misspecified["pred_error"], label='Misspecified', alpha=0.7)
 ax2.set_title('Prediction Error')
 ax2.set_xlabel('Timestep')
 ax2.set_ylabel('PE (nats)')
@@ -413,7 +378,7 @@ ax2.set_yscale('log')
 
 # Plot 3: Complexity
 ax3.plot(pe_analysis["complexity"], label='Well-specified', alpha=0.7)
-ax3.plot(pe_analysis_miss["complexity"], label='Misspecified', alpha=0.7)
+ax3.plot(pe_analysis_misspecified["complexity"], label='Misspecified', alpha=0.7)
 ax3.set_title('Complexity')
 ax3.set_xlabel('Timestep')
 ax3.set_ylabel('Complexity (nats)')
@@ -423,7 +388,7 @@ ax3.set_yscale('log')
 
 # Plot 4: Negative Accuracy
 ax4.plot(pe_analysis["neg_accuracy"], label='Well-specified', alpha=0.7)
-ax4.plot(pe_analysis_miss["neg_accuracy"], label='Misspecified', alpha=0.7)
+ax4.plot(pe_analysis_misspecified["neg_accuracy"], label='Misspecified', alpha=0.7)
 ax4.set_title('Negative Accuracy')
 ax4.set_xlabel('Timestep')
 ax4.set_ylabel('Negative Accuracy (nats)')
