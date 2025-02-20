@@ -338,28 +338,20 @@ if learn_D:
 #Result: joint A, B, D learning works as best it can under random initialization. The only thing is that the agent does not learn D well because qs_1 is really imprecise (and is not updated later because there is no smoothing) and that is the only thing the agent uses to learn D.
 
 # %% #Let's investigate active inference and learning under a mispecified generative model.
-# Here we will investigate joint A, B, D learning and prediction error accumulation for a one layer, three latent state POMDP in the simplest environment.
+# Here we will investigate joint A, B, D learning and prediction error accumulation for a one layer, n latent state POMDP in the simplest environment.
 
-# Let's start by defining what parameters we want to learn
-learn_A = True  # Enable learning of observation model
-learn_B = True  # Enable learning of transition model
-learn_D = True  # Enable learning of initial state distribution
-
-#DEBUG LINES
-# learn_D = False  # Enable learning of initial state distribution
-# D = [jnp.array([[0.5, 0.5]] * batch_size, dtype=jnp.float32)]
-# learn_A = False 
-# learn_B = False
+# Specify number of latent states for experiment
+num_states = 3 # Can fiddle with this
 
 # Configure POMDP dimensions
 pomdp_config = {
     'num_obs': 2,           # Number of observations
-    'num_states': 3,        # Number of hidden states
+    'num_states': num_states,        # Number of hidden states
     'num_actions': 2,       # Number of actions
     'num_modalities': 1,    # Number of observation modalities
     'num_factors': 1,       # Number of state factors
     'num_batches': batch_size, # Number of batches
-    'T': 100                 # Number of timesteps
+    'T': 1000                 # Number of timesteps
 }
 
 # Create uniform dummy tensors of the right shape to initialize the generative model
@@ -378,6 +370,11 @@ D_gm = [
     jnp.ones((pomdp_config['num_batches'], pomdp_config['num_states']), dtype=jnp.float32) / pomdp_config['num_states']
 ] * pomdp_config['num_factors']
 
+# Define what parameters we want to learn
+learn_A = True  # Enable learning of observation model
+learn_B = True  # Enable learning of transition model
+learn_D = True  # Enable learning of initial state distribution
+
 # Set up random priors over A, B, and D using the dummy tensors
 key, key_A = jr.split(key)
 key, key_B = jr.split(key)
@@ -385,6 +382,7 @@ key, key_D = jr.split(key)
 pA, A_gm = dirichlet_prior(A_gm, init="random", scale=1.0, learning_enabled=learn_A, key=key_A)
 pB, B_gm = dirichlet_prior(B_gm, init="random", scale=1.0, learning_enabled=learn_B, key=key_B)
 pD, D_gm = dirichlet_prior(D_gm, init="random", scale=1.0, learning_enabled=learn_D, key=key_D)
+
 # %% Initialize agent and run simulation
 # Initialize agent
 agent = Agent(A=A_gm,
