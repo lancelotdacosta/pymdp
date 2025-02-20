@@ -206,7 +206,7 @@ def compute_prediction_errors(info):
     pe_t = jnp.zeros(num_timesteps) #initializes prediction error array
     negacc_t = jnp.zeros(num_timesteps) #initializes negative accuracy array
     comp_t = jnp.zeros(num_timesteps) #initializes complexity array
-    comp_l2_t = jnp.zeros(num_timesteps)
+    comp_l2_t = jnp.zeros(num_timesteps) #initializes L2 norm complexity array
 
     # Compute prediction error at each timestep
     for t in range(num_timesteps):
@@ -221,7 +221,7 @@ def compute_prediction_errors(info):
         pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, distr_obs=False))
         negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t, distr_obs=False))
         comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
-        #TODO: complexity L2 norm will give wrong results outside of the simplest environment, need to extend to multi-factor environments
+        #TODO: complexity L2 norm will give wrong results outside of the simplest environment-- need to extend to multi-factor environments -- and beyond one batch
         comp_l2_t = comp_l2_t.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
 
     return {
