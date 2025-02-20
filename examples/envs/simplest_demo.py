@@ -337,7 +337,6 @@ if learn_D:
 
 #Result: joint A, B, D learning works as best it can under random initialization. The only thing is that the agent does not learn D well because qs_1 is really imprecise (and is not updated later because there is no smoothing) and that is the only thing the agent uses to learn D.
 
-# %%
 # %% #Let's investigate active inference and learning under a mispecified generative model.
 # Here we will investigate joint A, B, D learning and prediction error accumulation for a one layer, three latent state POMDP in the simplest environment.
 
@@ -386,4 +385,25 @@ key, key_D = jr.split(key)
 pA, A_gm = dirichlet_prior(A_gm, init="random", scale=1.0, learning_enabled=learn_A, key=key_A)
 pB, B_gm = dirichlet_prior(B_gm, init="random", scale=1.0, learning_enabled=learn_B, key=key_B)
 pD, D_gm = dirichlet_prior(D_gm, init="random", scale=1.0, learning_enabled=learn_D, key=key_D)
+# %% Initialize agent and run simulation
+# Initialize agent
+agent = Agent(A=A_gm,
+             B=B_gm,
+             C=C, #prior preferences over observations
+             D=D_gm,
+             pA=pA,  # Prior over A
+             pB=pB,  # Prior over B
+             pD=pD,
+             A_dependencies=A_dependencies,
+             B_dependencies=B_dependencies,
+             learn_A=learn_A,  # Enable learning of observation model
+             learn_B=learn_B,  # Enable learning of transition model
+             learn_D=learn_D,
+             apply_batch=False,
+             action_selection="stochastic")
+
+# Run simulation with parameter learning
+key, rollout_key = jr.split(key)  # Split key for rollout
+T = pomdp_config['T']  # More timesteps to allow for learning
+final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
 # %%
