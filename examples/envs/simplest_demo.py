@@ -359,7 +359,7 @@ pomdp_config = {
     'num_modalities': 1,    # Number of observation modalities
     'num_factors': 1,       # Number of state factors
     'num_batches': batch_size, # Number of batches
-    'T': 10                 # Number of timesteps
+    'T': 100                 # Number of timesteps
 }
 
 # Create uniform dummy tensors of the right shape to initialize the generative model
@@ -406,4 +406,85 @@ agent = Agent(A=A_gm,
 key, rollout_key = jr.split(key)  # Split key for rollout
 T = pomdp_config['T']  # More timesteps to allow for learning
 final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
-# %%
+
+# %% Analyse rollout and learning
+# Print rollout
+print("\nRollout with parameter learning:")
+print_rollout(info)
+
+# Print and visualize A learning
+if learn_A:
+    print('\n ====Parameter A learning====')
+    # plot_A_learning(agent, info, env)
+    print('\n Initial matrix A:\n', info["agent"].A[0][0,0,:])
+    print('\n Final matrix A:\n', info["agent"].A[0][-1,0,:]) # -1 for last timestep, 0 for first factor
+
+# Print and visualize B learning
+if learn_B:
+    print('\n ====Parameter B learning====')
+    actions = ['Left', 'Right']
+    for a in range(2): 
+        print('\n Initial matrix B under action', actions[a], ':\n', info["agent"].B[0][0,0,:,:,a])
+    for a in range(2): 
+        print('\n Final matrix B under action', actions[a], ':\n', info["agent"].B[0][-1,0,:,:,a]) 
+        # plot_B_learning(agent, info, env)
+
+if learn_D:
+    print('\n ====Parameter D learning====')
+    print('\n Initial D matrix:\n', info["agent"].D[0][0])  # True initial state distribution
+    print('\n Final learned D matrix:\n', info["agent"].D[0][-1])  # Learned initial state distribution
+    #DEBUG PRINT:
+    # for t in range(T+1):
+    #     print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
+
+#%% Compute prediction errors
+
+# Get variables from rollout info
+observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
+beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
+empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
+actions=info["action"]
+
+# Get A matrix history if available
+A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
+
+# Initialize array to store free energy for each timestep
+num_timesteps = observations[0].shape[0]
+pe_t_miss = jnp.zeros(num_timesteps) #initializes prediction error array
+negacc_t_miss = jnp.zeros(num_timesteps) #initializes negative accuracy array
+comp_t_miss = jnp.zeros(num_timesteps) #initializes complexity array
+comp_l2_t_miss = jnp.zeros(num_timesteps)
+
+# Compute prediction error at each timestep
+for t in range(num_timesteps):
+    # Get current variables
+    action_t=actions[t]
+    prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
+    obs_t = [jnp.array(o[t].squeeze(), dtype=jnp.int32) for o in observations]  # Current observation (list of arrays)
+    qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
+    A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
+    
+    # Compute prediction error and components
+    pe_t_miss = pe_t_miss.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, distr_obs=False))
+    negacc_t_miss = negacc_t_miss.at[t].set(-compute_accuracy(qs_t, obs_t, A_t, distr_obs=False))
+    comp_t_miss = comp_t_miss.at[t].set(compute_complexity(qs_t, prior_t))
+    comp_l2_t_miss = comp_l2_t_miss.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
+
+# Compute accumulated prediction error
+pe_accumulated_miss = jnp.cumsum(pe_t_miss)
+
+# Plot prediction error over time
+plt.figure(figsize=(10, 5))
+plt.plot(pe_t_miss, label='Prediction error', alpha=1.0)
+plt.plot(comp_t_miss, label='Complexity', alpha=0.7)
+plt.plot(negacc_t_miss, label='Negative accuracy', alpha=0.7)
+plt.plot(comp_l2_t_miss, label='L2 norm Complexity', alpha=0.4)
+plt.plot(pe_accumulated_miss, label='Accumulated prediction errors')
+plt.legend()
+plt.xlabel('Timestep')
+plt.ylabel('nats')
+plt.yscale('log')
+plt.grid(True)
+plt.show()
+
+#%%
