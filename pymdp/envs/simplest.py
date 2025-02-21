@@ -268,7 +268,7 @@ def plot_A_learning(agent, info, env):
 
 def print_parameter_learning(info, learn_A=False, learn_B=False, learn_D=False):
     """Print and analyze parameter learning results"""
-    #TODO: can reuse this for multiple environments and put this in pymdp/analysis/learning.py IF one passes action labels as arguments elif use indices
+    #TODO: IF one passes action labels as arguments else use an index range, can reuse this function for multiple environments and put this in pymdp/analysis/learning.py 
 
     if learn_A:
         print('\n ====Parameter A learning====')
