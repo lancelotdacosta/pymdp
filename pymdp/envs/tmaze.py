@@ -10,6 +10,7 @@ import scipy.ndimage as ndimage
 from pymdp.utils import fig2img
 from equinox import field
 from .env import Env
+from .pomdp_env import POMDPEnv
 
 
 # load assets
@@ -22,7 +23,7 @@ cheese_img = plt.imread(os.path.join(assets_dir, "cheese.png"))
 shock_img = plt.imread(os.path.join(assets_dir, "shock.png"))
 
 
-class TMaze(Env):
+class TMaze(POMDPEnv):
     """
     Implementation of the 3-arm T-Maze environment.
     A T-shaped maze where an agent must navigate to find a reward, with:

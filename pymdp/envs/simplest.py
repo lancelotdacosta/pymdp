@@ -4,12 +4,12 @@ import matplotlib.patches as patches
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from pymdp.utils import fig2img
 from equinox import field
-from .env import Env
+from .pomdp_env import POMDPEnv
 import matplotlib.pyplot as plt
 from jax import nn
 
 
-class SimplestEnv(Env):
+class SimplestEnv(POMDPEnv):
     """
     Implementation of the simplest environment in JAX.
     This environment has two states (locations) and serves as a minimal test case for pymdp.
