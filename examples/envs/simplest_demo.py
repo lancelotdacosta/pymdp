@@ -28,7 +28,7 @@ from pymdp.agent import Agent
 from pymdp.priors import dirichlet_prior
 from pymdp.maths import compute_prediction_errors
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison
-from pymdp.models.pomdp import POMDPConfig
+from pymdp.models.pomdp import POMDPConfig, POMDPStructure
 from pymdp.learning import LearningConfig
 import matplotlib.pyplot as plt
 
@@ -257,31 +257,31 @@ if config.learning.learn_A:
 
 # Create new POMDP structure with different number of states
 num_states = 5  # Can fiddle with this
-misspecified_structure = POMDPConfig(
+misspecified_config = POMDPConfig(
     structure=POMDPStructure(
         num_obs=[2],           # Number of observations
         num_states=[num_states],  # Number of hidden states
-        num_actions=2,         # Number of actions
+        num_actions=[2],       # Number of actions (as a list)
         num_modalities=1,      # Number of observation modalities
         num_factors=1,         # Number of state factors
-        batch_size=batch_size  # Number of batches
-        T= 100                 # Number of timesteps
+        num_batches=batch_size,  # Number of batches
+        T=T                    # Number of timesteps
     ),
     learning=LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 )
 
 # Create uniform tensors with new dimensions
-A_gm = [jnp.ones((batch_size, misspecified_structure.structure.num_obs[0], num_states), dtype=jnp.float32) / misspecified_structure.structure.num_obs[0]]
-B_gm = [jnp.ones((batch_size, num_states, num_states, misspecified_structure.structure.num_actions), dtype=jnp.float32) / num_states]
+A_gm = [jnp.ones((batch_size, misspecified_config.structure.num_obs[0], num_states), dtype=jnp.float32) / misspecified_config.structure.num_obs[0]]
+B_gm = [jnp.ones((batch_size, num_states, num_states, misspecified_config.structure.num_actions[0]), dtype=jnp.float32) / num_states]
 D_gm = [jnp.ones((batch_size, num_states), dtype=jnp.float32) / num_states]
 
 # Set up random priors over A, B, and D using the misspecified tensors
 key, key_A = jr.split(key)
 key, key_B = jr.split(key)
 key, key_D = jr.split(key)
-pA, A_gm = dirichlet_prior(A_gm, init="random", scale=1.0, learning_enabled=misspecified_structure.learning.learn_A, key=key_A)
-pB, B_gm = dirichlet_prior(B_gm, init="random", scale=1.0, learning_enabled=misspecified_structure.learning.learn_B, key=key_B)
-pD, D_gm = dirichlet_prior(D_gm, init="random", scale=1.0, learning_enabled=misspecified_structure.learning.learn_D, key=key_D)
+pA, A_gm = dirichlet_prior(A_gm, init="random", scale=1.0, learning_enabled=misspecified_config.learning.learn_A, key=key_A)
+pB, B_gm = dirichlet_prior(B_gm, init="random", scale=1.0, learning_enabled=misspecified_config.learning.learn_B, key=key_B)
+pD, D_gm = dirichlet_prior(D_gm, init="random", scale=1.0, learning_enabled=misspecified_config.learning.learn_D, key=key_D)
 
 # Initialize misspecified agent
 agent = Agent(
@@ -292,19 +292,18 @@ agent = Agent(
     pA=pA,
     pB=pB,
     pD=pD,
-    A_dependencies=misspecified_structure.structure.A_dependencies,
-    B_dependencies=misspecified_structure.structure.B_dependencies,
-    learn_A=misspecified_structure.learning.learn_A,
-    learn_B=misspecified_structure.learning.learn_B,
-    learn_D=misspecified_structure.learning.learn_D,
+    A_dependencies=misspecified_config.structure.A_dependencies,
+    B_dependencies=misspecified_config.structure.B_dependencies,
+    learn_A=misspecified_config.learning.learn_A,
+    learn_B=misspecified_config.learning.learn_B,
+    learn_D=misspecified_config.learning.learn_D,
     apply_batch=False,
     action_selection="stochastic"
 )
 
 # Run simulation with parameter learning
 key, rollout_key = jr.split(key)
-T = misspecified_structure.structure.T  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
+final_state, info, _ = rollout(agent, env, num_timesteps=misspecified_config.structure.T, rng_key=rollout_key)
 
 # %% Analyse rollout and learning
 # Print rollout
@@ -313,9 +312,9 @@ print_rollout(info)
 
 # Print parameter learning
 print_parameter_learning(info,
-    learn_A=misspecified_structure.learning.learn_A,
-    learn_B=misspecified_structure.learning.learn_B,
-    learn_D=misspecified_structure.learning.learn_D
+    learn_A=misspecified_config.learning.learn_A,
+    learn_B=misspecified_config.learning.learn_B,
+    learn_D=misspecified_config.learning.learn_D
 )
 
 # %%
