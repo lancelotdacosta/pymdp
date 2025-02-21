@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Module for defining POMDP structure.
+Module for defining POMDP structure and configuration.
 
 __author__: Lancelot Da Costa
 """
@@ -10,6 +10,7 @@ __author__: Lancelot Da Costa
 import equinox as eqx
 from typing import Dict, List
 import jax.numpy as jnp
+from ..learning import LearningConfig
 
 
 class POMDPStructure(eqx.Module):
@@ -187,3 +188,94 @@ class POMDPStructure(eqx.Module):
         structure.append(f"B_deps: {self.B_dependencies}")
         
         return f"POMDPStructure({', '.join(structure)})"
+
+
+class POMDPConfig(eqx.Module):
+    """
+    Complete configuration for a POMDP, including both structure and learning configuration.
+    
+    Attributes
+    ----------
+    structure : POMDPStructure
+        Structure specification containing dimensions and dependencies
+    learning : LearningConfig
+        Configuration for parameter learning
+    """
+    structure: POMDPStructure
+    learning: LearningConfig
+
+    def __init__(
+        self,
+        structure: POMDPStructure,
+        learning: LearningConfig = None,
+    ):
+        """Initialize POMDP configuration.
+
+        Parameters
+        ----------
+        structure : POMDPStructure
+            Structure specification containing dimensions and dependencies
+        learning : LearningConfig, optional
+            Configuration for parameter learning. If None, uses no_learning() configuration.
+        """
+        self.structure = structure
+        self.learning = learning if learning is not None else LearningConfig.no_learning()
+
+    @classmethod
+    def from_env(cls, env, learning: LearningConfig = None) -> "POMDPConfig":
+        """Create configuration from a POMDP environment.
+        
+        Parameters
+        ----------
+        env : POMDPEnv
+            Environment to extract structure from
+        learning : LearningConfig, optional
+            Configuration for parameter learning. If None, uses no_learning() configuration.
+        
+        Returns
+        -------
+        POMDPConfig
+            Complete POMDP configuration
+        """
+        structure = env.get_structure()
+        return cls(structure=structure, learning=learning)
+
+    @classmethod
+    def default(cls) -> "POMDPConfig":
+        """Default configuration for a simple POMDP"""
+        return cls(
+            structure=POMDPStructure.default(),
+            learning=LearningConfig.default(),
+        )
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict) -> "POMDPConfig":
+        """Create configuration from dictionary"""
+        # Handle nested configs
+        structure_dict = config_dict.pop("structure", None)
+        learning_dict = config_dict.pop("learning", None)
+        
+        if structure_dict is not None:
+            structure = POMDPStructure.from_dict(structure_dict)
+        else:
+            # If no nested structure, assume all structure params are at top level
+            structure = POMDPStructure.from_dict(config_dict)
+            
+        if learning_dict is not None:
+            learning = LearningConfig.from_dict(learning_dict)
+        else:
+            learning = None
+            
+        return cls(structure=structure, learning=learning)
+
+    def to_dict(self) -> Dict:
+        """Convert configuration to dictionary"""
+        return {
+            "structure": self.structure.to_dict(),
+            "learning": self.learning.to_dict(),
+        }
+
+    def __repr__(self) -> str:
+        """String representation showing complete POMDP configuration"""
+        return f"POMDPConfig(structure={self.structure}, learning={self.learning})"
+
