@@ -28,7 +28,7 @@ from pymdp.agent import Agent
 from pymdp.priors import dirichlet_prior
 from pymdp.maths import compute_prediction_errors
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison
-from pymdp.models.pomdp import POMDPConfig, POMDPStructure
+from pymdp.models.pomdp import POMDPConfig, POMDPStructure, POMDPModel
 from pymdp.learning import LearningConfig
 import matplotlib.pyplot as plt
 
@@ -276,22 +276,23 @@ B_gm = [jnp.ones((batch_size, num_states, num_states, misspecified_config.struct
 D_gm = [jnp.ones((batch_size, num_states), dtype=jnp.float32) / num_states]
 
 # Set up random priors over A, B, and D using the misspecified tensors
-key, key_A = jr.split(key)
-key, key_B = jr.split(key)
-key, key_D = jr.split(key)
-pA, A_gm = dirichlet_prior(A_gm, init="random", scale=1.0, learning_enabled=misspecified_config.learning.learn_A, key=key_A)
-pB, B_gm = dirichlet_prior(B_gm, init="random", scale=1.0, learning_enabled=misspecified_config.learning.learn_B, key=key_B)
-pD, D_gm = dirichlet_prior(D_gm, init="random", scale=1.0, learning_enabled=misspecified_config.learning.learn_D, key=key_D)
+misspecified_model = POMDPModel(
+    config=misspecified_config, 
+    key=key,
+    init="random",
+    scale=1.0
+)
 
+#%% 
 # Initialize misspecified agent
 agent = Agent(
-    A=A_gm,
-    B=B_gm,
+    A=misspecified_model.A,
+    B=misspecified_model.B,
     C=C,
-    D=D_gm,
-    pA=pA,
-    pB=pB,
-    pD=pD,
+    D=misspecified_model.D,
+    pA=misspecified_model.pA,
+    pB=misspecified_model.pB,
+    pD=misspecified_model.pD,
     A_dependencies=misspecified_config.structure.A_dependencies,
     B_dependencies=misspecified_config.structure.B_dependencies,
     learn_A=misspecified_config.learning.learn_A,

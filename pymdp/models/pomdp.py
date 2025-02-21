@@ -10,7 +10,9 @@ __author__: Lancelot Da Costa
 import equinox as eqx
 from typing import Dict, List
 import jax.numpy as jnp
+import jax
 from ..learning import LearningConfig
+from ..priors import dirichlet_prior
 
 
 class POMDPStructure(eqx.Module):
@@ -298,3 +300,111 @@ class POMDPConfig(eqx.Module):
     def __repr__(self) -> str:
         """String representation showing complete POMDP configuration"""
         return f"POMDPConfig(structure={self.structure}, learning={self.learning})"
+
+
+class POMDPModel(eqx.Module):
+    """
+    Model parameters and priors for a POMDP, initialized according to a configuration.
+    
+    This class handles the initialization and storage of the generative model parameters
+    (A, B, D) and their priors (pA, pB, pD) based on a POMDPConfig.
+    
+    Attributes
+    ----------
+    config : POMDPConfig
+        Configuration specifying the POMDP structure and learning settings
+    A : List[jnp.ndarray]
+        Observation model parameters - P(o|s)
+    B : List[jnp.ndarray]
+        Transition model parameters - P(s'|s,a)
+    D : List[jnp.ndarray]
+        Initial state distribution parameters - P(s_0)
+    pA : List[jnp.ndarray]
+        Prior parameters for observation model
+    pB : List[jnp.ndarray]
+        Prior parameters for transition model
+    pD : List[jnp.ndarray]
+        Prior parameters for initial state distribution
+    """
+    config: POMDPConfig
+    A: List[jnp.ndarray]
+    B: List[jnp.ndarray]
+    D: List[jnp.ndarray]
+    pA: List[jnp.ndarray]
+    pB: List[jnp.ndarray]
+    pD: List[jnp.ndarray]
+
+    def __init__(
+        self,
+        config: POMDPConfig,
+        key,
+        init: str = "random",
+        scale: float = 1.0,
+    ):
+        """Initialize POMDP model parameters and priors.
+        
+        Parameters
+        ----------
+        config : POMDPConfig
+            Configuration specifying the POMDP structure and learning settings
+        key : jax.random.PRNGKey
+            Random key for initialization
+        init : str, optional
+            Initialization method for priors, by default "random"
+        scale : float, optional
+            Scale parameter for prior initialization, by default 1.0
+        """
+        self.config = config
+        structure = config.structure
+
+        # Create uniform base tensors for each parameter
+        A_base = []
+        for i in range(structure.num_modalities):
+            # Get shape based on dependencies
+            shape = [structure.num_batches, structure.num_obs[i]]
+            for state_idx in structure.A_dependencies[i]:
+                shape.append(structure.num_states[state_idx])
+            A_base.append(
+                jnp.ones(shape, dtype=jnp.float32) / structure.num_obs[i]
+            )
+        
+        B_base = []
+        for i in range(structure.num_factors):
+            # Get shape based on dependencies
+            shape = [structure.num_batches, structure.num_states[i]]
+            for state_idx in structure.B_dependencies[i]:
+                shape.append(structure.num_states[state_idx])
+            shape.append(structure.num_actions[i])
+            B_base.append(
+                jnp.ones(shape, dtype=jnp.float32) / structure.num_states[i]
+            )
+        
+        D_base = [
+            jnp.ones(
+                (structure.num_batches, structure.num_states[i]), 
+                dtype=jnp.float32
+            ) / structure.num_states[i] for i in range(structure.num_factors)
+        ]
+
+        # Split random key for each parameter
+        key, key_A = jax.random.split(key)
+        key, key_B = jax.random.split(key)
+        key, key_D = jax.random.split(key)
+
+        # Initialize parameters and priors using dirichlet_prior
+        self.pA, self.A = dirichlet_prior(
+            A_base, init=init, scale=scale, 
+            learning_enabled=config.learning.learn_A, key=key_A
+        )
+        self.pB, self.B = dirichlet_prior(
+            B_base, init=init, scale=scale,
+            learning_enabled=config.learning.learn_B, key=key_B
+        )
+        self.pD, self.D = dirichlet_prior(
+            D_base, init=init, scale=scale,
+            learning_enabled=config.learning.learn_D, key=key_D
+        )
+
+    def __repr__(self) -> str:
+        """String representation showing model parameters"""
+        return f"POMDPModel(config={self.config})"
