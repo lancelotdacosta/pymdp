@@ -2,10 +2,105 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-member
 
+import equinox as eqx
 from pymdp.maths import multidimensional_outer, dirichlet_expected_value
 from jax.tree_util import tree_map
 from jaxtyping import Array
 from jax import vmap, nn
+from typing import Dict, Optional
+
+
+class LearningConfig(eqx.Module):
+    """
+    Configuration for parameter learning in active inference agents.
+    
+    Attributes
+    ----------
+    learn_A : bool
+        Whether to learn the observation model (A matrix)
+    learn_B : bool
+        Whether to learn the transition model (B matrix)
+    learn_D : bool
+        Whether to learn the initial state prior (D matrix)
+    lr_pA : float
+        Learning rate for A matrix concentration parameters
+    lr_pB : float
+        Learning rate for B matrix concentration parameters
+    lr_pD : float
+        Learning rate for D matrix concentration parameters
+    #TODO: consider adding C learning
+    """
+    learn_A: bool
+    learn_B: bool
+    learn_D: bool
+    lr_pA: float
+    lr_pB: float
+    lr_pD: float
+
+    def __init__(
+        self,
+        learn_A: bool = False,
+        learn_B: bool = False,
+        learn_D: bool = False,
+        lr_pA: float = 1.0,
+        lr_pB: float = 1.0,
+        lr_pD: float = 1.0,
+    ):
+        """Initialize learning configuration"""
+        self.learn_A = learn_A
+        self.learn_B = learn_B
+        self.learn_D = learn_D
+        self.lr_pA = lr_pA
+        self.lr_pB = lr_pB
+        self.lr_pD = lr_pD
+
+    @classmethod
+    def default(cls) -> "LearningConfig":
+        """Defaultonfiguration with all parameters learned"""
+        return cls(
+            learn_A=True,
+            learn_B=True,
+            learn_D=True,
+            lr_pA=1.0,
+            lr_pB=1.0,
+            lr_pD=1.0
+        )
+
+    @classmethod
+    def no_learning(cls) -> "LearningConfig":
+        """Configuration with all learning disabled"""
+        return cls()
+
+    def to_dict(self) -> Dict:
+        """Convert configuration to dictionary"""
+        return {
+            "learn_A": self.learn_A,
+            "learn_B": self.learn_B,
+            "learn_D": self.learn_D,
+            "lr_pA": self.lr_pA,
+            "lr_pB": self.lr_pB,
+            "lr_pD": self.lr_pD,
+        }
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict) -> "LearningConfig":
+        """Create configuration from dictionary"""
+        return cls(**config_dict)
+
+    def __repr__(self) -> str:
+        """String representation showing active learning parameters"""
+        learning = []
+        if self.learn_A:
+            learning.append(f"A(lr={self.lr_pA})")
+        if self.learn_B:
+            learning.append(f"B(lr={self.lr_pB})")
+        if self.learn_D:
+            learning.append(f"D(lr={self.lr_pD})")
+        
+        if not learning:
+            return "LearningConfig(no_learning)"
+        return f"LearningConfig(learning={', '.join(learning)})"
+
 
 def update_obs_likelihood_dirichlet_m(pA_m, obs_m, qs, dependencies_m, lr=1.0):
     """JAX version of ``pymdp.learning.update_obs_likelihood_dirichlet_m``"""
