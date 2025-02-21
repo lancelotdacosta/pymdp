@@ -32,6 +32,10 @@ class POMDPStructure(eqx.Module):
         Number of batches for parallel processing (default=1)
     T : int
         Number of timesteps for rollouts
+    A_dependencies : List[List[int]]
+        For each observation modality, list of state factor indices that it depends on
+    B_dependencies : List[List[int]]
+        For each state factor, list of state factor indices that its transitions depend on
     """
     num_obs: List[int]
     num_states: List[int]
@@ -40,6 +44,8 @@ class POMDPStructure(eqx.Module):
     num_factors: int
     num_batches: int
     T: int
+    A_dependencies: List[List[int]]
+    B_dependencies: List[List[int]]
 
     def __init__(
         self,
@@ -50,6 +56,8 @@ class POMDPStructure(eqx.Module):
         num_factors: int = None,
         num_batches: int = 1,
         T: int = 100,
+        A_dependencies: List[List[int]] = None,
+        B_dependencies: List[List[int]] = None,
     ):
         """Initialize POMDP structure.
 
@@ -69,6 +77,12 @@ class POMDPStructure(eqx.Module):
             Number of parallel batches for processing. Must be positive.
         T : int, default=100
             Number of timesteps for rollouts.
+        A_dependencies : List[List[int]], optional
+            For each observation modality, list of state factor indices that it depends on.
+            If None, assumes each modality depends only on the corresponding factor.
+        B_dependencies : List[List[int]], optional
+            For each state factor, list of state factor indices that its transitions depend on.
+            If None, assumes each factor depends only on itself.
         """
         # Convert single integers to lists if needed
         self.num_obs = [num_obs] if isinstance(num_obs, int) else num_obs
@@ -85,6 +99,20 @@ class POMDPStructure(eqx.Module):
         # Number of timesteps
         self.T = T
         
+        # Set default dependencies if not provided
+        if A_dependencies is None:
+            # By default, each modality depends on the corresponding factor if possible
+            assert self.num_factors >= self.num_modalities, "Number of factors must be at least number of modalities for default initialisation of A_dependencies"
+            self.A_dependencies = [[i] for i in range(self.num_modalities)]
+        else:
+            self.A_dependencies = A_dependencies
+            
+        if B_dependencies is None:
+            # By default, each factor's transitions depend only on itself
+            self.B_dependencies = [[i] for i in range(self.num_factors)]
+        else:
+            self.B_dependencies = B_dependencies
+        
         # Validate configuration
         self._validate()
 
@@ -98,6 +126,16 @@ class POMDPStructure(eqx.Module):
         assert all(n > 0 for n in self.num_actions), "Number of actions must be positive"
         assert self.T > 0, "Number of timesteps must be positive"
         assert self.num_batches > 0, "Number of batches must be positive"
+        
+        # Validate dependencies
+        assert len(self.A_dependencies) == self.num_modalities, "A_dependencies length must match num_modalities"
+        assert len(self.B_dependencies) == self.num_factors, "B_dependencies length must match num_factors"
+        
+        for deps in self.A_dependencies:
+            assert all(0 <= i < self.num_factors for i in deps), "A_dependencies indices must be valid state factor indices"
+            
+        for deps in self.B_dependencies:
+            assert all(0 <= i < self.num_factors for i in deps), "B_dependencies indices must be valid state factor indices"
 
     @classmethod
     def default(cls) -> "POMDPStructure":
@@ -108,6 +146,9 @@ class POMDPStructure(eqx.Module):
             num_actions=2,
             T=100,
             num_batches=1,
+            # Default dependencies (each modality/factor depends only on itself)
+            A_dependencies=[[0]],
+            B_dependencies=[[0]],
         )
 
     @classmethod
@@ -129,6 +170,8 @@ class POMDPStructure(eqx.Module):
             "num_factors": self.num_factors,
             "num_batches": self.num_batches,
             "T": self.T,
+            "A_dependencies": self.A_dependencies,
+            "B_dependencies": self.B_dependencies,
         }
 
     def __repr__(self) -> str:
@@ -140,5 +183,7 @@ class POMDPStructure(eqx.Module):
         ]
         structure.append(f"batches: {self.num_batches}")
         structure.append(f"T: {self.T}")
+        structure.append(f"A_deps: {self.A_dependencies}")
+        structure.append(f"B_deps: {self.B_dependencies}")
         
         return f"POMDPStructure({', '.join(structure)})"
