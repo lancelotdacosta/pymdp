@@ -30,11 +30,14 @@ class POMDPEnv(Env):
             Structure specification containing dimensions and dependencies
         """
         # Get dimensions from A matrix shapes
-        num_obs = [a.shape[1] for a in self.params["A"]]  # shape: (batch, obs, state1, state2, ...)
+        # A[m] shape: (batch, obs_m, state1, state2, ...)
+        num_obs = [a.shape[1] for a in self.params["A"]]
         num_modalities = len(num_obs)
         
         # Get dimensions from B matrix shapes
-        num_states = [b.shape[0] for b in self.params["B"]]  # shape: (next_state, curr_state1, curr_state2, ..., action)
+        # B[f] shape: (batch, next_state_f, curr_state_f, action)
+        # For each factor f, num_states[f] is the number of states for that factor
+        num_states = [b.shape[1] for b in self.params["B"]]  # second dim is current state
         num_factors = len(num_states)
         
         # Get number of actions for each factor from B matrix shapes
