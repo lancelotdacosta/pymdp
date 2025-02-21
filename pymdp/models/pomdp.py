@@ -221,6 +221,26 @@ class POMDPConfig(eqx.Module):
         self.structure = structure
         self.learning = learning if learning is not None else LearningConfig.no_learning()
 
+    def update_learning(self, **kwargs) -> "POMDPConfig":
+        """Update learning configuration with new parameters.
+        
+        Parameters
+        ----------
+        **kwargs : dict
+            Learning parameters to update (learn_A, learn_B, learn_D, lr_pA, lr_pB, lr_pD)
+        
+        Returns
+        -------
+        POMDPConfig
+            New config with updated learning parameters
+        """
+        # Create new learning config with updated parameters
+        learning_dict = self.learning.to_dict()
+        learning_dict.update(kwargs)
+        learning = LearningConfig.from_dict(learning_dict)
+        
+        return POMDPConfig(structure=self.structure, learning=learning)
+
     @classmethod
     def from_env(cls, env, learning: LearningConfig = None) -> "POMDPConfig":
         """Create configuration from a POMDP environment.
@@ -278,4 +298,3 @@ class POMDPConfig(eqx.Module):
     def __repr__(self) -> str:
         """String representation showing complete POMDP configuration"""
         return f"POMDPConfig(structure={self.structure}, learning={self.learning})"
-
