@@ -3,7 +3,7 @@
 
 """ Agent Class implementation in Jax
 
-__author__: Conor Heins, Dimitrije Markovic, Alexander Tschantz, Daphne Demekas, Brennan Klein
+__author__: Conor Heins, Dimitrije Markovic, Alexander Tschantz, Daphne Demekas, Brennan Klein, Lancelot Da Costa
 
 """
 import math as pymath
@@ -12,6 +12,7 @@ import jax.tree_util as jtu
 from jax import nn, vmap, random
 from pymdp import inference, control, learning, utils, maths
 from pymdp.distribution import Distribution, get_dependencies
+from pymdp.models.pomdp import POMDPModel
 from equinox import Module, field, tree_at
 
 from typing import List, Optional, Union
@@ -695,3 +696,50 @@ class Agent(Module):
             assert (
                 self.num_controls[factor_idx] > 1
             ), "Control factor (and B matrix) dimensions are not consistent with user-given control_fac_idx"
+
+    @classmethod
+    def from_model(cls, model: "POMDPModel", **kwargs) -> "Agent":
+        """Create an agent from a POMDPModel.
+        
+        Parameters
+        ----------
+        model : POMDPModel
+            Model containing generative model parameters and priors
+        **kwargs : dict
+            Additional arguments to pass to Agent constructor
+        
+        Returns
+        -------
+        Agent
+            Agent initialized with model parameters
+        """
+        # Get model parameters using to_dict
+        model_dict = model.to_dict()
+        
+        # Extract parameters needed for agent
+        agent_params = {
+            "A": model_dict["A"],
+            "B": model_dict["B"],
+            "D": model_dict["D"],
+            "pA": model_dict["pA"],
+            "pB": model_dict["pB"],
+            "pD": model_dict["pD"],
+            "A_dependencies": model_dict["structure"].A_dependencies,
+            "B_dependencies": model_dict["structure"].B_dependencies,
+            "learn_A": model_dict["learning"].learn_A,
+            "learn_B": model_dict["learning"].learn_B,
+            "learn_D": model_dict["learning"].learn_D
+        }
+        
+        # Check for redundant parameters
+        redundant_params = set(agent_params.keys()) & set(kwargs.keys())
+        if redundant_params:
+            raise ValueError(
+                f"The following parameters are already specified by the model and cannot be overridden: {redundant_params}. "
+                "If you need different values, create a new model or modify the existing one."
+            )
+        
+        # Add any additional parameters
+        agent_params.update(kwargs)
+        
+        return cls(**agent_params)
