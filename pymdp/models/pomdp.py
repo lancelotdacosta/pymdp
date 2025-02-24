@@ -514,6 +514,38 @@ class POMDPModel(eqx.Module):
 
         return A, pA, B, pB, D, pD
 
+    def set_uniform_D(self) -> "POMDPModel":
+        """Set initial state distribution D to uniform.
+        
+        Returns
+        -------
+        POMDPModel
+            New model with uniform D
+            
+        Raises
+        ------
+        ValueError
+            If learn_D is True (D should be learned not manually set)
+        """
+        # Check if D is being learned
+        if self.learning.learn_D:
+            raise ValueError(
+                "Cannot update D when learn_D is True. "
+                "Either set learn_D to False or let D be learned from data."
+            )
+        
+        # Create uniform D
+        new_D = create_uniform_D(
+            self.structure.num_batches,
+            self.structure.num_states
+        )
+        
+        # Create new model with updated D
+        model_dict = self.to_dict()
+        model_dict["D"] = new_D
+        
+        return self.from_dict(model_dict)
+
     def to_dict(self) -> dict:
         """Convert model to dictionary of attributes."""
         return {
@@ -539,8 +571,7 @@ class POMDPModel(eqx.Module):
             pD=config_dict["pD"],
             A_dependencies=config_dict["structure"].A_dependencies,
             B_dependencies=config_dict["structure"].B_dependencies,
-            T=config_dict["structure"].T,
-            learning=config_dict["learning"]
+            T=config_dict["structure"].T
         )
 
     def __repr__(self) -> str:
