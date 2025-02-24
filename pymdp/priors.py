@@ -5,7 +5,7 @@ import warnings
 from .utils import list_array_scaled
 from .maths import dirichlet_expectation
 
-""" Functions for setting up Dirichlet priors
+""" Functions for setting up Dirichlet and categorical priors
 
 __author__: Lancelot Da Costa
 """
@@ -135,3 +135,89 @@ def check_consistency(param, prior, name):
                 print(f"{name}[{i}] updated to match expectation of p{name}[{i}]")
                 param[i] = exp_p
     return param
+
+
+def create_uniform_A(num_batches: int, num_obs: List[int], num_states: List[int], A_dependencies: List[List[int]]) -> List[jnp.ndarray]:
+    """Create uniform base tensors for observation (A) matrices.
+    
+    Parameters
+    ----------
+    num_batches : int
+        Number of parallel batches
+    num_obs : List[int]
+        Number of observations for each modality
+    num_states : List[int]
+        Number of states for each factor
+    A_dependencies : List[List[int]]
+        Dependencies between observation modalities and state factors
+        
+    Returns
+    -------
+    List[jnp.ndarray]
+        List of uniform A matrices for each modality
+    """
+    A_base = []
+    for i in range(len(num_obs)):
+        # Get shape based on dependencies
+        shape = [num_batches, num_obs[i]]
+        for state_idx in A_dependencies[i]:
+            shape.append(num_states[state_idx])
+        A_base.append(
+            jnp.ones(shape, dtype=jnp.float32) / num_obs[i]
+        )
+    return A_base
+
+
+def create_uniform_B(num_batches: int, num_states: List[int], num_actions: List[int], B_dependencies: List[List[int]]) -> List[jnp.ndarray]:
+    """Create uniform base tensors for transition (B) matrices.
+    
+    Parameters
+    ----------
+    num_batches : int
+        Number of parallel batches
+    num_states : List[int]
+        Number of states for each factor
+    num_actions : List[int]
+        Number of actions for each factor
+    B_dependencies : List[List[int]]
+        Dependencies between state factors
+        
+    Returns
+    -------
+    List[jnp.ndarray]
+        List of uniform B matrices for each factor
+    """
+    B_base = []
+    for i in range(len(num_states)):
+        # Get shape based on dependencies
+        shape = [num_batches, num_states[i]]
+        for state_idx in B_dependencies[i]:
+            shape.append(num_states[state_idx])
+        shape.append(num_actions[i])
+        B_base.append(
+            jnp.ones(shape, dtype=jnp.float32) / num_states[i]
+        )
+    return B_base
+
+
+def create_uniform_D(num_batches: int, num_states: List[int]) -> List[jnp.ndarray]:
+    """Create uniform base tensors for initial state (D) distributions.
+    
+    Parameters
+    ----------
+    num_batches : int
+        Number of parallel batches
+    num_states : List[int]
+        Number of states for each factor
+        
+    Returns
+    -------
+    List[jnp.ndarray]
+        List of uniform D matrices for each factor
+    """
+    return [
+        jnp.ones(
+            (num_batches, num_states[i]), 
+            dtype=jnp.float32
+        ) / num_states[i] for i in range(len(num_states))
+    ]
