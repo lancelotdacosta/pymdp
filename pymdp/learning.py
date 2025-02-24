@@ -56,7 +56,7 @@ class LearningConfig(eqx.Module):
 
     @classmethod
     def default(cls) -> "LearningConfig":
-        """Defaultonfiguration with all parameters learned"""
+        """Default configuration with all parameters learned"""
         return cls(
             learn_A=True,
             learn_B=True,

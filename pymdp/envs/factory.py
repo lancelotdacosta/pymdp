@@ -4,6 +4,8 @@ from typing import List
 from pymdp.envs import Env
 from pymdp.envs.tmaze import TMaze
 
+'''Environment factory'''
+
 
 class EnvType(IntEnum):
     """
