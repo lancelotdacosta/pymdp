@@ -12,7 +12,7 @@ from typing import Dict, List
 import jax.numpy as jnp
 import jax
 from ..learning import LearningConfig
-from ..priors import dirichlet_prior
+from ..priors import dirichlet_prior, check_consistency
 import jax.random as jr
 
 
@@ -305,15 +305,17 @@ class POMDPModel(eqx.Module):
         pD: List[jnp.ndarray] = None,
         T = 100
     ):
+        # check consistency between A, B, D, pA, pB, pD
+        A = check_consistency(A, pA, "A")
+        B = check_consistency(B, pB, "B")
+        D = check_consistency(D, pD, "D")
+        
         self.A = A
         self.B = B
         self.D = D
         self.pA = pA
         self.pB = pB
         self.pD = pD
-
-        # check consistency between A, B, D, pA, pB, pD
-        self._check_consistency([A, pA, B, pB, D, pD])
 
         # infer structure from parameters
         self.structure = POMDPStructure.from_parameters(self.A, self.B, A_dependencies, B_dependencies, T=T)

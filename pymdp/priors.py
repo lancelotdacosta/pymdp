@@ -106,3 +106,32 @@ def _dirichlet_random(template: List[jnp.ndarray], scale: float = 1.0, key: jr.P
     keys = jr.split(key, len(shapes)) # Generate a random key for each shape
     
     return [scale * jr.uniform(k, shape=shape) for k, shape in zip(keys, shapes)]
+
+
+def check_consistency(param, prior, name):
+    """Check consistency between a parameter and its prior.
+    
+    If prior exists, check that param is the expectation of prior.
+    If not, update param to be the expectation.
+    
+    Parameters
+    ----------
+    param : List[jnp.ndarray]
+        List of parameter matrices
+    prior : List[jnp.ndarray] or None
+        List of prior matrices, if None no check is performed
+    name : str
+        Name of parameter for print message
+        
+    Returns
+    -------
+    List[jnp.ndarray]
+        Updated parameter matrices
+    """
+    if prior is not None:
+        expected = [dirichlet_expectation(arr) for arr in prior]
+        for i, (p, exp_p) in enumerate(zip(param, expected)):
+            if not jnp.allclose(p, exp_p):
+                print(f"{name}[{i}] updated to match expectation of p{name}[{i}]")
+                param[i] = exp_p
+    return param
