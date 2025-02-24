@@ -346,6 +346,11 @@ class POMDPModel(eqx.Module):
             Scale for prior initialization, by default 1.0
         key : jax.random.PRNGKey, optional
             Random key for initialization, by default None
+            
+        Returns
+        -------
+        POMDPModel
+            Initialized model with the given structure
         """
         learning = learning if learning is not None else LearningConfig.default()
 
@@ -353,44 +358,82 @@ class POMDPModel(eqx.Module):
         A_base, B_base, D_base = cls._create_default_parameters(structure)
         
         # Initialize parameters with priors
-        self._initialize_parameters(A_base, B_base, D_base, init, scale, key)
+        A, pA, B, pB, D, pD = cls._initialize_parameters(A_base, B_base, D_base, learning, init, scale, key)
+        
+        return cls(
+            A=A,
+            B=B,
+            D=D,
+            A_dependencies=structure.A_dependencies,
+            B_dependencies=structure.B_dependencies,
+            pA=pA,
+            pB=pB,
+            pD=pD,
+            T=structure.T
+        )
 
     @classmethod
-    def from_env(cls, env, learning: LearningConfig = None, init: str = "random", scale: float = 1.0, key: jax.random.PRNGKey = None) -> "POMDPModel":
-        """Create model from a POMDP environment.
+    def from_env(
+        cls,
+        env,
+        learning: LearningConfig = None,
+        init: str = "random",
+        scale: float = 1.0,
+        key: jax.random.PRNGKey = None,
+        T: int = 100
+    ) -> "POMDPModel":
+        """Create a POMDP model from an environment.
 
         Parameters
         ----------
         env : POMDPEnv
-            Environment to extract structure from
+            Environment to create model from
         learning : LearningConfig, optional
-            Configuration for parameter learning, by default None (uses default() configuration)
+            Configuration for parameter learning, by default None
         init : str, optional
-            Initialization method for priors when learning is enabled, by default "random"
+            Initialization method for priors, by default "random"
         scale : float, optional
-            Scale for prior initialization when learning is enabled, by default 1.0
+            Scale for prior initialization, by default 1.0
         key : jax.random.PRNGKey, optional
-            Random key for initialization when learning is enabled, by default None
-        **kwargs : dict
-            Additional arguments to pass to constructor
+            Random key for initialization, by default None
+        T : int, optional
+            Time horizon, by default 100
 
         Returns
         -------
         POMDPModel
             Model initialized from environment
         """
-        structure = env.get_structure()
         learning = learning if learning is not None else LearningConfig.default()
         
-        # Get environment parameters as base
-        A_base = [a.copy() for a in env.params["A"]]
-        B_base = [b.copy() for b in env.params["B"]]
-        D_base = [d.copy() for d in env.params["D"]]
+        # Get tensors and dependencies from environment
+        A_base, B_base, D_base, A_dependencies, B_dependencies = env.get_tensors()
         
-        # Initialize parameters with priors
-        cls._initialize_parameters(A_base, B_base, D_base, init, scale, key)
+        # Make copies to avoid modifying environment
+        A_base = [a.copy() for a in A_base]
+        B_base = [b.copy() for b in B_base]
+        D_base = [d.copy() for d in D_base]
+        
+        # Initialize parameters with priors based on learning configuration
+        A, pA, B, pB, D, pD = cls._initialize_parameters(
+            A_base, B_base, D_base,
+            learning=learning,
+            init=init,
+            scale=scale,
+            key=key
+        )
             
-        return model
+        return cls(
+            A=A,
+            B=B,
+            D=D,
+            A_dependencies=A_dependencies,
+            B_dependencies=B_dependencies,
+            pA=pA,
+            pB=pB,
+            pD=pD,
+            T=T
+        )
 
     def _create_default_parameters(self, structure: POMDPStructure):
         """Create default uniform parameters based on structure.
@@ -438,11 +481,13 @@ class POMDPModel(eqx.Module):
         
         return A_base, B_base, D_base
 
+    @classmethod
     def _initialize_parameters(
-        self,
+        cls,
         A_base,
         B_base,
         D_base,
+        learning: LearningConfig = None,
         init: str = "random",
         scale: float = 1.0,
         key: jax.random.PRNGKey = None
@@ -457,6 +502,8 @@ class POMDPModel(eqx.Module):
             Base B matrices to initialize from
         D_base : list
             Base D matrices to initialize from
+        learning : LearningConfig, optional
+            Learning configuration, by default None
         init : str, optional
             Initialization method for priors, by default "random"
         scale : float, optional
@@ -466,17 +513,21 @@ class POMDPModel(eqx.Module):
             
         Returns
         -------
-        None
-            Sets self.A, self.B, self.D and their priors
+        tuple
+            (A, pA, B, pB, D, pD) parameters and their priors
         """
+        learning = learning if learning is not None else LearningConfig.default()
+        
         # Split random key for each parameter
         _, key_A, key_B, key_D = jr.split(key,4)
 
         # Initialize parameters and priors using dirichlet_prior
         # When learning is disabled, pX will be None and X will be the base template
-        self.pA, self.A = dirichlet_prior(A_base, init=init, scale=scale, learning_enabled=self.learning.learn_A, key=key_A)
-        self.pB, self.B = dirichlet_prior(B_base, init=init, scale=scale, learning_enabled=self.learning.learn_B, key=key_B)
-        self.pD, self.D = dirichlet_prior(D_base, init=init, scale=scale, learning_enabled=self.learning.learn_D, key=key_D)
+        pA, A = dirichlet_prior(A_base, init=init, scale=scale, learning_enabled=learning.learn_A, key=key_A)
+        pB, B = dirichlet_prior(B_base, init=init, scale=scale, learning_enabled=learning.learn_B, key=key_B)
+        pD, D = dirichlet_prior(D_base, init=init, scale=scale, learning_enabled=learning.learn_D, key=key_D)
+
+        return A, pA, B, pB, D, pD
 
     def __repr__(self) -> str:
         """String representation showing model parameters"""
