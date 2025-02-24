@@ -409,11 +409,6 @@ class POMDPModel(eqx.Module):
         # Get tensors and dependencies from environment
         A_base, B_base, D_base, A_dependencies, B_dependencies = env.get_tensors()
         
-        # Make copies to avoid modifying environment
-        A_base = [a.copy() for a in A_base]
-        B_base = [b.copy() for b in B_base]
-        D_base = [d.copy() for d in D_base]
-        
         # Initialize parameters with priors based on learning configuration
         A, pA, B, pB, D, pD = cls._initialize_parameters(
             A_base, B_base, D_base,
