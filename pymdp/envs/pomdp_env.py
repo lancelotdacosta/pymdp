@@ -21,19 +21,32 @@ class POMDPEnv(Env):
     POMDP structure from environment parameters.
     """
     
-    def get_tensors(self):
+    def get_tensors(self, copy: bool = True):
         """Get the tensors and dependencies needed to define the POMDP structure.
         
+        Parameters
+        ----------
+        copy : bool, optional
+            Whether to return copies of the tensors, by default True, returns originals if False
+            
         Returns
         -------
         tuple
-            (A, B, D, A_dependencies, B_dependencies) where:
-            - A is a list of observation matrices for each modality
-            - B is a list of transition matrices for each factor
-            - D is a list of initial state distributions for each factor
-            - A_dependencies is a list of state factor dependencies for each observation modality
-            - B_dependencies is a list of state factor dependencies for each state factor
+            (A, B, D, A_dependencies, B_dependencies) tuple containing:
+            - A: List of observation matrices
+            - B: List of transition matrices
+            - D: List of initial state distributions
+            - A_dependencies: List of dependencies between observation modalities and state factors
+            - B_dependencies: List of dependencies between state factors
         """
+        if copy:
+            return (
+                [a.copy() for a in self.params["A"]],
+                [b.copy() for b in self.params["B"]],
+                [d.copy() for d in self.params["D"]],
+                self.dependencies["A"],
+                self.dependencies["B"]
+            )
         return (
             self.params["A"],
             self.params["B"],
