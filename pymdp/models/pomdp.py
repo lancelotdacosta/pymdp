@@ -160,6 +160,56 @@ class POMDPStructure(eqx.Module):
             
         return cls(**config_dict)
 
+    @classmethod
+    def from_parameters(cls, A, B, A_dependencies, B_dependencies, T=100):
+        """Create POMDPStructure from model parameters.
+        
+        Parameters
+        ----------
+        A : List[jnp.ndarray]
+            List of observation matrices for each modality
+        B : List[jnp.ndarray]
+            List of transition matrices for each factor
+        A_dependencies : List[List[int]]
+            List of state factor dependencies for each observation modality
+        B_dependencies : List[List[int]]
+            List of state factor dependencies for each state factor
+        T : int, optional
+            Number of timesteps for rollouts, by default 100
+        
+        Returns
+        -------
+        POMDPStructure
+            Structure inferred from parameters
+        """
+        # Get dimensions from A matrix shapes
+        # A[m] shape: (batch, obs_m, state1, state2, ...)
+        num_obs = [a.shape[1] for a in A]
+        num_modalities = len(num_obs)
+        
+        # Get dimensions from B matrix shapes
+        # B[f] shape: (batch, next_state_f, curr_state_f, action)
+        num_states = [b.shape[1] for b in B]  # second dim is current state
+        num_factors = len(num_states)
+        
+        # Get number of actions for each factor from B matrix shapes
+        num_actions = [b.shape[-1] for b in B]  # last dim is actions
+        
+        # Get batch size from A matrix
+        num_batches = A[0].shape[0]
+        
+        return cls(
+            num_obs=num_obs,
+            num_states=num_states,
+            num_actions=num_actions,
+            num_modalities=num_modalities,
+            num_factors=num_factors,
+            num_batches=num_batches,
+            T=T,
+            A_dependencies=A_dependencies,
+            B_dependencies=B_dependencies
+        )
+
     def to_dict(self) -> Dict:
         """Convert structure to dictionary"""
         return {
