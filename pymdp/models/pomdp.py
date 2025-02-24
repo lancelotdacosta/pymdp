@@ -12,7 +12,7 @@ from typing import Dict, List
 import jax.numpy as jnp
 import jax
 from ..learning import LearningConfig
-from ..priors import dirichlet_prior, check_consistency
+from ..priors import dirichlet_prior, check_consistency, create_uniform_A, create_uniform_B, create_uniform_D
 import jax.random as jr
 
 
@@ -356,7 +356,7 @@ class POMDPModel(eqx.Module):
 
         # Create default parameters
         A_base, B_base, D_base = cls._create_default_parameters(structure)
-        
+
         # Initialize parameters with priors
         A, pA, B, pB, D, pD = cls._initialize_parameters(A_base, B_base, D_base, learning, init, scale, key)
         
@@ -436,48 +436,33 @@ class POMDPModel(eqx.Module):
         )
 
     def _create_default_parameters(self, structure: POMDPStructure):
-        """Create default uniform parameters based on structure.
+        """Create default (uniform)parameters for the POMDP model.
         
-        Parameters
-        ----------
-        structure : POMDPStructure
-            Structure to create parameters for
-            
         Returns
         -------
-        tuple
-            (A_base, B_base, D_base) default parameters
+        Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray]]
+            A, pA, B, pB, D, pD arrays
         """
-        # Create uniform base tensors for A
-        A_base = []
-        for i in range(structure.num_modalities):
-            # Get shape based on dependencies
-            shape = [structure.num_batches, structure.num_obs[i]]
-            for state_idx in structure.A_dependencies[i]:
-                shape.append(structure.num_states[state_idx])
-            A_base.append(
-                jnp.ones(shape, dtype=jnp.float32) / structure.num_obs[i]
-            )
         
-        # Create uniform base tensors for B
-        B_base = []
-        for i in range(structure.num_factors):
-            # Get shape based on dependencies
-            shape = [structure.num_batches, structure.num_states[i]]
-            for state_idx in structure.B_dependencies[i]:
-                shape.append(structure.num_states[state_idx])
-            shape.append(structure.num_actions[i])
-            B_base.append(
-                jnp.ones(shape, dtype=jnp.float32) / structure.num_states[i]
-            )
+        # Create uniform base tensors
+        A_base = create_uniform_A(
+            num_batches=structure.num_batches,
+            num_obs=structure.num_obs,
+            num_states=structure.num_states,
+            A_dependencies=structure.A_dependencies
+        )
         
-        # Create uniform base tensors for D
-        D_base = [
-            jnp.ones(
-                (structure.num_batches, structure.num_states[i]), 
-                dtype=jnp.float32
-            ) / structure.num_states[i] for i in range(structure.num_factors)
-        ]
+        B_base = create_uniform_B(
+            num_batches=structure.num_batches,
+            num_states=structure.num_states,
+            num_actions=structure.num_actions,
+            B_dependencies=structure.B_dependencies
+        )
+        
+        D_base = create_uniform_D(
+            num_batches=structure.num_batches,
+            num_states=structure.num_states
+        )
         
         return A_base, B_base, D_base
 
