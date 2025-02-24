@@ -389,11 +389,11 @@ class POMDPModel(eqx.Module):
         env : POMDPEnv
             Environment to create model from
         learning : LearningConfig, optional
-            Configuration for parameter learning, by default None
+            Configuration for parameter learning, by default None (uses default() configuration)
         init : str, optional
-            Initialization method for priors, by default "random"
+            Initialization method for priors when learning is enabled, by default "random"
         scale : float, optional
-            Scale for prior initialization, by default 1.0
+            Scale for prior initialization when learning is enabled, by default 1.0
         key : jax.random.PRNGKey, optional
             Random key for initialization, by default None
         T : int, optional
@@ -528,6 +528,35 @@ class POMDPModel(eqx.Module):
         pD, D = dirichlet_prior(D_base, init=init, scale=scale, learning_enabled=learning.learn_D, key=key_D)
 
         return A, pA, B, pB, D, pD
+
+    def to_dict(self) -> dict:
+        """Convert model to dictionary of attributes."""
+        return {
+            "A": self.A,
+            "B": self.B,
+            "D": self.D,
+            "pA": self.pA,
+            "pB": self.pB,
+            "pD": self.pD,
+            "structure": self.structure,
+            "learning": self.learning
+        }
+    
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> "POMDPModel":
+        """Create model from dictionary of attributes."""
+        return cls(
+            A=config_dict["A"],
+            B=config_dict["B"],
+            D=config_dict["D"],
+            pA=config_dict["pA"],
+            pB=config_dict["pB"],
+            pD=config_dict["pD"],
+            A_dependencies=config_dict["structure"].A_dependencies,
+            B_dependencies=config_dict["structure"].B_dependencies,
+            T=config_dict["structure"].T,
+            learning=config_dict["learning"]
+        )
 
     def __repr__(self) -> str:
         """String representation showing model parameters"""
