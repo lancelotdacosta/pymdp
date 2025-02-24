@@ -210,6 +210,25 @@ class POMDPStructure(eqx.Module):
             B_dependencies=B_dependencies
         )
 
+    @classmethod
+    def from_env(cls, env, T=100):
+        """Create structure from a POMDP environment.
+        
+        Parameters
+        ----------
+        env : POMDPEnv
+            Environment to extract structure from
+        T : int, optional
+            Number of timesteps for rollouts, by default 100
+            
+        Returns
+        -------
+        POMDPStructure
+            Structure specification containing dimensions and dependencies
+        """
+        A, B, _, A_dependencies, B_dependencies = env.get_tensors()
+        return cls.from_parameters(A, B, A_dependencies, B_dependencies, T=T)
+
     def to_dict(self) -> Dict:
         """Convert structure to dictionary"""
         return {
@@ -276,13 +295,42 @@ class POMDPModel(eqx.Module):
 
     def __init__(
         self,
+        A: List[jnp.ndarray],
+        B: List[jnp.ndarray],
+        D: List[jnp.ndarray],
+        A_dependencies,
+        B_dependencies,
+        pA: List[jnp.ndarray] = None,
+        pB: List[jnp.ndarray] = None,
+        pD: List[jnp.ndarray] = None,
+        T = 100
+    ):
+        self.A = A
+        self.B = B
+        self.D = D
+        self.pA = pA
+        self.pB = pB
+        self.pD = pD
+
+        # check consistency between A, B, D, pA, pB, pD
+        self._check_consistency([A, pA, B, pB, D, pD])
+
+        # infer structure from parameters
+        self.structure = POMDPStructure.from_parameters(self.A, self.B, A_dependencies, B_dependencies, T=T)
+
+        # infer learning config from parameters
+        self.learning = LearningConfig.from_parameters(self.pA, self.pB, self.pD)
+
+    @classmethod
+    def from_structure(
+        cls,
         structure: POMDPStructure,
         learning: LearningConfig = None,
         init: str = "random",
         scale: float = 1.0,
         key: jax.random.PRNGKey = None,
     ):
-        """Initialize POMDP model.
+        """Create a POMDP model from a POMDPStructure and learning config.
 
         Parameters
         ----------
@@ -297,11 +345,10 @@ class POMDPModel(eqx.Module):
         key : jax.random.PRNGKey, optional
             Random key for initialization, by default None
         """
-        self.structure = structure
-        self.learning = learning if learning is not None else LearningConfig.default()
+        learning = learning if learning is not None else LearningConfig.default()
 
         # Create default parameters
-        A_base, B_base, D_base = self._create_default_parameters(structure)
+        A_base, B_base, D_base = cls._create_default_parameters(structure)
         
         # Initialize parameters with priors
         self._initialize_parameters(A_base, B_base, D_base, init, scale, key)
@@ -339,7 +386,7 @@ class POMDPModel(eqx.Module):
         D_base = [d.copy() for d in env.params["D"]]
         
         # Initialize parameters with priors
-        model._initialize_parameters(A_base, B_base, D_base, init, scale, key)
+        cls._initialize_parameters(A_base, B_base, D_base, init, scale, key)
             
         return model
 
