@@ -22,54 +22,60 @@ class LearningConfig(eqx.Module):
         Whether to learn the transition model (B matrix)
     learn_D : bool
         Whether to learn the initial state prior (D matrix)
-    lr_pA : float
-        Learning rate for A matrix concentration parameters
-    lr_pB : float
-        Learning rate for B matrix concentration parameters
-    lr_pD : float
-        Learning rate for D matrix concentration parameters
     #TODO: consider adding C learning
     """
     learn_A: bool
     learn_B: bool
     learn_D: bool
-    lr_pA: float
-    lr_pB: float
-    lr_pD: float
 
     def __init__(
         self,
-        learn_A: bool = False,
-        learn_B: bool = False,
-        learn_D: bool = False,
-        lr_pA: float = 1.0,
-        lr_pB: float = 1.0,
-        lr_pD: float = 1.0,
+        learn_A: bool = True,
+        learn_B: bool = True,
+        learn_D: bool = True,
     ):
-        """Initialize learning configuration"""
+        """Initialize learning configuration with all parameters learned by default"""
         self.learn_A = learn_A
         self.learn_B = learn_B
         self.learn_D = learn_D
-        self.lr_pA = lr_pA
-        self.lr_pB = lr_pB
-        self.lr_pD = lr_pD
 
     @classmethod
     def default(cls) -> "LearningConfig":
         """Default configuration with all parameters learned"""
-        return cls(
-            learn_A=True,
-            learn_B=True,
-            learn_D=True,
-            lr_pA=1.0,
-            lr_pB=1.0,
-            lr_pD=1.0
-        )
+        return cls()
 
     @classmethod
     def no_learning(cls) -> "LearningConfig":
         """Configuration with all learning disabled"""
-        return cls()
+        return cls(
+            learn_A=False,
+            learn_B=False,
+            learn_D=False,
+        )
+
+    @classmethod
+    def from_parameters(cls, pA=None, pB=None, pD=None) -> "LearningConfig":
+        """Infer learning configuration from which parameters have priors.
+        
+        Parameters
+        ----------
+        pA : array-like, optional
+            Prior parameters for A matrix, by default None
+        pB : array-like, optional
+            Prior parameters for B matrix, by default None
+        pD : array-like, optional
+            Prior parameters for D matrix, by default None
+            
+        Returns
+        -------
+        LearningConfig
+            Configuration with learning enabled for parameters that have priors
+        """
+        return cls(
+            learn_A=pA is not None,
+            learn_B=pB is not None,
+            learn_D=pD is not None
+        )
 
     def to_dict(self) -> Dict:
         """Convert configuration to dictionary"""
@@ -77,9 +83,6 @@ class LearningConfig(eqx.Module):
             "learn_A": self.learn_A,
             "learn_B": self.learn_B,
             "learn_D": self.learn_D,
-            "lr_pA": self.lr_pA,
-            "lr_pB": self.lr_pB,
-            "lr_pD": self.lr_pD,
         }
 
     @classmethod
@@ -91,11 +94,11 @@ class LearningConfig(eqx.Module):
         """String representation showing active learning parameters"""
         learning = []
         if self.learn_A:
-            learning.append(f"A(lr={self.lr_pA})")
+            learning.append("A")
         if self.learn_B:
-            learning.append(f"B(lr={self.lr_pB})")
+            learning.append("B")
         if self.learn_D:
-            learning.append(f"D(lr={self.lr_pD})")
+            learning.append("D")
         
         if not learning:
             return "LearningConfig(no_learning)"
