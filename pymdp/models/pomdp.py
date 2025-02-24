@@ -8,7 +8,7 @@ __author__: Lancelot Da Costa
 """
 
 import equinox as eqx
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 import jax.numpy as jnp
 import jax
 from ..learning import LearningConfig
@@ -464,49 +464,47 @@ class POMDPModel(eqx.Module):
     @classmethod
     def _initialize_parameters(
         cls,
-        A_base,
-        B_base,
-        D_base,
-        learning: LearningConfig = None,
+        A_base: List[jnp.ndarray],
+        B_base: List[jnp.ndarray],
+        D_base: List[jnp.ndarray],
+        learning: LearningConfig,
         init: str = "random",
         scale: float = 1.0,
-        key: jax.random.PRNGKey = None
-    ):
-        """Initialize parameters and their priors using dirichlet_prior.
+        key: Optional[jax.random.PRNGKey] = None
+    ) -> Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray]]:
+        """Initialize parameters and priors based on learning configuration.
         
         Parameters
         ----------
-        A_base : list
-            Base A matrices to initialize from
-        B_base : list
-            Base B matrices to initialize from
-        D_base : list
-            Base D matrices to initialize from
-        learning : LearningConfig, optional
-            Learning configuration, by default None
+        A_base : List[jnp.ndarray]
+            Base observation matrices
+        B_base : List[jnp.ndarray]
+            Base transition matrices
+        D_base : List[jnp.ndarray]
+            Base initial state distributions
+        learning : LearningConfig
+            Learning configuration specifying which parameters to learn
         init : str, optional
-            Initialization method for priors, by default "random"
+            Initialization method for priors when learning is enabled, by default "random"
         scale : float, optional
-            Scale for prior initialization, by default 1.0
-        key : jax.random.PRNGKey, optional
+            Scale for prior initialization when learning is enabled, by default 1.0
+        key : Optional[jax.random.PRNGKey], optional
             Random key for initialization, by default None
             
         Returns
         -------
-        tuple
-            (A, pA, B, pB, D, pD) parameters and their priors
+        Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray]]
+            A, pA, B, pB, D, pD arrays
         """
-        learning = learning if learning is not None else LearningConfig.default()
-        
         # Split random key for each parameter
         _, key_A, key_B, key_D = jr.split(key,4)
-
+        
         # Initialize parameters and priors using dirichlet_prior
         # When learning is disabled, pX will be None and X will be the base template
         pA, A = dirichlet_prior(A_base, init=init, scale=scale, learning_enabled=learning.learn_A, key=key_A)
         pB, B = dirichlet_prior(B_base, init=init, scale=scale, learning_enabled=learning.learn_B, key=key_B)
         pD, D = dirichlet_prior(D_base, init=init, scale=scale, learning_enabled=learning.learn_D, key=key_D)
-
+        
         return A, pA, B, pB, D, pD
 
     def set_uniform_D(self) -> "POMDPModel":
