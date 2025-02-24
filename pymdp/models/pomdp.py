@@ -13,6 +13,7 @@ import jax.numpy as jnp
 import jax
 from ..learning import LearningConfig
 from ..priors import dirichlet_prior
+import jax.random as jr
 
 
 class POMDPStructure(eqx.Module):
@@ -101,21 +102,20 @@ class POMDPStructure(eqx.Module):
         
         # Number of timesteps
         self.T = T
-        
+
         # Set default dependencies if not provided
         if A_dependencies is None:
             # By default, each modality depends on the corresponding factor if possible
             assert self.num_factors >= self.num_modalities, "Number of factors must be at least number of modalities for default initialisation of A_dependencies"
-            self.A_dependencies = [[i] for i in range(self.num_modalities)]
-        else:
-            self.A_dependencies = A_dependencies
+            A_dependencies = [[i] for i in range(self.num_modalities)]
             
         if B_dependencies is None:
             # By default, each factor's transitions depend only on itself
-            self.B_dependencies = [[i] for i in range(self.num_factors)]
-        else:
-            self.B_dependencies = B_dependencies
+            B_dependencies = [[i] for i in range(self.num_factors)]
         
+        self.A_dependencies = A_dependencies
+        self.B_dependencies = B_dependencies
+
         # Validate configuration
         self._validate()
 
@@ -149,9 +149,6 @@ class POMDPStructure(eqx.Module):
             num_actions=2,
             T=100,
             num_batches=1,
-            # Default dependencies (each modality/factor depends only on itself)
-            A_dependencies=[[0]],
-            B_dependencies=[[0]],
         )
 
     @classmethod
@@ -192,9 +189,12 @@ class POMDPStructure(eqx.Module):
         return f"POMDPStructure({', '.join(structure)})"
 
 
-class POMDPConfig(eqx.Module):
+class POMDPModel(eqx.Module):
     """
-    Complete configuration for a POMDP, including both structure and learning configuration.
+    Model parameters and priors for a POMDP, initialized according to a structure and learning configuration.
+    
+    This class handles the initialization and storage of the generative model parameters
+    (A, B, D) and their priors (pA, pB, pD) based on a POMDPStructure.
     
     Attributes
     ----------
@@ -202,117 +202,6 @@ class POMDPConfig(eqx.Module):
         Structure specification containing dimensions and dependencies
     learning : LearningConfig
         Configuration for parameter learning
-    """
-    structure: POMDPStructure
-    learning: LearningConfig
-
-    def __init__(
-        self,
-        structure: POMDPStructure,
-        learning: LearningConfig = None,
-    ):
-        """Initialize POMDP configuration.
-
-        Parameters
-        ----------
-        structure : POMDPStructure
-            Structure specification containing dimensions and dependencies
-        learning : LearningConfig, optional
-            Configuration for parameter learning. If None, uses no_learning() configuration.
-        """
-        self.structure = structure
-        self.learning = learning if learning is not None else LearningConfig.no_learning()
-
-    def update_learning(self, **kwargs) -> "POMDPConfig":
-        """Update learning configuration with new parameters.
-        
-        Parameters
-        ----------
-        **kwargs : dict
-            Learning parameters to update (learn_A, learn_B, learn_D, lr_pA, lr_pB, lr_pD)
-        
-        Returns
-        -------
-        POMDPConfig
-            New config with updated learning parameters
-        """
-        # Create new learning config with updated parameters
-        learning_dict = self.learning.to_dict()
-        learning_dict.update(kwargs)
-        learning = LearningConfig.from_dict(learning_dict)
-        
-        return POMDPConfig(structure=self.structure, learning=learning)
-
-    @classmethod
-    def from_env(cls, env, learning: LearningConfig = None) -> "POMDPConfig":
-        """Create configuration from a POMDP environment.
-        
-        Parameters
-        ----------
-        env : POMDPEnv
-            Environment to extract structure from
-        learning : LearningConfig, optional
-            Configuration for parameter learning. If None, uses no_learning() configuration.
-        
-        Returns
-        -------
-        POMDPConfig
-            Complete POMDP configuration
-        """
-        structure = env.get_structure()
-        return cls(structure=structure, learning=learning)
-
-    @classmethod
-    def default(cls) -> "POMDPConfig":
-        """Default configuration for a simple POMDP"""
-        return cls(
-            structure=POMDPStructure.default(),
-            learning=LearningConfig.default(),
-        )
-
-    @classmethod
-    def from_dict(cls, config_dict: Dict) -> "POMDPConfig":
-        """Create configuration from dictionary"""
-        # Handle nested configs
-        structure_dict = config_dict.pop("structure", None)
-        learning_dict = config_dict.pop("learning", None)
-        
-        if structure_dict is not None:
-            structure = POMDPStructure.from_dict(structure_dict)
-        else:
-            # If no nested structure, assume all structure params are at top level
-            structure = POMDPStructure.from_dict(config_dict)
-            
-        if learning_dict is not None:
-            learning = LearningConfig.from_dict(learning_dict)
-        else:
-            learning = None
-            
-        return cls(structure=structure, learning=learning)
-
-    def to_dict(self) -> Dict:
-        """Convert configuration to dictionary"""
-        return {
-            "structure": self.structure.to_dict(),
-            "learning": self.learning.to_dict(),
-        }
-
-    def __repr__(self) -> str:
-        """String representation showing complete POMDP configuration"""
-        return f"POMDPConfig(structure={self.structure}, learning={self.learning})"
-
-
-class POMDPModel(eqx.Module):
-    """
-    Model parameters and priors for a POMDP, initialized according to a configuration.
-    
-    This class handles the initialization and storage of the generative model parameters
-    (A, B, D) and their priors (pA, pB, pD) based on a POMDPConfig.
-    
-    Attributes
-    ----------
-    config : POMDPConfig
-        Configuration specifying the POMDP structure and learning settings
     A : List[jnp.ndarray]
         Observation model parameters - P(o|s)
     B : List[jnp.ndarray]
@@ -326,7 +215,8 @@ class POMDPModel(eqx.Module):
     pD : List[jnp.ndarray]
         Prior parameters for initial state distribution
     """
-    config: POMDPConfig
+    structure: POMDPStructure
+    learning: LearningConfig
     A: List[jnp.ndarray]
     B: List[jnp.ndarray]
     D: List[jnp.ndarray]
@@ -336,28 +226,87 @@ class POMDPModel(eqx.Module):
 
     def __init__(
         self,
-        config: POMDPConfig,
-        key,
+        structure: POMDPStructure,
+        learning: LearningConfig = None,
         init: str = "random",
         scale: float = 1.0,
+        key: jax.random.PRNGKey = None,
     ):
-        """Initialize POMDP model parameters and priors.
-        
+        """Initialize POMDP model.
+
         Parameters
         ----------
-        config : POMDPConfig
-            Configuration specifying the POMDP structure and learning settings
-        key : jax.random.PRNGKey
-            Random key for initialization
+        structure : POMDPStructure
+            Structure of the POMDP
+        learning : LearningConfig, optional
+            Configuration for parameter learning, by default None
         init : str, optional
             Initialization method for priors, by default "random"
         scale : float, optional
-            Scale parameter for prior initialization, by default 1.0
+            Scale for prior initialization, by default 1.0
+        key : jax.random.PRNGKey, optional
+            Random key for initialization, by default None
         """
-        self.config = config
-        structure = config.structure
+        self.structure = structure
+        self.learning = learning if learning is not None else LearningConfig.default()
 
-        # Create uniform base tensors for each parameter
+        # Create default parameters
+        A_base, B_base, D_base = self._create_default_parameters(structure)
+        
+        # Initialize parameters with priors
+        self._initialize_parameters(A_base, B_base, D_base, init, scale, key)
+
+    @classmethod
+    def from_env(cls, env, learning: LearningConfig = None, init: str = "random", scale: float = 1.0, key: jax.random.PRNGKey = None) -> "POMDPModel":
+        """Create model from a POMDP environment.
+
+        Parameters
+        ----------
+        env : POMDPEnv
+            Environment to extract structure from
+        learning : LearningConfig, optional
+            Configuration for parameter learning, by default None (uses default() configuration)
+        init : str, optional
+            Initialization method for priors when learning is enabled, by default "random"
+        scale : float, optional
+            Scale for prior initialization when learning is enabled, by default 1.0
+        key : jax.random.PRNGKey, optional
+            Random key for initialization when learning is enabled, by default None
+        **kwargs : dict
+            Additional arguments to pass to constructor
+
+        Returns
+        -------
+        POMDPModel
+            Model initialized from environment
+        """
+        structure = env.get_structure()
+        learning = learning if learning is not None else LearningConfig.default()
+        
+        # Get environment parameters as base
+        A_base = [a.copy() for a in env.params["A"]]
+        B_base = [b.copy() for b in env.params["B"]]
+        D_base = [d.copy() for d in env.params["D"]]
+        
+        # Initialize parameters with priors
+        model._initialize_parameters(A_base, B_base, D_base, init, scale, key)
+            
+        return model
+
+    def _create_default_parameters(self, structure: POMDPStructure):
+        """Create default uniform parameters based on structure.
+        
+        Parameters
+        ----------
+        structure : POMDPStructure
+            Structure to create parameters for
+            
+        Returns
+        -------
+        tuple
+            (A_base, B_base, D_base) default parameters
+        """
+        # Create uniform base tensors for A
         A_base = []
         for i in range(structure.num_modalities):
             # Get shape based on dependencies
@@ -368,6 +317,7 @@ class POMDPModel(eqx.Module):
                 jnp.ones(shape, dtype=jnp.float32) / structure.num_obs[i]
             )
         
+        # Create uniform base tensors for B
         B_base = []
         for i in range(structure.num_factors):
             # Get shape based on dependencies
@@ -379,32 +329,56 @@ class POMDPModel(eqx.Module):
                 jnp.ones(shape, dtype=jnp.float32) / structure.num_states[i]
             )
         
+        # Create uniform base tensors for D
         D_base = [
             jnp.ones(
                 (structure.num_batches, structure.num_states[i]), 
                 dtype=jnp.float32
             ) / structure.num_states[i] for i in range(structure.num_factors)
         ]
+        
+        return A_base, B_base, D_base
 
+    def _initialize_parameters(
+        self,
+        A_base,
+        B_base,
+        D_base,
+        init: str = "random",
+        scale: float = 1.0,
+        key: jax.random.PRNGKey = None
+    ):
+        """Initialize parameters and their priors using dirichlet_prior.
+        
+        Parameters
+        ----------
+        A_base : list
+            Base A matrices to initialize from
+        B_base : list
+            Base B matrices to initialize from
+        D_base : list
+            Base D matrices to initialize from
+        init : str, optional
+            Initialization method for priors, by default "random"
+        scale : float, optional
+            Scale for prior initialization, by default 1.0
+        key : jax.random.PRNGKey, optional
+            Random key for initialization, by default None
+            
+        Returns
+        -------
+        None
+            Sets self.A, self.B, self.D and their priors
+        """
         # Split random key for each parameter
-        key, key_A = jax.random.split(key)
-        key, key_B = jax.random.split(key)
-        key, key_D = jax.random.split(key)
+        _, key_A, key_B, key_D = jr.split(key,4)
 
         # Initialize parameters and priors using dirichlet_prior
-        self.pA, self.A = dirichlet_prior(
-            A_base, init=init, scale=scale, 
-            learning_enabled=config.learning.learn_A, key=key_A
-        )
-        self.pB, self.B = dirichlet_prior(
-            B_base, init=init, scale=scale,
-            learning_enabled=config.learning.learn_B, key=key_B
-        )
-        self.pD, self.D = dirichlet_prior(
-            D_base, init=init, scale=scale,
-            learning_enabled=config.learning.learn_D, key=key_D
-        )
+        # When learning is disabled, pX will be None and X will be the base template
+        self.pA, self.A = dirichlet_prior(A_base, init=init, scale=scale, learning_enabled=self.learning.learn_A, key=key_A)
+        self.pB, self.B = dirichlet_prior(B_base, init=init, scale=scale, learning_enabled=self.learning.learn_B, key=key_B)
+        self.pD, self.D = dirichlet_prior(D_base, init=init, scale=scale, learning_enabled=self.learning.learn_D, key=key_D)
 
     def __repr__(self) -> str:
         """String representation showing model parameters"""
-        return f"POMDPModel(config={self.config})"
+        return f"POMDPModel(structure={self.structure}, learning={self.learning})"
