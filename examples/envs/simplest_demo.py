@@ -22,67 +22,69 @@
 # importing necessary libraries
 import jax.numpy as jnp
 from jax import random as jr
+from pymdp.learning import LearningConfig
 from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, render_rollout, print_parameter_learning
 from pymdp.envs import rollout
 from pymdp.agent import Agent
-from pymdp.priors import dirichlet_prior
-from pymdp.maths import compute_prediction_errors
-from pymdp.analysis import plot_prediction_errors, plot_model_comparison
-from pymdp.models.pomdp import POMDPConfig, POMDPStructure, POMDPModel
-from pymdp.learning import LearningConfig
+from pymdp.models.pomdp import POMDPModel, POMDPStructure
+from pymdp.priors import create_uniform_D
 import matplotlib.pyplot as plt
 
 
 # if __name__ == "__main__":
 key = jr.PRNGKey(2)  # Initialize master random key at the start
 
-# ### 1. Initialize environment and get its parameters
+# ### 1. Basic Demo
+#
+# This demo shows how to use the simplest environment with an active inference agent.
+# The environment consists of two states (left and right) and two actions (stay and move).
+# The agent can observe which state it is in perfectly.
 #
 # First, we'll create an instance of the simplest environment and get its observation (A) and transition (B) tensors.
 
-# In[2]: Set up agent and run simulation
+# Set up batch size
 batch_size = 1
 
-# Initialize environment and get config
+# Initialize environment
 env = SimplestEnv(batch_size=batch_size)
-config = POMDPConfig.from_env(env, learning=LearningConfig(learn_A=False, learn_B=False))
-structure = config.structure
 
-# Initialize agent's generative model using environment parameters
-A_gm = [a.copy() for a in env.params["A"]]
-B_gm = [b.copy() for b in env.params["B"]]
+# In[2]: Set up agent and run simulation
+
+# Initialize agent's generative model using environment structure
+learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
+
+# Create model from environment
+key, model_key = jr.split(key)
+model = POMDPModel.from_env(
+    env=env,
+    learning=learning_config,
+    key=model_key,
+    T=100               #can play with this
+)
+
+# Set up initial beliefs (D)
+# Equal probability for all states
+model = model.set_uniform_D()
 
 # Set up preference (C) matrix
 # The agent prefers to be in the right state (state 1)
 # C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # Prefer right state
-C = [jnp.zeros((batch_size, structure.num_obs[0]), dtype=jnp.float32)]  # All states equally preferred
-
-# Set up initial beliefs (D)
-# Start with certainty about being in the left state (matching the environment's initial state)
-# D_gm = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 0].set(1.0)]  # Certain about starting in left state
-D_gm = [jnp.ones((batch_size, structure.num_states[0]), dtype=jnp.float32) *0.5]  # Equal probability for all states
+C = [jnp.zeros((batch_size, model.structure.num_obs[0]), dtype=jnp.float32)]  # All states equally preferred
 
 # Initialize the agent
-agent = Agent(
-    A=A_gm,
-    B=B_gm,
+agent = Agent.from_model(
+    model=model,
     C=C,
-    D=D_gm,
     policy_len=1,            # Plan one step ahead
-    A_dependencies=structure.A_dependencies,
-    B_dependencies=structure.B_dependencies,
     inference_algo="fpi",
     apply_batch=False,
-    learn_A=config.learning.learn_A,
-    learn_B=config.learning.learn_B
+    action_selection="stochastic"
 )
 
 # Run simulation
 key, rollout_key = jr.split(key)  # Split key for rollout
-T = 1  # Number of timesteps to rollout
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
+final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-# In[5]:
 # Print rollout and visualize results
 plot_beliefs(info, agent)
 render_rollout(env, info)  # Optionally: render_rollout(env, info, save_gif=True, filename="figures/simplest.gif")
@@ -95,46 +97,42 @@ print_rollout(info)
 # Now we'll demonstrate how the agent can learn the observation (A) and transition (B) tensors.
 
 # Update config to enable A, B parameter learning
-config = config.update_learning(learn_A=True, learn_B=True)
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
 
-# Set up random priors over A and B
-key, key_A = jr.split(key)
-key, key_B = jr.split(key)
-pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=config.learning.learn_A, key=key_A)
-pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=config.learning.learn_B, key=key_B)
+# Create model from environment
+key, model_key = jr.split(key)
+model = POMDPModel.from_env(
+    env=env,
+    learning=learning_config,
+    key=model_key,
+    T=100               #can play with this
+)
 
-# In[6]:
-# Initialize agent with parameter learning enabled
-agent = Agent(
-    A=A_gm,
-             B=B_gm,
-             C=C,
-    D=D_gm,
-             pA=pA,  # Prior over A
-             pB=pB,  # Prior over B
-    A_dependencies=config.structure.A_dependencies,
-    B_dependencies=config.structure.B_dependencies,
-    learn_A=config.learning.learn_A,
-    learn_B=config.learning.learn_B,
-             apply_batch=False,
+# Set up initial beliefs (D)
+# Equal probability for all states
+model = model.set_uniform_D()
+
+# Initialize agent
+agent = Agent.from_model(
+    model=model,
+    C=C,
+    apply_batch=False,
     action_selection="stochastic"
 )
 
 # Run simulation with parameter learning
 key, rollout_key = jr.split(key)  # Split key for rollout
-T = 1  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
+final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-# In[7]:
 # Print rollout and learning results
 print("\nRollout with parameter learning:")
 print_rollout(info)
 
 # Print parameter learning
-print_parameter_learning(info, learn_A=config.learning.learn_A, learn_B=config.learning.learn_B)
+print_parameter_learning(info, learn_A=learning_config.learn_A, learn_B=learning_config.learn_B)
 
 # Visualize A learning
-if config.learning.learn_A:
+if learning_config.learn_A:
     plot_A_learning(agent, info, env)
 
 # Results:
