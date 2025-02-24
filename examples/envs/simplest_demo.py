@@ -27,7 +27,8 @@ from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A
 from pymdp.envs import rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
-from pymdp.priors import create_uniform_D
+from pymdp.maths import compute_prediction_errors
+from pymdp.analysis import plot_prediction_errors, plot_model_comparison
 import matplotlib.pyplot as plt
 
 
@@ -144,44 +145,39 @@ if learning_config.learn_A:
 # Now we'll demonstrate learning of the initial state distribution (D).
 
 # Update config to enable D learning
-config = config.update_learning(learn_D=True,learn_A=False,learn_B=False)
+learning_config = LearningConfig(learn_D=True,learn_A=False,learn_B=False)
 
-# Set up random prior over D
-key, key_D = jr.split(key)
-pD, D_gm = dirichlet_prior(D_gm, init="like", scale=1.0, learning_enabled=config.learning.learn_D, key=key_D)
+# Create model from environment
+key, model_key = jr.split(key)
+model = POMDPModel.from_env(
+    env=env,
+    learning=learning_config,
+    key=model_key,
+    T=5               #can play with this
+)
 
-# %%
-# Initialize agent with D learning enabled
-agent = Agent(
-    A=env.params["A"],  # Use true A
-    B=env.params["B"],  # Use true B
+# Initialize agent
+agent = Agent.from_model(
+    model=model,
     C=C,
-    D=D_gm,
-    pD=pD,
-    A_dependencies=structure.A_dependencies,
-    B_dependencies=structure.B_dependencies,
-    learn_A=config.learning.learn_A,
-    learn_B=config.learning.learn_B,
-    learn_D=config.learning.learn_D,
     apply_batch=False,
     action_selection="stochastic"
 )
 
 # Run simulation with D learning
 key, rollout_key = jr.split(key)
-T = 1  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
+final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
 # Print rollout and learning results
 print("\nRollout with D learning:")
 print_rollout(info)
 
 # Print and visualize D learning
-if config.learning.learn_D:
+if learning_config.learn_D:
     print('\n Parameter D learning:\n')  # True initial state distribution
     # print('\n Initial D matrix:\n', jnp.array(info["agent"].D[0])[0])  # True initial state distribution
     # print('\n Final learned D matrix:\n', jnp.array(info["agent"].D[0])[-1])  # Learned initial state distribution
-    for t in range(T+1):
+    for t in range(model.structure.T+1):
         print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
 
 # Results:
@@ -193,58 +189,46 @@ if config.learning.learn_D:
 # %% #Let's investigate joint A, B, D learning.
 
 # Enable learning of all parameters
-config = config.update_learning(learn_A=True, learn_B=True, learn_D=True)
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
-# Set up random priors over A, B, and D
-key, key_A = jr.split(key)
-key, key_B = jr.split(key)
-key, key_D = jr.split(key)
-pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=config.learning.learn_A, key=key_A)
-pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=config.learning.learn_B, key=key_B)
-pD, D_gm = dirichlet_prior(D_gm, init="random", scale=1.0, learning_enabled=config.learning.learn_D, key=key_D)
+# Create model from environment
+key, model_key = jr.split(key)
+model = POMDPModel.from_env(
+    env=env,
+    learning=learning_config,
+    key=model_key,
+    T=100               #can play with this
+)
 
-# %%
 # Initialize agent with parameter learning enabled
-agent = Agent(
-    A=A_gm,
-    B=B_gm,
+agent = Agent.from_model(
+    model=model,
     C=C,
-    D=D_gm,
-    pA=pA,
-    pB=pB,
-    pD=pD,
-    A_dependencies=config.structure.A_dependencies,
-    B_dependencies=config.structure.B_dependencies,
-    learn_A=config.learning.learn_A,
-    learn_B=config.learning.learn_B,
-    learn_D=config.learning.learn_D,
     apply_batch=False,
     action_selection="stochastic"
 )
 
 # Run simulation with parameter learning
 key, rollout_key = jr.split(key)  # Split key for rollout
-T = 100  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=rollout_key)
+final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-#%% Compute prediction errors
+# Compute prediction errors
 pe_analysis = compute_prediction_errors(info)
 plot_prediction_errors(pe_analysis)
 
-# %%
 # Print rollout
 print("\nRollout with parameter learning:")
 print_rollout(info)
 
 # Print parameter learning
 print_parameter_learning(info, 
-    learn_A=config.learning.learn_A,
-    learn_B=config.learning.learn_B,
-    learn_D=config.learning.learn_D
+    learn_A=learning_config.learn_A,
+    learn_B=learning_config.learn_B,
+    learn_D=learning_config.learn_D
 )
 
 # Visualize A learning
-if config.learning.learn_A:
+if learning_config.learn_A:
     plot_A_learning(agent, info, env)
 
 # Results:
