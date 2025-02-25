@@ -35,7 +35,7 @@ def dirichlet_prior(template: List[jnp.ndarray],
         - Expected values of Dirichlet distribution if learning_enabled else template
     """
     if not learning_enabled:
-        return None, template #TODO: make sure template is a list of categorical distributions, by checking non-positive normalised entries
+        return None, template, key #TODO: make sure template is a list of categorical distributions, by checking non-positive normalised entries
 
     if init == "uniform":
         concentration = _dirichlet_uniform(template, scale)   
