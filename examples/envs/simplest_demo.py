@@ -31,7 +31,8 @@ import matplotlib.pyplot as plt
 
 
 # if __name__ == "__main__":
-key = jr.PRNGKey(0)  # Initialize master random key at the start
+key_idx = 0 # Initialize master random key index at the start
+
 
 # %% ### 1. Basic Demo
 #
@@ -40,6 +41,9 @@ key = jr.PRNGKey(0)  # Initialize master random key at the start
 # The agent can observe which state it is in perfectly.
 #
 # First, we'll create an instance of the simplest environment
+
+# Set up random key
+key = jr.PRNGKey(key_idx)
 
 # Set up batch size
 batch_size = 1
@@ -171,6 +175,9 @@ if learning_config.learn_D:
 # Finally, we demonstrate learning of all parameters (A, B, D) simultaneously.
 # This combines the previous learning scenarios into a full model learning task.
 
+# Reinitialize random key
+key = jr.PRNGKey(key_idx)
+
 # Enable all parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
@@ -211,71 +218,59 @@ if learning_config.learn_A:
 # %% #Let's investigate active inference and learning under a mispecified generative model.
 # Here we will investigate joint A, B, D learning and prediction error accumulation for a one layer, n latent state POMDP in the simplest environment.
 
-# Create new POMDP structure with different number of states
-num_states = 5  # Can fiddle with this
-misspecified_config = POMDPConfig(
-    structure=POMDPStructure(
-        num_obs=[2],           # Number of observations
-        num_states=[num_states],  # Number of hidden states
-        num_actions=[2],       # Number of actions (as a list)
-        num_modalities=1,      # Number of observation modalities
-        num_factors=1,         # Number of state factors
-        num_batches=batch_size,  # Number of batches
-        T=T                    # Number of timesteps
-    ),
-    learning=LearningConfig(learn_A=True, learn_B=True, learn_D=True)
-)
+# Reinitialize random key for fair comparison with the previous simulation
+key = jr.PRNGKey(key_idx)
 
-# Create uniform tensors with new dimensions
-A_gm = [jnp.ones((batch_size, misspecified_config.structure.num_obs[0], num_states), dtype=jnp.float32) / misspecified_config.structure.num_obs[0]]
-B_gm = [jnp.ones((batch_size, num_states, num_states, misspecified_config.structure.num_actions[0]), dtype=jnp.float32) / num_states]
-D_gm = [jnp.ones((batch_size, num_states), dtype=jnp.float32) / num_states]
+# Get base structure from environment
+env_structure_dict = env.get_structure().to_dict()
 
-# Set up random priors over A, B, and D using the misspecified tensors
-misspecified_model = POMDPModel(
-    config=misspecified_config, 
-    key=key,
+# Modify structure for misspecified model
+misspecified_num_states = 3
+env_structure_dict["num_states"] = misspecified_num_states  # Environment has 2 states, model assumes misspecified_num_states
+
+# Ensures same number of timesteps as the previous simulation for comparison
+env_structure_dict["T"] = model.structure.T
+
+# Create misspecified structure
+misspecified_structure = POMDPStructure.from_dict(env_structure_dict)
+
+# Enable learning
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
+
+# Initialize misspecified model
+misspecified_model, key = POMDPModel.from_structure(
+    structure=misspecified_structure,
+    learning=learning_config,
     init="random",
-    scale=1.0
+    scale=1.0,
+    key=key
 )
 
-#%% 
-# Initialize misspecified agent
-agent = Agent(
-    A=misspecified_model.A,
-    B=misspecified_model.B,
+# Initialize agent from misspecified model
+agent = Agent.from_model(
+    model=misspecified_model,
     C=C,
-    D=misspecified_model.D,
-    pA=misspecified_model.pA,
-    pB=misspecified_model.pB,
-    pD=misspecified_model.pD,
-    A_dependencies=misspecified_config.structure.A_dependencies,
-    B_dependencies=misspecified_config.structure.B_dependencies,
-    learn_A=misspecified_config.learning.learn_A,
-    learn_B=misspecified_config.learning.learn_B,
-    learn_D=misspecified_config.learning.learn_D,
     apply_batch=False,
     action_selection="stochastic"
 )
 
-# Run simulation with parameter learning
+# Run simulation with misspecified model
 key, rollout_key = jr.split(key)
-final_state, info, _ = rollout(agent, env, num_timesteps=misspecified_config.structure.T, rng_key=rollout_key)
+final_state, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, rng_key=rollout_key)
 
-# %% Analyse rollout and learning
+# Analyse rollout and learning
 # Print rollout
 print("\nRollout with parameter learning:")
-print_rollout(info)
+# print_rollout(info) #TODO: adapt to misspecified structure: num_states =! 2
 
 # Print parameter learning
 print_parameter_learning(info, learning_config)
 
-# %%
 # Compute and plot prediction errors
 pe_analysis_misspecified = compute_prediction_errors(info)
 plot_prediction_errors(pe_analysis_misspecified)
 
-#%% Compare well-specified vs misspecified model metrics
+#Compare well-specified vs misspecified model metrics
 plot_model_comparison(pe_analysis, pe_analysis_misspecified, 
                      labels=('Well-specified', 'Misspecified'))
 
@@ -284,4 +279,4 @@ plot_model_comparison(pe_analysis, pe_analysis_misspecified,
 # in any environment where we can do without retrospective inference (ie smoothing)
 # where it is ok to learn parameters at every timestep (and without smoothing)
 # and where the standard fpi algorithm is enough.
-#%%
+# %%
