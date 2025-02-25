@@ -243,6 +243,44 @@ class POMDPStructure(eqx.Module):
             "B_dependencies": self.B_dependencies,
         }
 
+    def modify(self, **kwargs) -> "POMDPStructure":
+        """Create a new POMDPStructure with modified parameters.
+        
+        This method allows you to create a new structure with specific parameters
+        modified while keeping all other parameters the same.
+        
+        Parameters
+        ----------
+        **kwargs
+            Parameters to modify. Valid parameters are:
+            - num_obs: List[int]
+            - num_states: List[int]
+            - num_actions: List[int]
+            - num_modalities: int
+            - num_factors: int
+            - num_batches: int
+            - T: int
+            - A_dependencies: List[List[int]]
+            - B_dependencies: List[List[int]]
+            
+        Returns
+        -------
+        POMDPStructure
+            A new structure with the specified parameters modified
+            
+        Example
+        -------
+        >>> new_structure = structure.modify(num_states=[3], T=100)
+        """
+        # Get current config as dictionary
+        config = self.to_dict()
+        
+        # Update with new parameters
+        config.update(kwargs)
+        
+        # Create new structure
+        return self.from_dict(config)
+
     def __repr__(self) -> str:
         """String representation showing POMDP structure"""
         structure = [
@@ -381,7 +419,7 @@ class POMDPModel(eqx.Module):
         learning: LearningConfig = None,
         init: str = "random",
         scale: float = 1.0,
-        key: jax.random.PRNGKey = None,
+        key: Optional[jax.random.PRNGKey] = None,
         T: int = 100
     ) -> "POMDPModel":
         """Create a POMDP model from an environment.
@@ -396,7 +434,7 @@ class POMDPModel(eqx.Module):
             Initialization method for priors when learning is enabled, by default "random"
         scale : float, optional
             Scale for prior initialization when learning is enabled, by default 1.0
-        key : jax.random.PRNGKey, optional
+        key : Optional[jax.random.PRNGKey], optional
             Random key for initialization, by default None
         T : int, optional
             Time horizon, by default 100

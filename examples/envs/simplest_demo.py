@@ -221,18 +221,12 @@ if learning_config.learn_A:
 # Reinitialize random key for fair comparison with the previous simulation
 key = jr.PRNGKey(key_idx)
 
-# Get base structure from environment
-env_structure_dict = env.get_structure().to_dict()
+# Get structure from environment
+env_structure = env.get_structure()
 
-# Modify structure for misspecified model
+# Modify structure number of latent states
 misspecified_num_states = 3
-env_structure_dict["num_states"] = misspecified_num_states  # Environment has 2 states, model assumes misspecified_num_states
-
-# Ensures same number of timesteps as the previous simulation for comparison
-env_structure_dict["T"] = model.structure.T
-
-# Create misspecified structure
-misspecified_structure = POMDPStructure.from_dict(env_structure_dict)
+misspecified_structure = env_structure.modify(num_states = misspecified_num_states, T = model.structure.T) 
 
 # Enable learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
