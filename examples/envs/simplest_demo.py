@@ -49,8 +49,6 @@ batch_size = 1
 # Initialize environment
 env = SimplestEnv(batch_size=batch_size)
 
-# Set up agent and run simulation
-
 # Initialize agent's learning config
 learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
 
@@ -88,16 +86,14 @@ plot_beliefs(info, agent)
 render_rollout(env, info)  # Optionally: render_rollout(env, info, save_gif=True, filename="figures/simplest.gif")
 print_rollout(info)
 
-# In[6]:
-
-# ### 5. Parameter Learning Demo
+# %% ### 2. Parameter (A, B) Learning Demo
 #
-# Now we'll demonstrate how the agent can learn the observation (A) and transition (B) tensors.
+# Here we demonstrate how the agent can learn the observation (A) and transition (B) tensors through experience.
 
-# Update config to enable A, B parameter learning
+# Enable A, B parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
 
-# Create model from environment
+# Initialize POMDP model with learning config
 model, key = POMDPModel.from_env(
     env=env,
     learning=learning_config,
@@ -105,11 +101,10 @@ model, key = POMDPModel.from_env(
     T=100               #can play with this
 )
 
-# Set up initial beliefs (D)
-# Equal probability for all states
+# Set uniform initial beliefs
 model = model.set_uniform_D()
 
-# Initialize agent
+# Initialize agent with parameter learning
 agent = Agent.from_model(
     model=model,
     C=C,
@@ -117,33 +112,34 @@ agent = Agent.from_model(
     action_selection="stochastic"
 )
 
-# Run simulation with parameter learning
-key, rollout_key = jr.split(key)  # Split key for rollout
+# Run simulation and collect results
+key, rollout_key = jr.split(key)
 final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-# Print rollout and learning results
-print("\nRollout with parameter learning:")
+# Analyze and visualize results
+print("\nRollout with A, B learning:")
 print_rollout(info)
-
-# Print parameter learning
 print_parameter_learning(info, learn_A=learning_config.learn_A, learn_B=learning_config.learn_B)
 
-# Visualize A learning
 if learning_config.learn_A:
     plot_A_learning(agent, info, env)
 
-# Results:
-# Joint A, B learning works under random initialization, not under strictly uniform initialization (as expected). Later could try noisy uniform initialization
+# Note: Joint A, B learning works well with random initialization, but not with strictly uniform initialization
+# This is expected as uniform initialization provides no initial structure to learn from. Later could try noisy uniform initialization
 
 # In[9]:
-# ### 6. Initial State distribution (D) Learning Demo
+
+
+# %% ### 3. Initial State Distribution (D) Learning Demo
 #
-# Now we'll demonstrate learning of the initial state distribution (D).
+# Here we demonstrate learning of the initial state distribution (D). Note that D learning
+# is limited by the fact that only the initial state belief (qs_0) is used to update D,
+# and there is no retrospective updating of this belief for now (i.e. no smoothing).
 
-# Update config to enable D learning
-learning_config = LearningConfig(learn_D=True,learn_A=False,learn_B=False)
+# Enable D learning only
+learning_config = LearningConfig(learn_D=True, learn_A=False, learn_B=False)
 
-# Create model from environment
+# Initialize POMDP model with D learning
 model, key = POMDPModel.from_env(
     env=env,
     learning=learning_config,
@@ -151,7 +147,7 @@ model, key = POMDPModel.from_env(
     T=5               #can play with this
 )
 
-# Initialize agent
+# Initialize agent with D learning
 agent = Agent.from_model(
     model=model,
     C=C,
@@ -159,34 +155,29 @@ agent = Agent.from_model(
     action_selection="stochastic"
 )
 
-# Run simulation with D learning
+# Run simulation and collect results
 key, rollout_key = jr.split(key)
 final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-# Print rollout and learning results
+# Analyze and visualize results
 print("\nRollout with D learning:")
 print_rollout(info)
 
-# Print and visualize D learning
 if learning_config.learn_D:
-    print('\n Parameter D learning:\n')  # True initial state distribution
-    # print('\n Initial D matrix:\n', jnp.array(info["agent"].D[0])[0])  # True initial state distribution
-    # print('\n Final learned D matrix:\n', jnp.array(info["agent"].D[0])[-1])  # Learned initial state distribution
+    print('\nParameter D learning:')
     for t in range(model.structure.T+1):
         print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
 
-# Results:
-# The agent accumulates Dirichlet parameters as expected so D learning works.
-# The only limitation is that there is no smoothing so that qs_0 
-# (which is the only data that is used to update beliefs about D) stays constant over time.
-# This is because there is no smoothing
 
-# %% #Let's investigate joint A, B, D learning.
+# %% ### 4. Joint A, B, D Parameter Learning Demo
+#
+# Finally, we demonstrate learning of all parameters (A, B, D) simultaneously.
+# This combines the previous learning scenarios into a full model learning task.
 
-# Enable learning of all parameters
+# Enable all parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
-# Create model from environment
+# Initialize POMDP model with all learning enabled
 model, key = POMDPModel.from_env(
     env=env,
     learning=learning_config,
@@ -194,7 +185,7 @@ model, key = POMDPModel.from_env(
     T=100               #can play with this
 )
 
-# Initialize agent with parameter learning enabled
+# Initialize agent with all parameter learning
 agent = Agent.from_model(
     model=model,
     C=C,
@@ -202,31 +193,27 @@ agent = Agent.from_model(
     action_selection="stochastic"
 )
 
-# Run simulation with parameter learning
-key, rollout_key = jr.split(key)  # Split key for rollout
+# Run simulation and collect results
+key, rollout_key = jr.split(key)
 final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-# Compute prediction errors
+# Analyze and visualize results
 pe_analysis = compute_prediction_errors(info)
 plot_prediction_errors(pe_analysis)
 
-# Print rollout
-print("\nRollout with parameter learning:")
+print("\nRollout with all parameter learning:")
 print_rollout(info)
-
-# Print parameter learning
 print_parameter_learning(info, 
     learn_A=learning_config.learn_A,
     learn_B=learning_config.learn_B,
     learn_D=learning_config.learn_D
 )
 
-# Visualize A learning
 if learning_config.learn_A:
     plot_A_learning(agent, info, env)
 
-# Results:
-# Joint A, B, D learning works as best it can under random initialization. The only thing is that the agent does not learn D well because qs_0 is really imprecise (and is not updated retrospectively because there is no smoothing) and that is the only thing the agent uses to learn D.
+# Note: Joint learning works well for A, B, and D, but D learning remains limited by the
+# lack of retrospective updating (i.e. smoothing) of initial state beliefs
 
 # %% #Let's investigate active inference and learning under a mispecified generative model.
 # Here we will investigate joint A, B, D learning and prediction error accumulation for a one layer, n latent state POMDP in the simplest environment.
