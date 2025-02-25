@@ -35,13 +35,13 @@ import matplotlib.pyplot as plt
 # if __name__ == "__main__":
 key = jr.PRNGKey(2)  # Initialize master random key at the start
 
-# ### 1. Basic Demo
+# %% ### 1. Basic Demo
 #
 # This demo shows how to use the simplest environment with an active inference agent.
 # The environment consists of two states (left and right) and two actions (stay and move).
 # The agent can observe which state it is in perfectly.
 #
-# First, we'll create an instance of the simplest environment and get its observation (A) and transition (B) tensors.
+# First, we'll create an instance of the simplest environment
 
 # Set up batch size
 batch_size = 1
@@ -49,30 +49,27 @@ batch_size = 1
 # Initialize environment
 env = SimplestEnv(batch_size=batch_size)
 
-# In[2]: Set up agent and run simulation
+# Set up agent and run simulation
 
-# Initialize agent's generative model using environment structure
+# Initialize agent's learning config
 learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
 
-# Create model from environment
-key, model_key = jr.split(key)
-model = POMDPModel.from_env(
+# Initialise POMDP model from environment and learning config
+model, key = POMDPModel.from_env(
     env=env,
     learning=learning_config,
-    key=model_key,
+    key=key,
     T=100               #can play with this
 )
 
-# Set up initial beliefs (D)
-# Equal probability for all states
+# Update initial beliefs (D): Equal probability for all states
 model = model.set_uniform_D()
 
 # Set up preference (C) matrix
-# The agent prefers to be in the right state (state 1)
-# C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # Prefer right state
+# C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # The agent prefers to be in the right state (state 1)
 C = [jnp.zeros((batch_size, model.structure.num_obs[0]), dtype=jnp.float32)]  # All states equally preferred
 
-# Initialize the agent
+# Initialize the agent based on model and other parameters
 agent = Agent.from_model(
     model=model,
     C=C,
@@ -83,7 +80,7 @@ agent = Agent.from_model(
 )
 
 # Run simulation
-key, rollout_key = jr.split(key)  # Split key for rollout
+key, rollout_key = jr.split(key)
 final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
 # Print rollout and visualize results
@@ -101,11 +98,10 @@ print_rollout(info)
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
 
 # Create model from environment
-key, model_key = jr.split(key)
-model = POMDPModel.from_env(
+model, key = POMDPModel.from_env(
     env=env,
     learning=learning_config,
-    key=model_key,
+    key=key,
     T=100               #can play with this
 )
 
@@ -148,11 +144,10 @@ if learning_config.learn_A:
 learning_config = LearningConfig(learn_D=True,learn_A=False,learn_B=False)
 
 # Create model from environment
-key, model_key = jr.split(key)
-model = POMDPModel.from_env(
+model, key = POMDPModel.from_env(
     env=env,
     learning=learning_config,
-    key=model_key,
+    key=key,
     T=5               #can play with this
 )
 
@@ -192,11 +187,10 @@ if learning_config.learn_D:
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
 # Create model from environment
-key, model_key = jr.split(key)
-model = POMDPModel.from_env(
+model, key = POMDPModel.from_env(
     env=env,
     learning=learning_config,
-    key=model_key,
+    key=key,
     T=100               #can play with this
 )
 
