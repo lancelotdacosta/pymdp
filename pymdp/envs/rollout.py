@@ -204,6 +204,6 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         return steps
 
     # combine initial info with trajectory info
-    info = jtu.tree_map(concat_or_pass, initial_info, info)
+    info = jtu.tree_map(concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
 
     return last, info, env
