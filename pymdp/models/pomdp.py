@@ -358,7 +358,7 @@ class POMDPModel(eqx.Module):
         A_base, B_base, D_base = cls._create_default_parameters(structure)
 
         # Initialize parameters with priors
-        A, pA, B, pB, D, pD = cls._initialize_parameters(A_base, B_base, D_base, learning, init, scale, key)
+        A, pA, B, pB, D, pD, key = cls._initialize_parameters(A_base, B_base, D_base, learning, init, scale, key)
         
         return cls(
             A=A,
@@ -370,7 +370,7 @@ class POMDPModel(eqx.Module):
             pB=pB,
             pD=pD,
             T=structure.T
-        )
+        ), key
 
     @classmethod
     def from_env(
@@ -407,10 +407,10 @@ class POMDPModel(eqx.Module):
         learning = learning if learning is not None else LearningConfig.default()
         
         # Get tensors and dependencies from environment
-        A_base, B_base, D_base, A_dependencies, B_dependencies = env.get_tensors()
+        A_base, B_base, D_base, A_dependencies, B_dependencies = env.get_tensors(copy=True)
         
         # Initialize parameters with priors based on learning configuration
-        A, pA, B, pB, D, pD = cls._initialize_parameters(
+        A, pA, B, pB, D, pD, key = cls._initialize_parameters(
             A_base, B_base, D_base,
             learning=learning,
             init=init,
@@ -428,7 +428,7 @@ class POMDPModel(eqx.Module):
             pB=pB,
             pD=pD,
             T=T
-        )
+        ), key
 
     def _create_default_parameters(self, structure: POMDPStructure):
         """Create default (uniform)parameters for the POMDP model.
@@ -495,17 +495,17 @@ class POMDPModel(eqx.Module):
         -------
         Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray]]
             A, pA, B, pB, D, pD arrays
+        key : jax.random.PRNGKey
+            Random key
         """
-        # Split random key for each parameter
-        _, key_A, key_B, key_D = jr.split(key,4)
-        
+
         # Initialize parameters and priors using dirichlet_prior
         # When learning is disabled, pX will be None and X will be the base template
-        pA, A = dirichlet_prior(A_base, init=init, scale=scale, learning_enabled=learning.learn_A, key=key_A)
-        pB, B = dirichlet_prior(B_base, init=init, scale=scale, learning_enabled=learning.learn_B, key=key_B)
-        pD, D = dirichlet_prior(D_base, init=init, scale=scale, learning_enabled=learning.learn_D, key=key_D)
+        pA, A, key = dirichlet_prior(A_base, init=init, scale=scale, learning_enabled=learning.learn_A, key=key)
+        pB, B, key = dirichlet_prior(B_base, init=init, scale=scale, learning_enabled=learning.learn_B, key=key)
+        pD, D, key = dirichlet_prior(D_base, init=init, scale=scale, learning_enabled=learning.learn_D, key=key)
         
-        return A, pA, B, pB, D, pD
+        return A, pA, B, pB, D, pD, key
 
     def set_uniform_D(self) -> "POMDPModel":
         """Set initial state distribution D to uniform.

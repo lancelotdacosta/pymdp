@@ -42,11 +42,11 @@ def dirichlet_prior(template: List[jnp.ndarray],
     elif init == "like":
         concentration = _dirichlet_like(template, scale)
     elif init == "random":
-        concentration = _dirichlet_random(template, scale, key)
+        concentration, key = _dirichlet_random(template, scale, key)
     else:
         raise ValueError(f"Unknown initialization method: {init}. Must be one of: uniform, like, random")
     
-    return concentration, [dirichlet_expectation(arr) for arr in concentration]
+    return concentration, [dirichlet_expectation(arr) for arr in concentration], key
 
 
 def _dirichlet_uniform(template: List[jnp.ndarray], scale: float = 1.0) -> List[jnp.ndarray]:
@@ -103,9 +103,9 @@ def _dirichlet_random(template: List[jnp.ndarray], scale: float = 1.0, key: jr.P
         raise ValueError("Random key must be provided")
 
     shapes = [arr.shape for arr in template] # Get shapes from template
-    keys = jr.split(key, len(shapes)) # Generate a random key for each shape
+    key, *subkeys = jr.split(key, len(shapes)+1) # Generate a random key for each shape
     
-    return [scale * jr.uniform(k, shape=shape) for k, shape in zip(keys, shapes)]
+    return [scale * jr.uniform(k, shape=shape) for k, shape in zip(subkeys, shapes)], key
 
 
 def check_consistency(param, prior, name):
