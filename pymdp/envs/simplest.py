@@ -1,12 +1,13 @@
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from pymdp.utils import fig2img
 from equinox import field
 from .pomdp_env import POMDPEnv
 import matplotlib.pyplot as plt
 from jax import nn
+from pymdp.learning import LearningConfig
+from typing import Dict, Any
 
 
 class SimplestEnv(POMDPEnv):
@@ -266,16 +267,24 @@ def plot_A_learning(agent, info, env):
     
     return plt
 
-def print_parameter_learning(info, learn_A=False, learn_B=False, learn_D=False):
-    """Print and analyze parameter learning results"""
+def print_parameter_learning(info: Dict[str, Any], learning_config: LearningConfig) -> None:
+    """Print and analyze parameter learning results.
+    
+    Parameters
+    ----------
+    info : Dict[str, Any]
+        Dictionary containing agent learning information
+    learning_config : LearningConfig
+        Configuration specifying which parameters are being learned.
+    """
     #TODO: IF one passes action labels as arguments else use an index range, can reuse this function for multiple environments and put this in pymdp/analysis/learning.py 
 
-    if learn_A:
+    if learning_config.learn_A:
         print('\n ====Parameter A learning====')
         print('\n Initial matrix A:\n', info["agent"].A[0][0,0,:])
         print('\n Final matrix A:\n', info["agent"].A[0][-1,0,:])
 
-    if learn_B:
+    if learning_config.learn_B:
         print('\n ====Parameter B learning====')
         actions = ['Left', 'Right']
         for a in range(2): 
@@ -283,7 +292,7 @@ def print_parameter_learning(info, learn_A=False, learn_B=False, learn_D=False):
         for a in range(2): 
             print('\n Final matrix B under action', actions[a], ':\n', info["agent"].B[0][-1,0,:,:,a])
 
-    if learn_D:
+    if learning_config.learn_D:
         print('\n ====Parameter D learning====')
         print('\n Initial D matrix:\n', info["agent"].D[0][0])
         print('\n Final learned D matrix:\n', info["agent"].D[0][-1])

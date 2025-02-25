@@ -17,9 +17,7 @@
 #
 # First, import `pymdp` and the modules we'll need.
 
-# In[1]:
-
-# importing necessary libraries
+# %% Importing necessary libraries
 import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
@@ -33,7 +31,7 @@ import matplotlib.pyplot as plt
 
 
 # if __name__ == "__main__":
-key = jr.PRNGKey(2)  # Initialize master random key at the start
+key = jr.PRNGKey(0)  # Initialize master random key at the start
 
 # %% ### 1. Basic Demo
 #
@@ -119,8 +117,7 @@ final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_
 # Analyze and visualize results
 print("\nRollout with A, B learning:")
 print_rollout(info)
-print_parameter_learning(info, learn_A=learning_config.learn_A, learn_B=learning_config.learn_B)
-
+print_parameter_learning(info, learning_config)
 if learning_config.learn_A:
     plot_A_learning(agent, info, env)
 
@@ -203,11 +200,7 @@ plot_prediction_errors(pe_analysis)
 
 print("\nRollout with all parameter learning:")
 print_rollout(info)
-print_parameter_learning(info, 
-    learn_A=learning_config.learn_A,
-    learn_B=learning_config.learn_B,
-    learn_D=learning_config.learn_D
-)
+print_parameter_learning(info, learning_config)
 
 if learning_config.learn_A:
     plot_A_learning(agent, info, env)
@@ -275,11 +268,7 @@ print("\nRollout with parameter learning:")
 print_rollout(info)
 
 # Print parameter learning
-print_parameter_learning(info,
-    learn_A=misspecified_config.learning.learn_A,
-    learn_B=misspecified_config.learning.learn_B,
-    learn_D=misspecified_config.learning.learn_D
-)
+print_parameter_learning(info, learning_config)
 
 # %%
 # Compute and plot prediction errors
