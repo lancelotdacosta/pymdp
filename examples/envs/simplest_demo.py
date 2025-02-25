@@ -215,23 +215,32 @@ if learning_config.learn_A:
 # Note: Joint learning works well for A, B, and D, but D learning remains limited by the
 # lack of retrospective updating (i.e. smoothing) of initial state beliefs
 
-# %% #Let's investigate active inference and learning under a mispecified generative model.
-# Here we will investigate joint A, B, D learning and prediction error accumulation for a one layer, n latent state POMDP in the simplest environment.
+# %% ### 5. Model Comparison: Well-Specified vs Misspecified Model
+#
+# Finally, we compare learning performance between well-specified and misspecified models.
+# A misspecified model has a different structure than the environment - in this case,
+# we use more latent states than actually exist (eg. 3 vs 2).
+#
+# This allows us to:
+# 1. Study how agents learn with incorrect assumptions about their environment
+# 2. Compare prediction errors between well-specified and misspecified models
+# 3. Demonstrate Bayesian model comparison in active inference
 
-# Reinitialize random key for fair comparison with the previous simulation
+# Reinitialize random key for fair comparison
 key = jr.PRNGKey(key_idx)
 
-# Get structure from environment
+# Create misspecified model with more states than the environment
 env_structure = env.get_structure()
+misspecified_num_states = 3  # Environment has 2 states
+misspecified_structure = env_structure.modify(
+    num_states=misspecified_num_states,
+    T=model.structure.T
+)
 
-# Modify structure number of latent states
-misspecified_num_states = 3
-misspecified_structure = env_structure.modify(num_states = misspecified_num_states, T = model.structure.T) 
-
-# Enable learning
+# Enable all parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
-# Initialize misspecified model
+# Initialize misspecified model and agent
 misspecified_model, key = POMDPModel.from_structure(
     structure=misspecified_structure,
     learning=learning_config,
@@ -240,7 +249,6 @@ misspecified_model, key = POMDPModel.from_structure(
     key=key
 )
 
-# Initialize agent from misspecified model
 agent = Agent.from_model(
     model=misspecified_model,
     C=C,
@@ -252,12 +260,10 @@ agent = Agent.from_model(
 key, rollout_key = jr.split(key)
 final_state, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, rng_key=rollout_key)
 
-# Analyse rollout and learning
-# Print rollout
-print("\nRollout with parameter learning:")
+# Analyze results
+print("\nRollout with misspecified model:")
 # print_rollout(info) #TODO: adapt to misspecified structure: num_states =! 2
 
-# Print parameter learning
 print_parameter_learning(info, learning_config)
 
 # Compute and plot prediction errors
@@ -268,9 +274,10 @@ plot_prediction_errors(pe_analysis_misspecified)
 plot_model_comparison(pe_analysis, pe_analysis_misspecified, 
                      labels=('Well-specified', 'Misspecified'))
 
-# This is great. 
-# We now have modular code that can be used to do Bayesian model comparison of one layer pomdps
-# in any environment where we can do without retrospective inference (ie smoothing)
-# where it is ok to learn parameters at every timestep (and without smoothing)
-# and where the standard fpi algorithm is enough.
-# %%
+# Note: This demo shows how we can perform Bayesian model comparison for one-layer POMDPs
+# in environments where:
+# 1. We can learn effectively without retrospective inference (no smoothing required)
+# 2. Learning can be performed at every timestep
+# 3. Standard fixed-point iteration is sufficient for inference
+
+# %% 
