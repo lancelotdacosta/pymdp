@@ -351,6 +351,8 @@ class POMDPModel(eqx.Module):
         -------
         POMDPModel
             Initialized model with the given structure
+        key : jax.random.PRNGKey
+            Random key
         """
         learning = learning if learning is not None else LearningConfig.default()
 
@@ -403,6 +405,8 @@ class POMDPModel(eqx.Module):
         -------
         POMDPModel
             Model initialized from environment
+        key : jax.random.PRNGKey
+            Random key
         """
         learning = learning if learning is not None else LearningConfig.default()
         
@@ -430,7 +434,8 @@ class POMDPModel(eqx.Module):
             T=T
         ), key
 
-    def _create_default_parameters(self, structure: POMDPStructure):
+    @classmethod
+    def _create_default_parameters(cls, structure: POMDPStructure):
         """Create default (uniform)parameters for the POMDP model.
         
         Returns
