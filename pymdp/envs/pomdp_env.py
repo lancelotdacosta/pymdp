@@ -57,9 +57,9 @@ class POMDPEnv(Env):
                 [a.copy() for a in self.params["A"]],
                 [b.copy() for b in self.params["B"]],
                 [d.copy() for d in self.params["D"]],
-                A_dependencies,
-                B_dependencies,
-                B_action_dependencies
+                [deps.copy() for deps in A_dependencies],
+                [deps.copy() for deps in B_dependencies],
+                [deps.copy() for deps in B_action_dependencies]
             )
         return (
             self.params["A"],
