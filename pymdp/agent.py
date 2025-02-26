@@ -9,15 +9,15 @@ __author__: Conor Heins, Dimitrije Markovic, Alexander Tschantz, Daphne Demekas,
 import math as pymath
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import nn, vmap, random
-from pymdp import inference, control, learning, utils, maths
+from jax import nn, vmap
+from pymdp import inference, control, learning, utils
 from pymdp.distribution import Distribution, get_dependencies
 from pymdp.models.pomdp import POMDPModel
 from equinox import Module, field, tree_at
-
 from typing import List, Optional, Union
 from jaxtyping import Array
 from functools import partial
+from .priors import default_A_dependencies, default_B_dependencies, default_B_action_dependencies
 
 class Agent(Module):
     """
@@ -70,9 +70,8 @@ class Agent(Module):
     num_modalities: int = field(static=True)
     num_states: List[int] = field(static=True)
     num_factors: int = field(static=True)
-    num_controls: List[int] = field(static=True)
-    # Used to store original action dimensions in case there are multiple action dependencies per state
-    num_controls_multi: List[int] = field(static=True)
+    num_controls: List[int] = field(static=True)  # List of number of actions available for each control factor
+    num_controls_multi: List[int] = field(static=True)  # Used to store original action dimensions in case there are multiple action dependencies per state
     control_fac_idx: Optional[List[int]] = field(static=True)
     # depth of planning during roll-outs (i.e. number of timesteps to look ahead when computing expected free energy of policies)
     policy_len: int = field(static=True)
@@ -115,7 +114,7 @@ class Agent(Module):
         A_dependencies=None,  # Specifies dependencies between hidden state factors in observation model
         B_dependencies=None,  # Specifies dependencies between hidden state factors in transition model
         B_action_dependencies=None,  # Specifies dependencies between actions and state transitions
-        num_controls=None,  # Number of control states (actions) available for each factor
+        num_controls=None,  # List specifying number of actions available for each control factor
         control_fac_idx=None,  # Indices of controllable state factors
         policy_len=1,  # Length of policies (number of time steps in the future)
         policies=None,  # Custom policy specifications (if None, constructs all policies)
@@ -583,20 +582,20 @@ class Agent(Module):
         elif isinstance(A[0], Distribution) and isinstance(B[0], Distribution):
             A_dependencies, _ = get_dependencies(A, B)
         else:
-            A_dependencies = [list(range(self.num_factors)) for _ in range(self.num_modalities)]
+            A_dependencies = default_A_dependencies(self.num_modalities, self.num_factors)
 
         if B_dependencies is not None:
             B_dependencies = B_dependencies
         elif isinstance(A[0], Distribution) and isinstance(B[0], Distribution):
             _, B_dependencies = get_dependencies(A, B)
         else:
-            B_dependencies = [[f] for f in range(self.num_factors)]
+            B_dependencies = default_B_dependencies(self.num_factors)
 
         """TODO: check B action shape"""
         if B_action_dependencies is not None:
             B_action_dependencies = B_action_dependencies
         else:
-            B_action_dependencies = [[f] for f in range(self.num_factors)]
+            B_action_dependencies = default_B_action_dependencies(self.num_factors)
         return A_dependencies, B_dependencies, B_action_dependencies
 
     def _flatten_B_action_dims(self, B, pB, B_action_dependencies):
@@ -726,6 +725,8 @@ class Agent(Module):
             "pD": model_dict["pD"],
             "A_dependencies": model_dict["structure"].A_dependencies,
             "B_dependencies": model_dict["structure"].B_dependencies,
+            "B_action_dependencies": model_dict["structure"].B_action_dependencies,
+            "num_controls": model_dict["structure"].num_actions,  # Pass the list of action counts directly
             "learn_A": model_dict["learning"].learn_A,
             "learn_B": model_dict["learning"].learn_B,
             "learn_D": model_dict["learning"].learn_D

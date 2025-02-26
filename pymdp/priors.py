@@ -43,8 +43,6 @@ def dirichlet_prior(template: List[jnp.ndarray],
         concentration = _dirichlet_like(template, scale)
     elif init == "random":
         concentration, key = _dirichlet_random(template, scale, key)
-    else:
-        raise ValueError(f"Unknown initialization method: {init}. Must be one of: uniform, like, random")
     
     return concentration, [dirichlet_expectation(arr) for arr in concentration], key
 
@@ -221,3 +219,59 @@ def create_uniform_D(num_batches: int, num_states: List[int]) -> List[jnp.ndarra
             dtype=jnp.float32
         ) / num_states[i] for i in range(len(num_states))
     ]
+
+
+def default_A_dependencies(num_modalities: int, num_factors: int) -> List[List[int]]:
+    """Create default observation dependencies.
+    
+    By default, each modality depends on all factors.
+    
+    Parameters
+    ----------
+    num_modalities : int
+        Number of observation modalities
+    num_factors : int
+        Number of state factors
+        
+    Returns
+    -------
+    List[List[int]]
+        Default A_dependencies where each modality depends on all factors
+    """
+    return [list(range(num_factors)) for _ in range(num_modalities)]
+
+
+def default_B_dependencies(num_factors: int) -> List[List[int]]:
+    """Create default state transition dependencies.
+    
+    By default, each factor's transitions depend only on itself.
+    
+    Parameters
+    ----------
+    num_factors : int
+        Number of state factors
+        
+    Returns
+    -------
+    List[List[int]]
+        Default B_dependencies where each factor depends only on itself
+    """
+    return [[f] for f in range(num_factors)]
+
+
+def default_B_action_dependencies(num_factors: int) -> List[List[int]]:
+    """Create default action dependencies.
+    
+    By default, each state factor is only affected by the corresponding control factor.
+    
+    Parameters
+    ----------
+    num_factors : int
+        Number of state factors
+        
+    Returns
+    -------
+    List[List[int]]
+        Default B_action_dependencies where each factor is affected by the corresponding control factor
+    """
+    return [[f] for f in range(num_factors)]

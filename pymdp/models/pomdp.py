@@ -12,8 +12,8 @@ from typing import Dict, List, Optional, Tuple
 import jax.numpy as jnp
 import jax
 from ..learning import LearningConfig
-from ..priors import dirichlet_prior, check_consistency, create_uniform_A, create_uniform_B, create_uniform_D
-import jax.random as jr
+from ..priors import dirichlet_prior, check_consistency, create_uniform_A, create_uniform_B, create_uniform_D, default_A_dependencies, default_B_dependencies, default_B_action_dependencies
+
 
 
 class POMDPStructure(eqx.Module):
@@ -40,6 +40,8 @@ class POMDPStructure(eqx.Module):
         For each observation modality, list of state factor indices that it depends on
     B_dependencies : List[List[int]]
         For each state factor, list of state factor indices that its transitions depend on
+    B_action_dependencies : List[List[int]]
+        For each state factor, list of control factor indices that influence its transitions
     """
     num_obs: List[int]
     num_states: List[int]
@@ -50,6 +52,7 @@ class POMDPStructure(eqx.Module):
     T: int
     A_dependencies: List[List[int]]
     B_dependencies: List[List[int]]
+    B_action_dependencies: List[List[int]]
 
     def __init__(
         self,
@@ -62,6 +65,7 @@ class POMDPStructure(eqx.Module):
         T: int = 100,
         A_dependencies: List[List[int]] = None,
         B_dependencies: List[List[int]] = None,
+        B_action_dependencies: List[List[int]] = None,
     ):
         """Initialize POMDP structure.
 
@@ -83,10 +87,13 @@ class POMDPStructure(eqx.Module):
             Number of timesteps for rollouts.
         A_dependencies : List[List[int]], optional
             For each observation modality, list of state factor indices that it depends on.
-            If None, assumes each modality depends only on the corresponding factor.
+            If None, assumes each modality depends on all factors (matching Agent class default).
         B_dependencies : List[List[int]], optional
             For each state factor, list of state factor indices that its transitions depend on.
             If None, assumes each factor depends only on itself.
+        B_action_dependencies : List[List[int]], optional
+            For each state factor, list of control factor indices that influence its transitions.
+            If None, assumes each factor's transitions depend onlyon the corresponding control factor.
         """
         # Convert single integers to lists if needed
         self.num_obs = [num_obs] if isinstance(num_obs, int) else num_obs
@@ -105,16 +112,20 @@ class POMDPStructure(eqx.Module):
 
         # Set default dependencies if not provided
         if A_dependencies is None:
-            # By default, each modality depends on the corresponding factor if possible
-            assert self.num_factors >= self.num_modalities, "Number of factors must be at least number of modalities for default initialisation of A_dependencies"
-            A_dependencies = [[i] for i in range(self.num_modalities)]
+            # By default, each modality depends on all factors (matching Agent class default)
+            A_dependencies = default_A_dependencies(self.num_modalities, self.num_factors)
             
         if B_dependencies is None:
             # By default, each factor's transitions depend only on itself
-            B_dependencies = [[i] for i in range(self.num_factors)]
+            B_dependencies = default_B_dependencies(self.num_factors)
+        
+        if B_action_dependencies is None:
+            # By default, each factor's transitions depend on the corresponding control factor
+            B_action_dependencies = default_B_action_dependencies(self.num_factors)
         
         self.A_dependencies = A_dependencies
         self.B_dependencies = B_dependencies
+        self.B_action_dependencies = B_action_dependencies
 
         # Validate configuration
         self._validate()
@@ -133,12 +144,16 @@ class POMDPStructure(eqx.Module):
         # Validate dependencies
         assert len(self.A_dependencies) == self.num_modalities, "A_dependencies length must match num_modalities"
         assert len(self.B_dependencies) == self.num_factors, "B_dependencies length must match num_factors"
+        assert len(self.B_action_dependencies) == self.num_factors, "B_action_dependencies length must match num_factors"
         
         for deps in self.A_dependencies:
             assert all(0 <= i < self.num_factors for i in deps), "A_dependencies indices must be valid state factor indices"
             
         for deps in self.B_dependencies:
             assert all(0 <= i < self.num_factors for i in deps), "B_dependencies indices must be valid state factor indices"
+            
+        for deps in self.B_action_dependencies:
+            assert all(0 <= i < self.num_factors for i in deps), "B_action_dependencies indices must be valid control factor indices"
 
     @classmethod
     def default(cls) -> "POMDPStructure":
@@ -161,7 +176,7 @@ class POMDPStructure(eqx.Module):
         return cls(**config_dict)
 
     @classmethod
-    def from_parameters(cls, A, B, A_dependencies, B_dependencies, T=100):
+    def from_parameters(cls, A, B, A_dependencies=None, B_dependencies=None, B_action_dependencies=None, T=100):
         """Create POMDPStructure from model parameters.
         
         Parameters
@@ -174,6 +189,8 @@ class POMDPStructure(eqx.Module):
             List of state factor dependencies for each observation modality
         B_dependencies : List[List[int]]
             List of state factor dependencies for each state factor
+        B_action_dependencies : List[List[int]]
+            List of control factor dependencies for each state factor
         T : int, optional
             Number of timesteps for rollouts, by default 100
         
@@ -207,7 +224,8 @@ class POMDPStructure(eqx.Module):
             num_batches=num_batches,
             T=T,
             A_dependencies=A_dependencies,
-            B_dependencies=B_dependencies
+            B_dependencies=B_dependencies,
+            B_action_dependencies=B_action_dependencies
         )
 
     @classmethod
@@ -226,8 +244,8 @@ class POMDPStructure(eqx.Module):
         POMDPStructure
             Structure specification containing dimensions and dependencies
         """
-        A, B, _, A_dependencies, B_dependencies = env.get_tensors()
-        return cls.from_parameters(A, B, A_dependencies, B_dependencies, T=T)
+        A, B, _, A_dependencies, B_dependencies, B_action_dependencies = env.get_tensors()
+        return cls.from_parameters(A, B, A_dependencies, B_dependencies, B_action_dependencies, T=T)
 
     def to_dict(self) -> Dict:
         """Convert structure to dictionary"""
@@ -241,6 +259,7 @@ class POMDPStructure(eqx.Module):
             "T": self.T,
             "A_dependencies": self.A_dependencies,
             "B_dependencies": self.B_dependencies,
+            "B_action_dependencies": self.B_action_dependencies,
         }
 
     def modify(self, **kwargs) -> "POMDPStructure":
@@ -262,6 +281,7 @@ class POMDPStructure(eqx.Module):
             - T: int
             - A_dependencies: List[List[int]]
             - B_dependencies: List[List[int]]
+            - B_action_dependencies: List[List[int]]
             
         Returns
         -------
@@ -292,6 +312,7 @@ class POMDPStructure(eqx.Module):
         structure.append(f"T: {self.T}")
         structure.append(f"A_deps: {self.A_dependencies}")
         structure.append(f"B_deps: {self.B_dependencies}")
+        structure.append(f"B_action_deps: {self.B_action_dependencies}")
         
         return f"POMDPStructure({', '.join(structure)})"
 
@@ -338,6 +359,7 @@ class POMDPModel(eqx.Module):
         D: List[jnp.ndarray],
         A_dependencies,
         B_dependencies,
+        B_action_dependencies,
         pA: List[jnp.ndarray] = None,
         pB: List[jnp.ndarray] = None,
         pD: List[jnp.ndarray] = None,
@@ -356,7 +378,7 @@ class POMDPModel(eqx.Module):
         self.pD = pD
 
         # infer structure from parameters
-        self.structure = POMDPStructure.from_parameters(self.A, self.B, A_dependencies, B_dependencies, T=T)
+        self.structure = POMDPStructure.from_parameters(self.A, self.B, A_dependencies, B_dependencies, B_action_dependencies, T=T)
 
         # infer learning config from parameters
         self.learning = LearningConfig.from_parameters(self.pA, self.pB, self.pD)
@@ -406,6 +428,7 @@ class POMDPModel(eqx.Module):
             D=D,
             A_dependencies=structure.A_dependencies,
             B_dependencies=structure.B_dependencies,
+            B_action_dependencies=structure.B_action_dependencies,
             pA=pA,
             pB=pB,
             pD=pD,
@@ -449,7 +472,7 @@ class POMDPModel(eqx.Module):
         learning = learning if learning is not None else LearningConfig.default()
         
         # Get tensors and dependencies from environment
-        A_base, B_base, D_base, A_dependencies, B_dependencies = env.get_tensors(copy=True)
+        A_base, B_base, D_base, A_dependencies, B_dependencies, B_action_dependencies = env.get_tensors(copy=True)
         
         # Initialize parameters with priors based on learning configuration
         A, pA, B, pB, D, pD, key = cls._initialize_parameters(
@@ -466,6 +489,7 @@ class POMDPModel(eqx.Module):
             D=D,
             A_dependencies=A_dependencies,
             B_dependencies=B_dependencies,
+            B_action_dependencies=B_action_dependencies,
             pA=pA,
             pB=pB,
             pD=pD,
@@ -607,6 +631,7 @@ class POMDPModel(eqx.Module):
             pD=config_dict["pD"],
             A_dependencies=config_dict["structure"].A_dependencies,
             B_dependencies=config_dict["structure"].B_dependencies,
+            B_action_dependencies=config_dict["structure"].B_action_dependencies,
             T=config_dict["structure"].T
         )
 
