@@ -230,9 +230,9 @@ if learning_config.learn_A:
 key = jr.PRNGKey(key_idx)
 
 # Create misspecified model with more states than the environment
-env_structure = env.get_structure()
+true_structure = env.get_structure()
 misspecified_num_states = 3  # Environment has 2 states
-misspecified_structure = env_structure.modify(
+misspecified_structure = true_structure.modify(
     num_states=misspecified_num_states,
     T=model.structure.T
 )
