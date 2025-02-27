@@ -13,7 +13,7 @@ def _float_to_int_index(x):
 def select_probs(positions, matrix, dependency_list, actions=None):
     # creating integer indices from float state positions for the positions specified in dependency_list
     index_args = tuple(_float_to_int_index(p) for i, p in enumerate(positions) 
-                      if i in dependency_list)
+                      if i in dependency_list)  #TODO: implement B_action dependencies
     if actions is not None:
         index_args += (_float_to_int_index(actions),)
     return matrix[..., *index_args]
@@ -55,7 +55,7 @@ class Env(Module):
 
         new_obs = self._sample_obs(key, state)
         env = tree_at(lambda x: x.current_obs, env, new_obs)
-        return new_obs, env  # TODO what is going on here? why do we return the env?
+        return new_obs, env
 
     def render(self, mode="human"):
         """
@@ -71,6 +71,25 @@ class Env(Module):
 
     @vmap 
     def step(self, rng_key: PRNGKeyArray, actions: Optional[Array] = None):
+        """Execute one time step within the environment.
+
+        This function implements the core POMDP dynamics by:
+        1. Transitioning to a new state based on the current state and action (if provided)
+        2. Generating new observations based on the new state
+
+        The state transition uses the B (transition) matrix and B dependencies from the environment's parameters,
+        while observations are generated using the A (observation) matrix.
+
+        Args:
+            rng_key (PRNGKeyArray): JAX random key for stochastic operations
+            actions (Optional[Array], optional): List of actions to take. If None, state remains unchanged.
+                Each action corresponds to a control factor in the environment's state space.
+
+        Returns:
+            Tuple[List[Array], Env]: A tuple containing:
+                - new_obs: List of new observations, one for each observation modality
+                - env: Updated environment instance with new state and observations
+        """
         # return a list of random observations and states
         key_state, key_obs = jr.split(rng_key)
         state = self.state
