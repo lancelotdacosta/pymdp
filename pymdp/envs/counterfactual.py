@@ -11,7 +11,6 @@ from typing import Dict, List, Optional, Tuple, Any
 import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
-import jax.lax as jl
 
 from pymdp.agent import Agent
 
@@ -95,14 +94,11 @@ def counterfactual_rollout(
     # Current belief state 
     qs_prev = qs_0
     
-    # Define the step function for jax.lax.scan
-    def step_fn(carry, t_idx):
-        # Unpack the carried state
-        qs_prev, agent, rng_key = carry
-        
+    # Iterate through timesteps
+    for t in range(num_timesteps):
         # Get action and observation for this timestep
-        action_t = action_sequence[t_idx]
-        observation_t = [o[t_idx+1] for o in obs_sequence]  # t_idx+1 because first obs is initial state
+        action_t = action_sequence[t]
+        observation_t = [o[t+1] for o in obs_sequence]  # t+1 because first obs is initial state
         
         # Update empirical prior about next state based on current belief and action
         empirical_prior, _ = agent.update_empirical_prior(action_t, qs_prev)
@@ -133,52 +129,45 @@ def counterfactual_rollout(
                 beliefs_D=qs_0
             )
         
-        # Create info dict for this timestep
-        step_info = {
-            "action": action_t,
-            "observation": [jnp.expand_dims(o, 0) for o in observation_t],
-            "qs": qs,
-            "empirical_prior": empirical_prior,
-            "agent": agent
-        }
+        # Save data for this timestep
+        info["action"].append(action_t)
+        info["observation"].append([jnp.expand_dims(o, 0) for o in observation_t])
+        info["qs"].append(qs)
+        info["empirical_prior"].append(empirical_prior)
+        info["agent"].append(agent)
         
-        # Return updated state and info
-        return (qs, agent, rng_key), step_info
+        # Update beliefs for next iteration
+        qs_prev = qs
     
-    # Initial state to carry through iterations
-    initial_carry = (qs_prev, agent, rng_key)
+    # Convert lists to arrays for consistency with normal rollout
+    # Convert info structure to match rollout's output
+    # (sequences of T+1 steps with batch_size at each step)
     
-    # Run the counterfactual inference loop using jax.lax.scan
-    (final_qs, final_agent, final_rng_key), step_info = jl.scan(
-        step_fn, initial_carry, jnp.arange(num_timesteps)
-    )
+    # Reshape observations to have time as first dimension
+    obs_reshaped = []
+    for m in range(len(info["observation"][0])):
+        obs_m = [info["observation"][t][m] for t in range(len(info["observation"]))]
+        obs_reshaped.append(jnp.concatenate(obs_m, axis=0))
+    info["observation"] = obs_reshaped
     
-    # Create complete info structure
-    # Initial info to concatenate with trajectory
-    initial_info = {
-        "action": jnp.expand_dims(action_0, 0),
-        "observation": [jnp.expand_dims(o, 0) for o in observation_0],  
-        "qs": jtu.tree_map(lambda x: jnp.expand_dims(x, 0), qs_0),
-        "empirical_prior": jtu.tree_map(lambda x: jnp.expand_dims(x, 0), p0),
-        "agent": final_agent  # Just keep the final agent state
-    }
+    # Reshape actions to have time as first dimension
+    info["action"] = jnp.stack(info["action"], axis=0)
     
-    # Helper function to concatenate initial state with trajectory
-    def concat_or_pass(init, steps):
-        if isinstance(init, list) and isinstance(steps, list):
-            return [jnp.concatenate([i, s], axis=0) for i, s in zip(init, steps)]
-        elif isinstance(init, jnp.ndarray) and isinstance(steps, jnp.ndarray):
-            if init.ndim < steps.ndim:
-                init = jnp.expand_dims(init, 0)
-            return jnp.concatenate([init, steps], axis=0)
-        else:
-            # For non-array types like the agent object
-            return steps
+    # Reshape beliefs to have time as first dimension
+    qs_reshaped = []
+    for f in range(len(info["qs"][0])):
+        qs_f = [info["qs"][t][f] for t in range(len(info["qs"]))]
+        # Need to reshape to match rollout output which has shape (T+1, batch_size, 1, num_states)
+        # First ensure qs is 3D (batch_size, 1, num_states)
+        qs_f_shaped = [jnp.reshape(q, (batch_size, 1, -1)) if q.ndim < 3 else q for q in qs_f]
+        qs_reshaped.append(jnp.stack(qs_f_shaped, axis=0))
+    info["qs"] = qs_reshaped
     
-    # Combine initial info with trajectory
-    info = jtu.tree_map(concat_or_pass, initial_info, step_info)
+    # Reshape empirical priors to have time as first dimension
+    prior_reshaped = []
+    for f in range(len(info["empirical_prior"][0])):
+        prior_f = [info["empirical_prior"][t][f] for t in range(len(info["empirical_prior"]))]
+        prior_reshaped.append(jnp.stack(prior_f, axis=0))
+    info["empirical_prior"] = prior_reshaped
     
-    # Rename observation to match rollout function's output
-    info["observations"] = info.pop("observation")
-    
-    return final_qs, info
+    return qs_prev, info
