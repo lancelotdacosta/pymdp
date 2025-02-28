@@ -270,7 +270,7 @@ pe_analysis_misspecified = compute_prediction_errors(info)
 plot_prediction_errors(pe_analysis_misspecified)
 
 #Compare well-specified vs misspecified model metrics
-plot_model_comparison(pe_analysis, pe_analysis_misspecified, 
+plot_model_comparison((pe_analysis, pe_analysis_misspecified), 
                      labels=('Well-specified', 'Misspecified'))
 
 # Note: This demo shows how we can perform Bayesian model comparison for one-layer POMDPs
@@ -320,19 +320,12 @@ pe_analysis_counterfactual = compute_prediction_errors(info_counterfactual)
 plot_prediction_errors(pe_analysis_counterfactual, title="Counterfactual Model (True 2-state Structure)")
 
 # Compare the misspecified model vs counterfactual model
-plot_model_comparison(pe_analysis_counterfactual, pe_analysis_misspecified,
-                     labels=('Counterfactual (2 states)','Misspecified (3 states)'))
+# plot_model_comparison((pe_analysis_counterfactual, pe_analysis_misspecified),
+#                      labels=('Counterfactual (2 states)','Misspecified (3 states)'))
+
+# Compare the rollout with true model vs rollout with misspecified model vs counterfactual rollout with true model
+plot_model_comparison((pe_analysis,pe_analysis_misspecified,pe_analysis_counterfactual),
+                     labels=('Well-specified','Misspecified','Counterfactual'), alpha=0.7, lw=1)
 
 print("Counterfactual analysis complete. Compare the plots to see which model better explains the data.")
-
-# %% TEST PRINTS
-
-# plot_model_comparison(pe_analysis_counterfactual, pe_analysis_misspecified,
-#                      labels=('Counterfactual (2 states)','Misspecified (3 states)'))
-                    
-# plot_model_comparison(pe_analysis, pe_analysis_misspecified, 
-#                      labels=('Well-specified', 'Misspecified'))
-
-# plot_model_comparison(pe_analysis, pe_analysis_counterfactual, 
-#                      labels=('Well-specified', 'Counterfactual from misspecified'))
 # %%
