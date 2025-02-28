@@ -305,7 +305,7 @@ class Agent(Module):
         size = pymath.prod(self.num_controls)
         return jnp.unique(self.policies[:, 0], axis=0, size=size, fill_value=-1)
 
-    def infer_parameters(self, beliefs_A, outcomes, actions, beliefs_B=None,beliefs_D=None, lr_pA=1., lr_pB=1., lr_pD=1., **kwargs):
+    def infer_parameters(self, beliefs_A, outcomes, actions, beliefs_B=None, beliefs_D=None, lr_pA=1., lr_pB=1., lr_pD=1., **kwargs):
         agent = self
         beliefs_B = beliefs_A if beliefs_B is None else beliefs_B
         if self.inference_algo == 'ovf':
