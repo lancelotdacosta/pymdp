@@ -73,9 +73,6 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
 
     # get initial prior belief using D
     p0 = agent.D
-
-    # specify prior beliefs using D 
-    # qs_0 = 
    
     # initialise first observation from environment
     keys = jr.split(rng_key, batch_size + 1)
@@ -190,18 +187,24 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         "agent": agent,
         "empirical_prior": p0  # Initial prior is just D
     }
-    
+
+    # combine initial info with trajectory info
+    info = jtu.tree_map(_concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
+
+    return last, info, env
+
+
+def _concat_or_pass(init, steps):
     # helper function to concatenate initial state with trajectory by dealing with different shapes and data types
-    def concat_or_pass(init, steps):
-        if isinstance(init, list):
-            return [jnp.concatenate([i, s], axis=0) for i, s in zip(init, steps)]
-        elif isinstance(init, jnp.ndarray):
-            if init.ndim < steps.ndim:
-                init = jnp.expand_dims(init, 0)
-            elif init.shape[1:] != steps.shape[1:]: 
-                init = jnp.transpose(init, (1, 0) + tuple(range(2, init.ndim)))
-            return jnp.concatenate([init, steps], axis=0)
-        return steps
+    if isinstance(init, list):
+        return [jnp.concatenate([i, s], axis=0) for i, s in zip(init, steps)]
+    elif isinstance(init, jnp.ndarray):
+        if init.ndim < steps.ndim:
+            init = jnp.expand_dims(init, 0)
+        elif init.shape[1:] != steps.shape[1:]: 
+            init = jnp.transpose(init, (1, 0) + tuple(range(2, init.ndim)))
+        return jnp.concatenate([init, steps], axis=0)
+    return steps
 
     # combine initial info with trajectory info
     info = jtu.tree_map(concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
