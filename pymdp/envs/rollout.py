@@ -208,6 +208,57 @@ def _concat_or_pass(init, steps):
 
 
 def counterfactual_rollout(agent, obs_sequence, action_sequence):
+    """
+    Perform a counterfactual rollout using a (counterfactual) agent with assumed action and observation sequences.
+    
+    Counterfactual rollouts are used to evaluate how well another model explains or predicts a
+    the agent-environment interaction (assumed sequence of observations and actions that were taken). 
+    This is useful for model comparison, where different agent models (with different internal structures or parameters)
+    can be evaluated on the same observation-action sequence to determine which model better explains the data.
+    
+    The function simulates belief updating and learning for an agent using the provided observation
+    and action sequences. It processes these sequences step by step, updating beliefs and model
+    parameters (if learning is enabled) at each timestep.
+    
+    Parameters
+    ----------
+    agent : Agent
+        The agent model to use for the counterfactual rollout. This agent's parameters and structure
+        will be used to process the observation and action sequences.
+    obs_sequence : list of arrays
+        Sequence of observations from a rollout. Each item in the list corresponds to one modality,
+        and contains observations across all timesteps for that modality.
+    action_sequence : array
+        Sequence of actions from the rollout. Shape should be (num_timesteps,).
+    
+    Returns
+    -------
+    last_carry : dict
+        The final state of the agent after processing all timesteps, including:
+        - "qs": posterior beliefs at the final timestep
+        - "empirical_prior": empirical prior at the final timestep
+        - "agent": the agent with updated parameters (if learning is enabled)
+        - additional state information
+    info : dict
+        Information about the entire rollout across all timesteps, including:
+        - "observation": sequence of observations
+        - "action": sequence of actions
+        - "qs": posterior beliefs at each timestep
+        - "empirical_prior": empirical priors at each timestep
+        - "agent": the agent state at each timestep
+    
+    Notes
+    -----
+    This function can be used to:
+    1. Compare different models by measuring prediction errors downstream
+    2. Evaluate how well another model generalizes to given observations and actions
+    3. Test hypotheses about model structure and parameter settings
+    4. Analyze belief updating and learning in different agent architectures
+    
+    Counterfactual rollouts differ from standard rollouts in that the agent doesn't generate actions
+    through its policy or interact with an environment - instead it processes pre-recorded observation
+    and action sequences.
+    """
 
     # get the batch_size of the agent
     num_timesteps = len(action_sequence)
