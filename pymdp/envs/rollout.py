@@ -206,7 +206,113 @@ def _concat_or_pass(init, steps):
         return jnp.concatenate([init, steps], axis=0)
     return steps
 
-    # combine initial info with trajectory info
-    info = jtu.tree_map(concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
 
-    return last, info, env
+def counterfactual_rollout(agent, obs_sequence, action_sequence):
+
+    # get the batch_size of the agent
+    num_timesteps = len(action_sequence)
+
+    # get initial policy and action distribution - unused and meaningless - just for shape matching
+    action_0 = action_sequence[0] # zeroth action of action sequence
+
+    # get initial prior belief using D
+    p0 = agent.D
+   
+    # initialise first observation from environment
+    observation_0 = [o[0] for o in obs_sequence]
+
+    # compute and store posterior state beliefs after initial observation (used for D learning)
+    qs_0 = agent.infer_states(
+        observations=observation_0,
+        empirical_prior=p0, 
+    )
+
+    # set up initial state to carry through timesteps
+    initial_carry = {
+        "qs": qs_0,
+        "actions": action_sequence,
+        "observations": obs_sequence,
+        "empirical_prior": p0,
+        "agent": agent,
+        "qs_0": qs_0
+    }
+
+    def step_fn(carry, t):
+        # carrying the current timestep's action, observation, beliefs, empirical prior, environment state, and random key
+        qs_prev = carry["qs"]
+        empirical_prior = carry["empirical_prior"]
+        action_sequence = carry["actions"]
+        obs_sequence = carry["observations"]
+        agent = carry["agent"]
+        qs_0 = carry["qs_0"]
+
+        # Get current action
+        action_t = action_sequence[t]
+
+        # update empirical prior about next state
+        empirical_prior, _ = agent.update_empirical_prior(action_t, qs_prev) # return empirical_prior. The empirical prior is D for mmp, vmp and it is the last posterior times transition matrix given the last action for fpi, ovf.  
+
+        # get new observation
+        observation_t = [o[t] for o in obs_sequence]
+
+        # perform state inference using variational inference (FPI) - uses A matrix to map between hidden states and observations
+        qs = agent.infer_states(
+            observations=observation_t, # This is observation_0 in first step
+            empirical_prior=empirical_prior, # This is agent.D in first step
+        )
+        
+        # Learning parameters: A and/or B and/or D
+        if agent.learn_A or agent.learn_B or agent.learn_D:
+            if agent.learn_B:
+                # stacking beliefs for B learning
+                beliefs_B = jtu.tree_map(lambda x, y: jnp.concatenate([x,y], axis=1), qs_prev, qs)
+                # reshaping action to match the stacked beliefs
+                action_B = jnp.expand_dims(action_t, 1)  # adding time dimension
+            else:
+                beliefs_B = None
+                action_B = action_t
+            
+            # Update parameters
+            agent = agent.infer_parameters(
+                qs, 
+                observation_t, 
+                action_B if agent.learn_B else action_t,
+                beliefs_B=beliefs_B,
+                beliefs_D=qs_0
+            )
+
+        # carrying the next timestep's action, observation, beliefs, empirical prior, environment state, and random key
+        carry = {
+            "qs": qs,
+            "actions": action_sequence,
+            "observations": obs_sequence,
+            "empirical_prior": empirical_prior,
+            "agent": agent,
+            "qs_0": qs_0
+        }
+        info = {
+            "qs": qs,  # Store full belief state
+            "agent": agent,
+            "observation": observation_t,
+            "action": action_t,
+            "empirical_prior": empirical_prior  # Store prior for free energy computation
+        }
+
+        return carry, info
+
+    # run the active inference loop for num_timesteps using jax.lax.scan (jax version of for loop)
+    last_carry, info = jax.lax.scan(step_fn, initial_carry, jnp.arange(1,num_timesteps))
+
+    # prepare initial info to concatenate with trajectory
+    initial_info = {
+        "action": action_0,
+        "observation": observation_0,  
+        "qs": qs_0, 
+        "agent": agent,
+        "empirical_prior": p0  # Initial prior is just D
+    }
+
+    # combine initial info with trajectory info
+    info = jtu.tree_map(_concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
+
+    return last_carry, info

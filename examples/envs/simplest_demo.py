@@ -22,13 +22,12 @@ import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
 from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, render_rollout, print_parameter_learning
-from pymdp.envs import rollout
+from pymdp.envs.rollout import rollout, counterfactual_rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison
 import matplotlib.pyplot as plt
-
 
 # if __name__ == "__main__":
 key_idx = 0 # Initialize master random key index at the start
@@ -280,4 +279,75 @@ plot_model_comparison(pe_analysis, pe_analysis_misspecified,
 # 2. Learning can be performed at every timestep
 # 3. Standard fixed-point iteration is sufficient for inference
 
-# %% 
+# %% ### 6. Counterfactual Experiment
+#
+# This demonstrates how to perform a counterfactual rollout with a different model structure,
+# allowing us to compare which model better explains the observed data.
+
+print("\n***** Counterfactual Experiment *****")
+print("Running counterfactual with true structure (2 states) on the same observation/action sequence")
+
+counterfactual_key = jr.PRNGKey(key_idx)
+
+# Extract observation and action sequences from the misspecified model rollout
+obs_sequence = info['observation']  # Field used in compute_prediction_errors
+action_sequence = info['action']
+
+# Create a new agent with the true structure (2 states) for counterfactual analysis
+true_model = model  # We already have the true model from the first experiment
+counterfactual_agent = Agent.from_model(
+    model=true_model,
+    C=C,
+    policy_len=1,
+    inference_algo="fpi",
+    apply_batch=False,
+    action_selection="stochastic"
+)
+
+# Perform the counterfactual rollout
+_, info_counterfactual = counterfactual_rollout(
+    counterfactual_agent,
+    obs_sequence,
+    action_sequence)
+
+# Print counterfactual rollout
+# print_rollout(info_counterfactual) #TODO: add a counterfactual option that does not print policies as this currently does not work.
+
+# Compute prediction errors for the counterfactual
+pe_analysis_counterfactual = compute_prediction_errors(info_counterfactual)
+
+# Plot prediction errors for the counterfactual
+plot_prediction_errors(pe_analysis_counterfactual, title="Counterfactual Model (True 2-state Structure)")
+
+# Compare the misspecified model vs counterfactual model
+plot_model_comparison(pe_analysis_counterfactual, pe_analysis_misspecified,
+                     labels=('Counterfactual (2 states)','Misspecified (3 states)'))
+
+print("Counterfactual analysis complete. Compare the plots to see which model better explains the data.")
+
+# %% TEST PRINTS
+
+# Running tests for counterfactual rollout:
+# Test if counterfactual observations match the original sequence
+for i, (orig_obs, cf_obs) in enumerate(zip(obs_sequence, info_counterfactual['observation'])):
+    assert jnp.allclose(orig_obs, cf_obs), f"Observation {i} values don't match"
+print("✓ Observations match the original sequence")
+
+# Test if counterfactual actions match the original sequence
+assert jnp.allclose(info_counterfactual['action'], action_sequence), "Counterfactual actions do not match the original sequence"
+print("✓ Actions match the original sequence")
+
+print("\nCounterfactual rollout successfully reproduced the original observation and action sequences.")
+
+
+#%%
+
+# plot_model_comparison(pe_analysis_counterfactual, pe_analysis_misspecified,
+#                      labels=('Counterfactual (2 states)','Misspecified (3 states)'))
+                    
+# plot_model_comparison(pe_analysis, pe_analysis_misspecified, 
+#                      labels=('Well-specified', 'Misspecified'))
+
+# plot_model_comparison(pe_analysis, pe_analysis_counterfactual, 
+#                      labels=('Well-specified', 'Counterfactual from misspecified'))
+# %%
