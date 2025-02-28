@@ -132,24 +132,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         )
         
         # Learning parameters: A and/or B and/or D
-        if agent.learn_A or agent.learn_B or agent.learn_D:
-            if agent.learn_B:
-                # stacking beliefs for B learning
-                beliefs_B = jtu.tree_map(lambda x, y: jnp.concatenate([x,y], axis=1), qs_prev, qs)
-                # reshaping action to match the stacked beliefs
-                action_B = jnp.expand_dims(action_t, 1)  # adding time dimension
-            else:
-                beliefs_B = None
-                action_B = action_t
-            
-            # Update parameters
-            agent = agent.infer_parameters(
-                qs, 
-                observation_t, 
-                action_B if agent.learn_B else action_t,
-                beliefs_B=beliefs_B,
-                beliefs_D=qs_0
-            )
+        agent = _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0)
 
         # carrying the next timestep's action, observation, beliefs, empirical prior, environment state, and random key
         carry = {
@@ -194,17 +177,53 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
     return last, info, env
 
 
-def _concat_or_pass(init, steps):
-    # helper function to concatenate initial state with trajectory by dealing with different shapes and data types
-    if isinstance(init, list):
-        return [jnp.concatenate([i, s], axis=0) for i, s in zip(init, steps)]
-    elif isinstance(init, jnp.ndarray):
-        if init.ndim < steps.ndim:
-            init = jnp.expand_dims(init, 0)
-        elif init.shape[1:] != steps.shape[1:]: 
-            init = jnp.transpose(init, (1, 0) + tuple(range(2, init.ndim)))
-        return jnp.concatenate([init, steps], axis=0)
-    return steps
+def _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0):
+    """
+    Update agent parameters based on current beliefs and observations.
+    
+    This helper function handles the parameter updating logic for active inference agents,
+    preparing the appropriate belief and action formats for the different learning cases.
+    
+    Parameters
+    ----------
+    agent : Agent
+        The agent whose parameters should be updated
+    qs : list of arrays
+        Current posterior beliefs about hidden states
+    qs_prev : list of arrays
+        Previous posterior beliefs about hidden states
+    observation_t : list of arrays
+        Current observation across modalities
+    action_t : array
+        Current action
+    qs_0 : list of arrays, optional
+        Initial posterior beliefs (used for D learning)
+        
+    Returns
+    -------
+    Agent
+        Updated agent with new parameters
+    """
+    if agent.learn_A or agent.learn_B or agent.learn_D:
+        if agent.learn_B:
+            # stacking beliefs for B learning
+            beliefs_B = jtu.tree_map(lambda x, y: jnp.concatenate([x,y], axis=1), qs_prev, qs)
+            # reshaping action to match the stacked beliefs
+            action_B = jnp.expand_dims(action_t, 1)  # adding time dimension
+        else:
+            beliefs_B = None
+            action_B = action_t
+        
+        # Update parameters
+        agent = agent.infer_parameters(
+            qs, 
+            observation_t, 
+            action_B if agent.learn_B else action_t,
+            beliefs_B=beliefs_B,
+            beliefs_D=qs_0
+        )
+
+    return agent
 
 
 def counterfactual_rollout(agent, obs_sequence, action_sequence):
@@ -313,24 +332,7 @@ def counterfactual_rollout(agent, obs_sequence, action_sequence):
         )
         
         # Learning parameters: A and/or B and/or D
-        if agent.learn_A or agent.learn_B or agent.learn_D:
-            if agent.learn_B:
-                # stacking beliefs for B learning
-                beliefs_B = jtu.tree_map(lambda x, y: jnp.concatenate([x,y], axis=1), qs_prev, qs)
-                # reshaping action to match the stacked beliefs
-                action_B = jnp.expand_dims(action_t, 1)  # adding time dimension
-            else:
-                beliefs_B = None
-                action_B = action_t
-            
-            # Update parameters
-            agent = agent.infer_parameters(
-                qs, 
-                observation_t, 
-                action_B if agent.learn_B else action_t,
-                beliefs_B=beliefs_B,
-                beliefs_D=qs_0
-            )
+        agent = _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0)
 
         # carrying the next timestep's action, observation, beliefs, empirical prior, environment state, and random key
         carry = {
@@ -367,6 +369,19 @@ def counterfactual_rollout(agent, obs_sequence, action_sequence):
     info = jtu.tree_map(_concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
 
     return last_carry, info
+
+
+def _concat_or_pass(init, steps):
+    # helper function to concatenate initial state with trajectory by dealing with different shapes and data types
+    if isinstance(init, list):
+        return [jnp.concatenate([i, s], axis=0) for i, s in zip(init, steps)]
+    elif isinstance(init, jnp.ndarray):
+        if init.ndim < steps.ndim:
+            init = jnp.expand_dims(init, 0)
+        elif init.shape[1:] != steps.shape[1:]: 
+            init = jnp.transpose(init, (1, 0) + tuple(range(2, init.ndim)))
+        return jnp.concatenate([init, steps], axis=0)
+    return steps
 
 
 # EXAMPLE TESTS FOR COUNTERFACTUAL ROLLOUT IN SIMPLEST DEMO THAT COULD BE USED LATER FOR A UNIT TEST FILE
