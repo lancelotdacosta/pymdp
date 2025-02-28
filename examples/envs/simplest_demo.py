@@ -284,11 +284,6 @@ plot_model_comparison((pe_analysis, pe_analysis_misspecified),
 # This demonstrates how to perform a counterfactual rollout with a different model structure,
 # allowing us to compare which model better explains the observed data.
 
-print("\n***** Counterfactual Experiment *****")
-print("Running counterfactual with true structure (2 states) on the same observation/action sequence")
-
-counterfactual_key = jr.PRNGKey(key_idx)
-
 # Extract observation and action sequences from the misspecified model rollout
 obs_sequence = info['observation']  # Field used in compute_prediction_errors
 action_sequence = info['action']
