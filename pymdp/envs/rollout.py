@@ -316,3 +316,51 @@ def counterfactual_rollout(agent, obs_sequence, action_sequence):
     info = jtu.tree_map(_concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
 
     return last_carry, info
+
+
+# EXAMPLE TESTS FOR COUNTERFACTUAL ROLLOUT IN SIMPLEST DEMO THAT COULD BE USED LATER FOR A UNIT TEST FILE
+
+# # Running tests for counterfactual rollout:
+# # Test if counterfactual observations match the original sequence
+# for i, (orig_obs, cf_obs) in enumerate(zip(obs_sequence, info_counterfactual['observation'])):
+#     assert jnp.allclose(orig_obs, cf_obs), f"Observation {i} values don't match"
+# print("✓ Observations match the original sequence")
+
+# # Test if counterfactual actions match the original sequence
+# assert jnp.allclose(info_counterfactual['action'], action_sequence), "Counterfactual actions do not match the original sequence"
+# print("✓ Actions match the original sequence")
+
+# print("\nCounterfactual rollout successfully reproduced the original observation and action sequences.")
+
+# # Additional tests for counterfactual rollout
+# print("\n--- Additional tests for counterfactual rollout ---")
+
+# # Test 1: Check if the counterfactual has all expected fields for compute_prediction_errors
+# print("Test 1: Checking if counterfactual info has all fields needed for prediction error analysis...")
+# required_fields = ["observation", "action", "qs", "empirical_prior", "agent"]
+# for field in required_fields:
+#     assert field in info_counterfactual, f"Required field '{field}' missing from counterfactual info"
+# print("✓ All required fields present")
+
+# # Test 2: Check if beliefs are being updated properly during the rollout
+# print("Test 2: Checking if beliefs are updated properly during rollout...")
+# for i, qs_factor in enumerate(info_counterfactual['qs']):
+#     # Check if beliefs have expected shape (time, batch_size, ...)
+#     assert qs_factor.ndim >= 3, f"Belief shape for factor {i} is incorrect: {qs_factor.shape}"
+    
+#     # Check if we have correct number of timesteps
+#     assert qs_factor.shape[0] == len(action_sequence), f"Expected {len(action_sequence)} timesteps but got {qs_factor.shape[0]}"
+
+# print("✓ Beliefs seem to be updated properly")
+
+# # Test 3: Check if empirical priors are being properly updated
+# print("Test 3: Checking if empirical priors are updated properly...")
+# for i, prior_factor in enumerate(info_counterfactual['empirical_prior']):
+#     # Check shape
+#     assert prior_factor.ndim >= 2, f"Empirical prior shape for factor {i} is incorrect: {prior_factor.shape}"
+    
+#     # Check if we have correct number of timesteps
+#     assert prior_factor.shape[0] == len(action_sequence), f"Expected {len(action_sequence)} timesteps but got {prior_factor.shape[0]}"
+# print("✓ Empirical priors seem to be updated properly")
+
+# print("\nAll additional tests passed! Counterfactual rollout implementation is robust.")

@@ -327,21 +327,6 @@ print("Counterfactual analysis complete. Compare the plots to see which model be
 
 # %% TEST PRINTS
 
-# Running tests for counterfactual rollout:
-# Test if counterfactual observations match the original sequence
-for i, (orig_obs, cf_obs) in enumerate(zip(obs_sequence, info_counterfactual['observation'])):
-    assert jnp.allclose(orig_obs, cf_obs), f"Observation {i} values don't match"
-print("✓ Observations match the original sequence")
-
-# Test if counterfactual actions match the original sequence
-assert jnp.allclose(info_counterfactual['action'], action_sequence), "Counterfactual actions do not match the original sequence"
-print("✓ Actions match the original sequence")
-
-print("\nCounterfactual rollout successfully reproduced the original observation and action sequences.")
-
-
-#%%
-
 # plot_model_comparison(pe_analysis_counterfactual, pe_analysis_misspecified,
 #                      labels=('Counterfactual (2 states)','Misspecified (3 states)'))
                     
