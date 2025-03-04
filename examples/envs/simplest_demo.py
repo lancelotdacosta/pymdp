@@ -32,6 +32,9 @@ import matplotlib.pyplot as plt
 # if __name__ == "__main__":
 key_idx = 0 # Initialize master random key index at the start
 
+#%% Initialise environment
+batch_size = 1
+env = SimplestEnv(batch_size=batch_size)
 
 # %% ### 1. Basic Demo
 #
@@ -43,12 +46,6 @@ key_idx = 0 # Initialize master random key index at the start
 
 # Set up random key
 key = jr.PRNGKey(key_idx)
-
-# Set up batch size
-batch_size = 1
-
-# Initialize environment
-env = SimplestEnv(batch_size=batch_size)
 
 # Initialize agent's learning config
 learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)

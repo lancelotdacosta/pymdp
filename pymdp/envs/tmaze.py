@@ -96,7 +96,6 @@ class TMaze(POMDPEnv):
 
         A_dependencies = [[0], [0, 1], [0, 1]]
 
-        
         for loc in range(5): # for each location: [centre, left, right, cue, middle]
             for reward_condition in range(2): # for each reward condition: [left, right]
                 if loc == 0: # when at starting location (centre), there is no reward and no cue
