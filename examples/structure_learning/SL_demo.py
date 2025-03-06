@@ -6,6 +6,7 @@
 import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
+from pymdp.envs.env_factory import make, EnvType
 from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, render_rollout, print_parameter_learning
 from pymdp.envs import TMaze
 from pymdp.envs.rollout import rollout, counterfactual_rollout
@@ -24,7 +25,10 @@ key_idx = 0 # Initialize master random key index at the start
 batch_size = 1
 
 # Initialize environment
-env = TMaze(batch_size=batch_size)
+env = make(
+    EnvType.T_MAZE, 
+    batch_size=batch_size
+)
 
 # %% ### 1. Basic Demo
 
