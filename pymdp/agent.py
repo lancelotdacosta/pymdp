@@ -18,6 +18,7 @@ from typing import List, Optional, Union
 from jaxtyping import Array
 from functools import partial
 from .priors import default_A_dependencies, default_B_dependencies, default_B_action_dependencies
+from .learning import LearningConfig 
 
 class Agent(Module):
     """
@@ -744,3 +745,74 @@ class Agent(Module):
         agent_params.update(kwargs)
         
         return cls(**agent_params)
+        
+    @classmethod
+    def from_env(cls, env, key=None, learning_config=None, uniform_D=False, 
+                model_params=None, agent_params=None, C=None):
+        """Create an agent directly from an environment using environment-specific defaults.
+        
+        Parameters
+        ----------
+        env : POMDPEnv
+            The environment to create an agent for
+        key : jax.random.PRNGKey, optional
+            Random key (generated if None)
+        learning_config : LearningConfig, optional
+            Configuration for parameter learning (default: no learning)
+        uniform_D : bool, optional
+            Whether to set uniform initial beliefs (default: False)
+        model_params : dict, optional
+            Override default model parameters
+        agent_params : dict, optional
+            Override default agent parameters
+        C : list of arrays, optional
+            Custom preference matrices (default: uses environment defaults)
+            
+        Returns
+        -------
+        agent : Agent
+            The created agent
+        model : POMDPModel
+            The underlying model
+        key : jax.random.PRNGKey
+            The updated random key
+        """
+        
+        # Set default learning config if not provided
+        if learning_config is None:
+            learning_config = LearningConfig()
+        
+        # Get default model parameters and update with overrides
+        default_model_params = env.get_default_model_params()
+        if model_params:
+            default_model_params.update(model_params)
+        
+        # Create model from environment
+        model, key = POMDPModel.from_env(
+            env=env,
+            learning=learning_config,
+            key=key,
+            **default_model_params
+        )
+        
+        # Handle uniform D setting if requested
+        if uniform_D:
+            model = model.set_uniform_D()
+        
+        # Get default C from environment or use provided C
+        if C is None:
+            C = env.get_default_C()
+        
+        # Get default agent parameters and update with overrides
+        default_agent_params = env.get_default_agent_params()
+        if agent_params:
+            default_agent_params.update(agent_params)
+        
+        # Create agent with all parameters
+        agent = cls.from_model(
+            model=model,
+            C=C,
+            **default_agent_params
+        )
+        
+        return agent, model, key

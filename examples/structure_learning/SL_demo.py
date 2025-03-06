@@ -30,7 +30,7 @@ env = make(
     batch_size=batch_size
 )
 
-# %% ### 1. Basic Demo
+#%% ### 1. Basic Demo
 
 # Set up random key
 key = jr.PRNGKey(key_idx)
@@ -38,28 +38,11 @@ key = jr.PRNGKey(key_idx)
 # Initialize agent's learning config
 learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
 
-# Initialise POMDP model from environment and learning config
-model, key = POMDPModel.from_env(
+# Create agent directly from environment with environment config C matrices
+agent, model, key = Agent.from_env(
     env=env,
-    learning=learning_config,
-    key=key,
-    T=10
-)
-
-# creating C tensors filled with zeros for [location], [reward], [cue] based on A shapes
-C = [jnp.zeros((batch_size, a.shape[1]), dtype=jnp.float32) for a in model.A] 
-# setting preferences for outcomes only
-C[1] = C[1].at[:,1].set(2.0)    # prefer reward
-C[1] = C[1].at[:,2].set(-3.0)   # avoid punishment
-
-# Initialize the agent based on model and other parameters
-agent = Agent.from_model(
-    model=model,
-    C=C,
-    policy_len=2,            # Plan two steps ahead
-    inference_algo="fpi",
-    apply_batch=False,
-    action_selection="stochastic"
+    learning_config=learning_config,
+    key=key
 )
 
 # Run simulation
