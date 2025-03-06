@@ -119,3 +119,44 @@ class POMDPEnv(Env):
             List of initial state distributions for each factor
         """
         raise NotImplementedError("Subclasses must implement generate_D")
+
+    def get_default_model_params(self):
+        """Get default model parameters for this environment.
+        
+        Returns
+        -------
+        dict
+            Dictionary of default model parameters
+        """
+        return {
+            "T": 10  # Default length of simulation
+        }
+        
+    def get_default_C(self):
+        """Get default preference matrices C for this environment.
+        
+        Returns
+        -------
+        list
+            List of C matrices for each observation modality
+        """
+        # Basic implementation - all observations equally preferred
+        # Each A matrix has shape (batch_size, n_observations, *state_dims)
+        # We want zeros of shape (batch_size, n_observations)
+        batch_size = self.params["A"][0].shape[0]
+        return [jnp.zeros((batch_size, a.shape[1]), dtype=jnp.float32) for a in self.params["A"]]
+        
+    def get_default_agent_params(self):
+        """Get default agent parameters for this environment.
+        
+        Returns
+        -------
+        dict
+            Dictionary of default agent parameters
+        """
+        return {
+            "policy_len": 1,
+            "inference_algo": "fpi",
+            "apply_batch": False,
+            "action_selection": "stochastic"
+        }

@@ -380,3 +380,45 @@ class TMaze(POMDPEnv):
             img = fig2img(fig)
             plt.close(fig) 
             return img
+
+    def get_default_model_params(self):
+        """Get default model parameters for TMaze environment.
+        
+        Returns
+        -------
+        dict
+            Dictionary of default model parameters
+        """
+        return super().get_default_model_params()
+        
+    def get_default_C(self):
+        """Get default preference matrices C for TMaze environment.
+        
+        Returns
+        -------
+        list
+            List of C matrices for each observation modality
+        """
+        # First get default C matrices from parent implementation (all zeros)
+        C = super().get_default_C()
+        
+        # Set preferences for reward/punishment in the reward modality (index 1)
+        C[1] = C[1].at[:,1].set(2.0)    # prefer reward
+        C[1] = C[1].at[:,2].set(-3.0)   # avoid punishment
+        return C
+        
+    def get_default_agent_params(self):
+        """Get default agent parameters for TMaze environment.
+        
+        Returns
+        -------
+        dict
+            Dictionary of default agent parameters
+        """
+        # Get default parameters from parent
+        params = super().get_default_agent_params()
+        
+        # Modify policy_len for TMaze (plan two steps ahead)
+        params["policy_len"] = 2
+        
+        return params

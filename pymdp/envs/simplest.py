@@ -178,6 +178,46 @@ class SimplestEnv(POMDPEnv):
             plt.close(fig)
             return img
 
+    def get_default_model_params(self):
+        """Get default model parameters for SimplestEnv environment.
+        
+        Returns
+        -------
+        dict
+            Dictionary of default model parameters
+        """
+        # Get default parameters from parent
+        params = super().get_default_model_params()
+        
+        # Override planning horizon for SimplestEnv
+        params["T"] = 100  # Longer horizon since it's a simple environment
+        
+        return params
+        
+    def get_default_C(self):
+        """Get default preference matrices C for SimplestEnv environment.
+        
+        Returns
+        -------
+        list
+            List of C matrices for each observation modality
+        """
+        # SimplestEnv only has one observation modality
+        # Use the parent implementation which already handles the batch size
+        return super().get_default_C()
+        
+    def get_default_agent_params(self):
+        """Get default agent parameters for SimplestEnv environment.
+        
+        Returns
+        -------
+        dict
+            Dictionary of default agent parameters
+        """
+        # Return default parameters from parent
+        return super().get_default_agent_params()
+
+
 def plot_beliefs(info, agent=None, show=True):
     """Plot the agent's initial beliefs, final beliefs, and (if agent provided) preferences.
      
