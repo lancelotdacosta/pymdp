@@ -171,7 +171,7 @@ def print_rollout(info, env, batch_idx=0):
     print(f"Number of timesteps: {num_timesteps-1}")  # -1 because includes initial observation
     print(f"Batch size: {observations[0].shape[1]}")
     print(f"Number of policies: {policies.shape[-1]}")
-    print(f"\nState factors: {state_factor_names}")
+    print(f"State factors: {state_factor_names}")
     print(f"Observation modalities: {observation_modality_names}")
     print(f"Control factors: {control_factor_names}")
     
@@ -211,11 +211,24 @@ def print_rollout(info, env, batch_idx=0):
     for t in range(1, num_timesteps):
         print(f"\n=== Timestep {t} ===")
         
-        # Print policy distribution
-        print("Policy selection:")
-        for p_idx, p_prob in enumerate(policies[t, batch_idx]):
-            prob_str = f"{float(p_prob):.3f}"
-            print(f"  Policy {p_idx:<15} : {prob_str:>8}")
+        # Print policy distribution in a concise format
+        # Get top 5 policies by probability
+        top_policies = sorted([(i, float(p)) for i, p in enumerate(policies[t, batch_idx])], 
+                           key=lambda x: x[1], reverse=True)[:5]
+        
+        # Filter to only include those with probability > 0.01 (1%)
+        top_policies = [(i, p) for i, p in top_policies if p > 0.01]
+        
+        # Calculate sum of remaining policies
+        remaining_sum = sum([float(p) for i, p in enumerate(policies[t, batch_idx]) 
+                          if i not in [idx for idx, _ in top_policies]])
+        
+        # Format policy strings
+        policy_strs = [f"P{idx}:{prob:.3f}" for idx, prob in top_policies]
+        if remaining_sum > 0.001:  # Only show 'Others' if there's a meaningful remainder
+            policy_strs.append(f"Others:{remaining_sum:.3f}")
+        
+        print(f"Policies: {', '.join(policy_strs)}")
  
         # Print actions for each control factor and their consequences
         for c in range(num_control_factors):
