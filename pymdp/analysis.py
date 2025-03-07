@@ -127,3 +127,116 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
 
     plt.tight_layout()
     #return fig
+
+def print_rollout(info, env, batch_idx=0):
+    """Print a human-readable version of the rollout using environment labels.
+    
+    Parameters
+    ----------
+    info : Dict
+        Dictionary containing rollout information with keys:
+        - 'observation': List of observation arrays from environment
+        - 'qs': List of belief arrays for each state factor
+        - 'qpi': Policy distributions
+        - 'action': Selected actions
+        - 'empirical_prior': Prior beliefs before observations
+    env : Env
+        Environment instance containing labels dictionary
+    batch_idx : int, optional
+        Batch index to print for, by default 0
+    """
+    # Get the environment labels
+    labels = env.get_labels()
+    
+    # Extract variables from info dictionary
+    observations = info["observation"] # List of modality arrays, shape: (T+1, batch_size, 1)
+    beliefs = info["qs"] # List of factor arrays, shape: (T+1, batch_size, 1, num_states[f])
+    policies = info["qpi"] # Shape: (T+1, batch_size, num_policies)
+    actions = info["action"] # Shape: (T+1, batch_size, control_factors)
+    empirical_priors = info["empirical_prior"] # List of prior belief arrays for each state factor
+    
+    # Get dimensions
+    num_timesteps = observations[0].shape[0] # Number of timesteps including initial (t=0)
+    num_state_factors = len(labels["state_factors"])
+    num_obs_modalities = len(labels["observation_modalities"])
+    num_control_factors = len(labels["control_factors"])
+    
+    # Get labels for each component
+    state_factor_names = list(labels["state_factors"].keys())
+    observation_modality_names = list(labels["observation_modalities"].keys())
+    control_factor_names = list(labels["control_factors"].keys())
+    
+    # Print experiment setup
+    print("\n=== Experiment Setup ===")
+    print(f"Number of timesteps: {num_timesteps-1}")  # -1 because includes initial observation
+    print(f"Batch size: {observations[0].shape[1]}")
+    print(f"Number of policies: {policies.shape[-1]}")
+    print(f"\nState factors: {state_factor_names}")
+    print(f"Observation modalities: {observation_modality_names}")
+    print(f"Control factors: {control_factor_names}")
+    
+    def format_state_dist(factor_idx, state_probs):
+        """Helper to format state distribution nicely using labels"""
+        factor_name = state_factor_names[factor_idx]
+        state_labels = labels["state_factors"][factor_name]
+        
+        # Create formatted string of probabilities with labels
+        probs_str = ", ".join([f"{state_labels[i]}: {float(prob):.3f}" 
+                             for i, prob in enumerate(state_probs)])
+        return f"[{probs_str}]"
+    
+    # Print initial timestep info
+    print("\n=== Initial Timestep (t=0) ===")
+    
+    # Print initial beliefs for each state factor
+    for f in range(num_state_factors):
+        print(f"Prior beliefs ({state_factor_names[f]}): ", 
+              format_state_dist(f, empirical_priors[f][0, batch_idx]))
+    
+    # Print initial observations for each modality
+    for m in range(num_obs_modalities):
+        modality_name = observation_modality_names[m]
+        obs_idx = int(observations[m][0, batch_idx, 0])
+        obs_label = labels["observation_modalities"][modality_name][obs_idx]
+        print(f"Observation ({modality_name}): [{obs_label}]")
+    
+    # Print posterior beliefs for each factor
+    for f in range(num_state_factors):
+        print(f"Posterior beliefs ({state_factor_names[f]}): ", 
+              format_state_dist(f, beliefs[f][0, batch_idx, 0]))
+    
+    print("-" * 50)
+
+    # Print trajectory
+    for t in range(1, num_timesteps):
+        print(f"\n=== Timestep {t} ===")
+        
+        # Print policy distribution
+        print("Policy selection:")
+        for p_idx, p_prob in enumerate(policies[t, batch_idx]):
+            prob_str = f"{float(p_prob):.3f}"
+            print(f"  Policy {p_idx:<15} : {prob_str:>8}")
+ 
+        # Print actions for each control factor and their consequences
+        for c in range(num_control_factors):
+            control_name = control_factor_names[c]
+            action_idx = int(actions[t, batch_idx, c].item())
+            action_label = labels["control_factors"][control_name][action_idx]
+            print(f"Action ({control_name}): [{action_label}]")
+        
+        # Print predicted next state (empirical prior) for each factor
+        for f in range(num_state_factors):
+            print(f"Predicted next state ({state_factor_names[f]}): ", 
+                  format_state_dist(f, empirical_priors[f][t, batch_idx]))
+        
+        # Print actual observations for each modality
+        for m in range(num_obs_modalities):
+            modality_name = observation_modality_names[m]
+            obs_idx = int(observations[m][t, batch_idx, 0].item())
+            obs_label = labels["observation_modalities"][modality_name][obs_idx]
+            print(f"Observation ({modality_name}): [{obs_label}]")
+        
+        # Print posterior beliefs for each factor
+        for f in range(num_state_factors):
+            print(f"Posterior beliefs ({state_factor_names[f]}): ", 
+                  format_state_dist(f, beliefs[f][t, batch_idx, 0]))
