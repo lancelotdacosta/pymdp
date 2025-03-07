@@ -88,7 +88,7 @@ class TMaze(POMDPEnv):
         return {
             "state_factors": {
                 "Location": ["Center", "Top Left", "Top Right", "Bottom", "Top"],
-                "Reward Condition": ["Reward Left", "Reward Right"]
+                "Reward Condition": ["Top Left", "Top Right"]
             },
             "observation_modalities": {
                 "Location": ["Center", "Top Left", "Top Right", "Bottom", "Top"],
