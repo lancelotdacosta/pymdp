@@ -49,8 +49,29 @@ class SimplestEnv(POMDPEnv):
             "B": B_dependencies,
         }
 
-        super().__init__(params, dependencies)
+        # Pass parameters to parent class without labels (will use our overridden _initialize_default_labels method)
+        super().__init__(params=params, dependencies=dependencies)
 
+    def _initialize_default_labels(self):
+        """Override the default labels method to provide specific labels for SimplestEnv.
+        
+        Returns
+        -------
+        Dict
+            Dictionary containing human-readable labels for this environment
+        """
+        return {
+            "state_factors": {
+                "Location": ["Left", "Right"]
+            },
+            "observation_modalities": {
+                "Location": ["Left", "Right"]
+            },
+            "control_factors": {
+                "Go": ["Left", "Right"]
+            }
+        }
+        
     def generate_A(self):
         """
         Generate observation likelihood tensor.

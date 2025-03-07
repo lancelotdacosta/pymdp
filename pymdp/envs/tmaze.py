@@ -73,8 +73,32 @@ class TMaze(POMDPEnv):
             "A": A_dependencies, 
             "B": B_dependencies,
         }
+        
+        # Pass parameters to parent class without labels (will use our overridden _initialize_default_labels method)
+        super().__init__(params=params, dependencies=dependencies)
 
-        super().__init__(params, dependencies)
+    def _initialize_default_labels(self):
+        """Override the default labels method to provide specific labels for TMaze.
+        
+        Returns
+        -------
+        Dict
+            Dictionary containing human-readable labels for this environment
+        """
+        return {
+            "state_factors": {
+                "Location": ["Center", "Top Left", "Top Right", "Bottom", "Top"],
+                "Reward Condition": ["Reward Left", "Reward Right"]
+            },
+            "observation_modalities": {
+                "Location": ["Center", "Top Left", "Top Right", "Bottom", "Top"],
+                "Reward": ["Neutral", "Reward", "Punishment"],
+                "Cue": ["None", "Left", "Right"]
+            },
+            "control_factors": {
+                "Go": ["Up", "Left", "Right", "Down", "Stay"]
+            }
+        }
 
     def generate_A(self) -> Tuple[List[jnp.ndarray], List[List[int]]]:
         """
