@@ -204,8 +204,6 @@ def print_rollout(info, env, batch_idx=0):
     for f in range(num_state_factors):
         print(f"Posterior beliefs ({state_factor_names[f]}): ", 
               format_state_dist(f, beliefs[f][0, batch_idx, 0]))
-    
-    print("-" * 50)
 
     # Print trajectory
     for t in range(1, num_timesteps):
