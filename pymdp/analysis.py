@@ -11,6 +11,8 @@ from typing import Dict, Optional, Tuple, List, Union
 import mediapy
 from PIL import Image
 import os
+import numpy as np
+import io
 
 def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5)) -> plt.Figure:
     """
@@ -318,8 +320,109 @@ def render_rollout(env, info, save_gif=False, filename=None, fps=1):
             loop=0
         )
 
-def plot_preferences(agent, env=None, figsize=None, show=True):
-    """Plot the agent's preferences for each modality.
+def plot_beliefs(info, env=None, save_gif=False, filename=None, figsize=None, fps=1, batch_idx=0):
+    """Create a GIF animation showing the evolution of beliefs for each state factor over time.
+    
+    Parameters
+    ----------
+    info : dict
+        Rollout info dictionary with 'qs' for belief history
+    env : Env, optional
+        Environment instance, used to get labels for state factors
+    save_gif : bool, optional
+        Whether to save the animation as a gif, by default False
+    filename : str, optional
+        Path to save the gif if save_gif is True, by default None
+    figsize : tuple, optional
+        Figure size as (width, height), by default None (auto-calculated)
+    fps : int, optional
+        Frames per second for the rendered video, by default 1
+    batch_idx : int, optional
+        Batch index to plot, by default 0
+        
+    Returns
+    -------
+    None
+        Displays the animation in the notebook or saves it as a gif
+    """
+    # Extract beliefs and num_state_factors
+    beliefs = info['qs']
+    num_state_factors = len(beliefs)
+    num_timesteps = beliefs[0].shape[0]
+    
+    # Get labels from environment if available
+    if env is not None:
+        state_factor_names = list(env.labels['state_factors'].keys())
+        state_labels = [env.labels['state_factors'][factor] for factor in state_factor_names]
+    else:
+        # No environment provided
+        state_factor_names = [f"Factor {i}" for i in range(num_state_factors)]
+        state_labels = [[f"State {i}" for i in range(beliefs[f].shape[-1])] for f in range(num_state_factors)]
+    # Calculate figure size if not provided
+    if figsize is None:
+        figsize = (4 * num_state_factors, 4)
+    
+    # Create frames for each timestep
+    frames = []
+    
+    for t in range(num_timesteps):
+        # Create a new figure for this timestep
+        fig, axes = plt.subplots(1, num_state_factors, figsize=figsize)
+        if num_state_factors == 1:
+            axes = [axes]  # Handle case of single state factor
+        
+        # Set a title for the figure showing the timestep
+        fig.suptitle(f'Beliefs at timestep {t}', fontsize=16)
+        
+        # Plot beliefs for each state factor
+        for f in range(num_state_factors):
+            # Get number of states for this factor
+            num_states = beliefs[f].shape[-1]
+            
+            # Plot beliefs for this factor at this timestep
+            axes[f].bar(range(num_states), beliefs[f][t, batch_idx, 0])
+            axes[f].set_title(f'{state_factor_names[f]}')
+            axes[f].set_xticks(range(num_states))
+            axes[f].set_xticklabels(state_labels[f], rotation=45, ha='right')
+            axes[f].set_ylim(0, 1)
+        
+        plt.tight_layout()
+        
+        # Convert the figure to an image and add to frames
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=100)
+        buf.seek(0)
+        img = Image.open(buf).convert('RGB')  # Convert to RGB format directly
+        frame = np.array(img)
+        frames.append(frame)
+        
+        plt.close(fig)  # Close the figure to free memory
+    
+    # Convert frames to array for mediapy
+    frames = np.array(frames)
+    
+    # Display animation with mediapy
+    if not save_gif:
+        mediapy.show_video(frames, fps=fps)
+    
+    # Save as gif if requested
+    if save_gif:
+        if filename is None:
+            raise ValueError("If save_gif is True, a filename must be provided")
+        
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        pil_frames = [Image.fromarray(frame) for frame in frames]
+        pil_frames[0].save(
+            filename,
+            save_all=True,
+            append_images=pil_frames[1:],
+            duration=int(1000/fps),  # milliseconds per frame
+            loop=0
+        )
+        print(f"GIF saved to {filename}")
+
+def plot_preferences(agent, env=None, figsize=None, show=True, batch_idx=0):
+    """Plot the agent's preferences for each modality (Note: does not currently support time-dependent preferences)
     
     Parameters
     ----------
@@ -370,9 +473,9 @@ def plot_preferences(agent, env=None, figsize=None, show=True):
             # C is just a vector for this modality
             preferences = nn.softmax(C_m)
         else:
-            # C might be a matrix (e.g., time-dependent preferences)
-            # Take the first timestep for simplicity
-            preferences = nn.softmax(C_m[0])
+            # C might be a matrix (e.g., batches)
+            # TODO: note there might be an indexing clash here if preferences are time-dependent. Do not currently support this
+            preferences = nn.softmax(C_m[batch_idx])
         
         # Get x-tick labels for this modality
         if modality_labels[m] is not None:

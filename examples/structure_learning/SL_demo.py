@@ -7,8 +7,9 @@ import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
 from pymdp.envs.env_factory import make, EnvType
-from pymdp.envs.simplest import SimplestEnv, plot_beliefs, plot_A_learning, print_parameter_learning
+from pymdp.envs.simplest import SimplestEnv, plot_A_learning, print_parameter_learning
 from pymdp.envs.simplest import print_rollout as legacy_print_rollout
+from pymdp.envs.simplest import plot_beliefs as legacy_plot_beliefs
 from pymdp.analysis import print_rollout, render_rollout, plot_beliefs, plot_preferences
 from pymdp.envs.rollout import rollout, counterfactual_rollout
 from pymdp.agent import Agent
@@ -54,12 +55,10 @@ final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_
 
 #%%
 # Print rollout and visualize results
-render_rollout(env, info, fps=1)
+render_rollout(env, info)
 print_rollout(info, env)
 plot_preferences(agent, env)
-
-# Plot the agent's beliefs using our generic plot_beliefs function
-# plot_beliefs(info, env, agent, show=True)
+plot_beliefs(info,env)
 # legacy_plot_beliefs(info, agent, show=True)
 
 
