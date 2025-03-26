@@ -7,7 +7,7 @@ import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
 from pymdp.envs.env_factory import make, EnvType
-from pymdp.envs.simplest import SimplestEnv, plot_beliefs, plot_A_learning, render_rollout, print_parameter_learning
+from pymdp.envs.simplest import SimplestEnv, plot_beliefs, plot_A_learning, print_parameter_learning
 from pymdp.envs.simplest import print_rollout as legacy_print_rollout
 from pymdp.analysis import print_rollout, render_rollout
 from pymdp.envs import TMaze

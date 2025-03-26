@@ -417,3 +417,41 @@ def print_rollout(info, batch_idx=0):
         print("-" * 50)
     
     print("\n=== End of Experiment ===")
+
+def render_rollout(env, info, save_gif=False, filename=None):
+    """Render a video of the agent's trajectory through the environment.
+    
+    Args:
+        env: SimplestEnv instance
+        info: Dict containing rollout info
+        save_gif: Whether to save the animation as a gif
+        filename: Path to save the gif (if save_gif is True)
+    """
+    import mediapy
+    from PIL import Image
+    import os
+    import jax.numpy as jnp
+    
+    frames = []
+    for t in range(info["observation"][0].shape[0]):  # iterate over timesteps
+        # get observations for this timestep
+        observations_t = [info["observation"][0][t, :, :]]  # Only one observation modality (location)
+
+        frame = env.render(mode="rgb_array", observations=observations_t)
+        frame = jnp.asarray(frame, dtype=jnp.uint8)
+        plt.close()  # close the figure to prevent memory leak
+        frames.append(frame)
+
+    frames = jnp.array(frames, dtype=jnp.uint8)
+    mediapy.show_video(frames, fps=1)
+
+    if save_gif:
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        pil_frames = [Image.fromarray(frame) for frame in frames]
+        pil_frames[0].save(
+            filename,
+            save_all=True,
+            append_images=pil_frames[1:],
+            duration=1000,  # 1000ms per frame
+            loop=0
+        )
