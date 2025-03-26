@@ -362,6 +362,7 @@ def print_parameter_learning(info: Dict[str, Any], learning_config: LearningConf
         #     print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
 
 
+#legacy function. environment agnostic version is in analysis.py
 def print_rollout(info, batch_idx=0):
     """Print a human-readable version of the rollout."""
     # Extract variables from info dictionary
