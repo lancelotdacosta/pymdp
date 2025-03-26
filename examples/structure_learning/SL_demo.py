@@ -7,7 +7,9 @@ import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
 from pymdp.envs.env_factory import make, EnvType
-from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, render_rollout, print_parameter_learning
+from pymdp.envs.simplest import SimplestEnv, plot_beliefs, plot_A_learning, render_rollout, print_parameter_learning
+from pymdp.envs.simplest import print_rollout as legacy_print_rollout
+from pymdp.analysis import print_rollout, render_rollout
 from pymdp.envs import TMaze
 from pymdp.envs.rollout import rollout, counterfactual_rollout
 from pymdp.agent import Agent
@@ -42,7 +44,9 @@ learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
 agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
-    key=key
+    key=key,
+    model_params={"T": 10},
+    agent_params={"action_selection": "stochastic"}
 )
 
 # Run simulation
@@ -51,6 +55,7 @@ final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_
 
 #%%
 # Print rollout and visualize results
-plot_beliefs(info, agent)
-render_rollout(env, info)  # Optionally: render_rollout(env, info, save_gif=True, filename="figures/simplest.gif")
-print_rollout(info)
+render_rollout(env, info, fps=1)
+print_rollout(info, env)
+
+#%%

@@ -7,6 +7,9 @@ __author__: Lancelot Da Costa
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from typing import Dict, Optional, Tuple, List, Union
+import mediapy
+from PIL import Image
+import os
 
 def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5)) -> plt.Figure:
     """
@@ -251,3 +254,65 @@ def print_rollout(info, env, batch_idx=0):
         for f in range(num_state_factors):
             print(f"Posterior beliefs ({state_factor_names[f]}): ", 
                   format_state_dist(f, beliefs[f][t, batch_idx, 0]))
+
+def render_rollout(env, info, save_gif=False, filename=None, fps=1):
+    """Render a video of the agent's trajectory through any environment that implements a render method.
+    
+    This function iterates through the rollout information and renders each timestep using the 
+    environment's built-in render method. It works with any environment that implements the
+    standard render(mode="rgb_array", observations=observations_t) interface.
+    
+    Parameters
+    ----------
+    env : Env
+        Environment instance (TMaze, SimplestEnv, etc.)
+    info : dict
+        Dictionary containing rollout information, as returned by the rollout function
+    save_gif : bool, optional
+        Whether to save the animation as a gif, by default False
+    filename : str, optional
+        Path to save the gif if save_gif is True, by default None
+    fps : int, optional
+        Frames per second for the rendered video, by default 1
+        
+    Returns
+    -------
+    None
+        Displays the animation in the notebook or saves it as a gif
+    """
+    
+    # Get the number of timesteps in the rollout
+    num_timesteps = info["observation"][0].shape[0]
+    
+    # Get the number of observation modalities
+    num_modalities = len(info["observation"])
+    
+    frames = []
+    for t in range(num_timesteps):  # iterate over timesteps
+        # Prepare observations for current timestep
+        observations_t = [info["observation"][mod_idx][t] for mod_idx in range(num_modalities)]
+        
+        # Call the environment's render method
+        frame = env.render(mode="rgb_array", observations=observations_t)
+        frame = jnp.asarray(frame, dtype=jnp.uint8)
+        plt.close()  # close the figure to prevent memory leak
+        frames.append(frame)
+    
+    # Convert frames to array and display video
+    frames = jnp.array(frames, dtype=jnp.uint8)
+    mediapy.show_video(frames, fps=fps)
+    
+    # Save as gif if requested
+    if save_gif:
+        if filename is None:
+            raise ValueError("If save_gif is True, a filename must be provided")
+        
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        pil_frames = [Image.fromarray(frame) for frame in frames]
+        pil_frames[0].save(
+            filename,
+            save_all=True,
+            append_images=pil_frames[1:],
+            duration=int(1000/fps),  # milliseconds per frame
+            loop=0
+        )
