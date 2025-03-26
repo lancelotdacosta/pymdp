@@ -361,6 +361,7 @@ def print_parameter_learning(info: Dict[str, Any], learning_config: LearningConf
         # for t in range(T+1):
         #     print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
 
+
 def print_rollout(info, batch_idx=0):
     """Print a human-readable version of the rollout."""
     # Extract variables from info dictionary
