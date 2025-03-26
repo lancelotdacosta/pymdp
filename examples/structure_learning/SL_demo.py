@@ -9,8 +9,7 @@ from pymdp.learning import LearningConfig
 from pymdp.envs.env_factory import make, EnvType
 from pymdp.envs.simplest import SimplestEnv, plot_beliefs, plot_A_learning, print_parameter_learning
 from pymdp.envs.simplest import print_rollout as legacy_print_rollout
-from pymdp.analysis import print_rollout, render_rollout
-from pymdp.envs import TMaze
+from pymdp.analysis import print_rollout, render_rollout, plot_beliefs, plot_preferences
 from pymdp.envs.rollout import rollout, counterfactual_rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
@@ -57,5 +56,11 @@ final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_
 # Print rollout and visualize results
 render_rollout(env, info, fps=1)
 print_rollout(info, env)
+plot_preferences(agent, env)
+
+# Plot the agent's beliefs using our generic plot_beliefs function
+# plot_beliefs(info, env, agent, show=True)
+# legacy_plot_beliefs(info, agent, show=True)
+
 
 #%%

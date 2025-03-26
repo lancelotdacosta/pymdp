@@ -5,6 +5,7 @@ __author__: Lancelot Da Costa
 """
 
 import jax.numpy as jnp
+import jax.nn as nn
 import matplotlib.pyplot as plt
 from typing import Dict, Optional, Tuple, List, Union
 import mediapy
@@ -316,3 +317,78 @@ def render_rollout(env, info, save_gif=False, filename=None, fps=1):
             duration=int(1000/fps),  # milliseconds per frame
             loop=0
         )
+
+def plot_preferences(agent, env=None, figsize=None, show=True):
+    """Plot the agent's preferences for each modality.
+    
+    Parameters
+    ----------
+    agent : Agent
+        Agent instance with preferences (C array)
+    env : Env, optional
+        Environment instance, used to get labels for observation modalities
+    figsize : tuple, optional
+        Figure size as (width, height), by default None (auto-calculated)
+    show : bool, optional
+        Whether to call plt.show(), by default True
+        
+    Returns
+    -------
+    plt.Figure
+        Matplotlib figure containing the preference plots
+    """
+    if not hasattr(agent, 'C') or agent.C is None:
+        raise ValueError("Agent does not have preferences (C array)")
+    
+    num_modalities = len(agent.C)
+    
+    # Get observation modality labels from environment if available
+    if env is not None:
+        env_labels = env.labels
+        if env_labels is not None and 'observation_modalities' in env_labels:
+            modality_names = list(env_labels['observation_modalities'].keys())
+            modality_labels = [env_labels['observation_modalities'][modality] for modality in modality_names]
+    else:
+        # No environment provided
+        modality_names = [f"Modality {i}" for i in range(num_modalities)]
+        modality_labels = [None] * num_modalities
+    
+    # Calculate figure size if not provided
+    if figsize is None:
+        figsize = (4 * num_modalities, 4)
+    
+    # Create figure
+    fig, axes = plt.subplots(1, num_modalities, figsize=figsize)
+    if num_modalities == 1:
+        axes = [axes]  # Handle case of single modality
+    
+    # Plot preferences for each modality
+    for m in range(num_modalities):
+        # Get preferences for this modality
+        C_m = agent.C[m]
+        if C_m.ndim == 1:
+            # C is just a vector for this modality
+            preferences = nn.softmax(C_m)
+        else:
+            # C might be a matrix (e.g., time-dependent preferences)
+            # Take the first timestep for simplicity
+            preferences = nn.softmax(C_m[0])
+        
+        # Get x-tick labels for this modality
+        if modality_labels[m] is not None:
+            x_labels = modality_labels[m]
+        else:
+            x_labels = [f"Obs {i}" for i in range(len(preferences))]
+        
+        # Plot preferences for this modality
+        axes[m].bar(range(len(preferences)), preferences)
+        axes[m].set_title(f'Preferences: {modality_names[m]}')
+        axes[m].set_xticks(range(len(preferences)))
+        axes[m].set_xticklabels(x_labels, rotation=45, ha='right')
+        axes[m].set_ylim(0, 1)
+    
+    plt.tight_layout()
+    if show:
+        plt.show()
+    
+    return plt
