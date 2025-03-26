@@ -21,12 +21,12 @@
 import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
-from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, render_rollout, print_parameter_learning
+from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, print_parameter_learning
 from pymdp.envs.rollout import rollout, counterfactual_rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
-from pymdp.analysis import plot_prediction_errors, plot_model_comparison
+from pymdp.analysis import render_rollout, plot_prediction_errors, plot_model_comparison
 import matplotlib.pyplot as plt
 
 # if __name__ == "__main__":
