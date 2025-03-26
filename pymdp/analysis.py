@@ -14,6 +14,12 @@ import os
 import numpy as np
 import io
 
+def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
+    if plot: plot_preferences(agent, env)
+    if render: render_rollout(env, info)
+    if plot: plot_beliefs(info, env)
+    if print: print_rollout(info, env)
+
 def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5)) -> plt.Figure:
     """
     Plot prediction error metrics from the output of compute_prediction_errors.

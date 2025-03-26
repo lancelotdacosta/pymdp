@@ -10,11 +10,11 @@ from pymdp.envs.env_factory import make, EnvType
 from pymdp.envs.simplest import SimplestEnv, plot_A_learning, print_parameter_learning
 from pymdp.envs.simplest import print_rollout as legacy_print_rollout
 from pymdp.envs.simplest import plot_beliefs as legacy_plot_beliefs
-from pymdp.analysis import print_rollout, render_rollout, plot_beliefs, plot_preferences
 from pymdp.envs.rollout import rollout, counterfactual_rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
+from pymdp.analysis import print_rollout, render_rollout, plot_beliefs, plot_preferences, analyze_rollout
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison
 import matplotlib.pyplot as plt
 
@@ -53,13 +53,7 @@ agent, model, key = Agent.from_env(
 key, rollout_key = jr.split(key)
 final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-#%%
 # Print rollout and visualize results
-render_rollout(env, info)
-print_rollout(info, env)
-plot_preferences(agent, env)
-plot_beliefs(info,env)
-# legacy_plot_beliefs(info, agent, show=True)
-
+analyze_rollout(info, agent, env, render=True, plot=True, print=True)
 
 #%%
