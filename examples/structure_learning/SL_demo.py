@@ -53,7 +53,7 @@ agent, model, key = Agent.from_env(
 key, rollout_key = jr.split(key)
 final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-# Print rollout and visualize results
+# Analyze rollout: print and visualize results
 analyze_rollout(info, agent, env, render=True, plot=True, print=True)
 
 #%%
