@@ -27,7 +27,6 @@ from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
 from pymdp.analysis import render_rollout, plot_prediction_errors, plot_model_comparison
-import matplotlib.pyplot as plt
 
 # if __name__ == "__main__":
 key_idx = 0 # Initialize master random key index at the start
