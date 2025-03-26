@@ -237,7 +237,7 @@ def print_rollout(info, env, batch_idx=0):
         
         # Print predicted next state (empirical prior) for each factor
         for f in range(num_state_factors):
-            print(f"Predicted next state ({state_factor_names[f]}): ", 
+            print(f"Predicted state ({state_factor_names[f]}): ", 
                   format_state_dist(f, empirical_priors[f][t, batch_idx]))
         
         # Print actual observations for each modality
