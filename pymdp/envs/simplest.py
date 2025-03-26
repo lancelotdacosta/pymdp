@@ -418,6 +418,7 @@ def print_rollout(info, batch_idx=0):
     
     print("\n=== End of Experiment ===")
 
+# This is a legacy function redundant with homologue in analysis.py, kept here only for backward compatibility in simplest_demo
 def render_rollout(env, info, save_gif=False, filename=None):
     """Render a video of the agent's trajectory through the environment.
     
