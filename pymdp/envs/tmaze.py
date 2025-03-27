@@ -58,7 +58,7 @@ class TMaze(POMDPEnv):
         # Generate and broadcast observation likelihood(A), transition (B), and initial state (D) tensors to the batch size
         A, A_dependencies = self.generate_A()
         A = [jnp.broadcast_to(a, (batch_size,) + a.shape) for a in A]
-        B, B_dependencies = self.generate_B()
+        B, B_dependencies, B_action_dependencies = self.generate_B()
         B = [jnp.broadcast_to(b, (batch_size,) + b.shape) for b in B]
         D = self.generate_D()
         D = [jnp.broadcast_to(d, (batch_size,) + d.shape) for d in D]
@@ -72,6 +72,7 @@ class TMaze(POMDPEnv):
         dependencies = { # specifying which matrix is dependent on which state factors allows you to not have to specify all combinations of state factors in the matrix
             "A": A_dependencies, 
             "B": B_dependencies,
+            "B_action": B_action_dependencies,
         }
         
         # Pass parameters to parent class without labels (will use our overridden _initialize_default_labels method)
@@ -96,7 +97,8 @@ class TMaze(POMDPEnv):
                 "Cue": ["None", "Left", "Right"]
             },
             "control_factors": {
-                "Go": ["Up", "Left", "Right", "Down", "Stay"]
+                "Go": ["Up", "Left", "Right", "Down", "Stay"],
+                "Dummy": ["Dummy"]
             }
         }
 
@@ -207,9 +209,16 @@ class TMaze(POMDPEnv):
         B_reward = jnp.eye(2).reshape(2, 2, 1)
         B.append(B_reward)
 
+        # B_dependencies: specifying which state factors each transition matrix depends on
         B_dependencies = [[0], [1]]
+        
+        # B_action_dependencies: specifying which control factors affect each state factor
+        # - State factor 0 (Location) is affected by control factor 0 ("Go")
+        # - State factor 1 (Reward Condition) is affected by control factor 1 ("Dummy")
+        B_action_dependencies = [[0], [1]]
+        #TODO: we could get rid of dummy control factor: replace B_action_dependencies = [[0], []], B_reward = jnp.eye(2).reshape(2, 2) and remove dummy control labels
 
-        return B, B_dependencies
+        return B, B_dependencies, B_action_dependencies
 
     def generate_D(self):
         """
