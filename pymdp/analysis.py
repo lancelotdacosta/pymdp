@@ -501,3 +501,77 @@ def plot_preferences(agent, env=None, figsize=None, show=True, batch_idx=0):
         plt.show()
     
     return plt
+
+def print_parameter_learning(info, agent, learning_config, env, verbose=False, batch_idx=0):
+    """Print and analyze parameter learning results in an environment-agnostic way.
+    
+    Parameters
+    ----------
+    info : Dict
+        Dictionary containing agent learning information with keys like 'agent'
+    learning_config : object
+        Configuration specifying which parameters are being learned.
+        Should have boolean attributes: learn_A, learn_B, learn_D
+    env : Env
+        Environment instance, used to get labels for actions and states
+    verbose : bool, optional
+        Whether to print learned parameters at each timestep, by default False
+    batch_idx : int, optional
+        Batch index to analyze, by default 0
+    """
+    # Get number of timesteps
+    num_timesteps = info["agent"].A[0].shape[0]
+    
+    # Extract labels from environment
+    modality_names = list(env.labels['observation_modalities'].keys())
+    factor_names = list(env.labels['state_factors'].keys())
+    control_factor_names = list(env.labels['control_factors'].keys())
+    
+    # Print A parameter learning if applicable
+    if learning_config.learn_A:
+        print('\n==== Parameter A learning ====')
+        for m, modality in enumerate(modality_names):
+            print(f"\nModality: {modality}")
+            print(f"Initial A matrix:\n{agent.A[m][0, batch_idx]}")
+            print(f"Final A matrix:\n{agent.A[m][-1, batch_idx]}")
+            
+            if verbose:
+                print(f"\nLearning progression for A matrix (Modality {modality}):")
+                for t in range(num_timesteps):
+                    print(f"t={t}:\n{agent.A[m][t, batch_idx]}")
+    
+    # Print B parameter learning if applicable
+    if learning_config.learn_B:
+        print('\n==== Parameter B learning ====')
+        
+        # Get B_action_dependencies - which control factors affect each state factor
+        B_action_dependencies = agent.B_action_dependencies
+        
+        for f, factor in enumerate(factor_names):y
+            print(f"\nState Factor: {factor}")
+            
+            # Get number of actions for this control factor
+            num_actions = info["agent"].B[f][0, batch_idx].shape[-1]
+            
+            for a in range(num_actions):
+                action_name = action_labels[f][a]
+                print(f"Initial B matrix under action {action_name}:\n{info['agent'].B[f][0, batch_idx, ..., a]}")
+                print(f"Final B matrix under action {action_name}:\n{info['agent'].B[f][-1, batch_idx, ..., a]}")
+                
+                if verbose:
+                    print(f"\nLearning progression for B matrix (Factor {factor}, Action {action_name}):")
+                    for t in range(num_timesteps):
+                        print(f"t={t}:\n{info['agent'].B[f][t, batch_idx, ..., a]}")
+    
+    # Print D parameter learning if applicable
+    if learning_config.learn_D:
+        print('\n==== Parameter D learning ====')
+        for f, factor in enumerate(factor_names):
+            print(f"\nState Factor: {factor}")
+            print(f"Initial D matrix:\n{info['agent'].D[f][0, batch_idx]}")
+            print(f"Final D matrix:\n{info['agent'].D[f][-1, batch_idx]}")
+            
+            if verbose and info["agent"].pD:
+                print(f"\nLearning progression for D matrix (Factor {factor}):")
+                for t in range(num_timesteps):
+                    print(f"t={t}, qD: {info['agent'].pD[f][t, batch_idx]}, D: {info['agent'].D[f][t, batch_idx]}")
