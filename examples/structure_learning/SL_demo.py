@@ -20,7 +20,7 @@ from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_p
 import matplotlib.pyplot as plt
 
 # if __name__ == "__main__":
-key_idx = 2 # Initialize master random key index at the start
+key_idx = 1 # Initialize master random key index at the start
 
 #%% Initialise environment
 
