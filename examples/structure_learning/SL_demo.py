@@ -20,7 +20,7 @@ from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_p
 import matplotlib.pyplot as plt
 
 # if __name__ == "__main__":
-key_idx = 1 # Initialize master random key index at the start
+key_idx = 2 # Initialize master random key index at the start
 
 #%% Initialise environment
 
@@ -29,7 +29,7 @@ batch_size = 1
 
 # Initialize environment
 env = make(
-    EnvType.SIMPLEST, 
+    EnvType.T_MAZE, 
     batch_size=batch_size
 )
 
@@ -61,18 +61,75 @@ env = make(
 #
 # Here we demonstrate how the agent can learn the observation (A) and transition (B) tensors through experience.
 
+# # Set up random key
+# key = jr.PRNGKey(key_idx)
+
+# # Enable A, B parameter learning
+# learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
+
+# # Create agent directly from environment with environment config C matrices
+# agent, model, key = Agent.from_env(
+#     env=env,
+#     learning_config=learning_config,
+#     key=key,
+#     model_params={"T": 100},
+#     agent_params={"action_selection": "stochastic"}
+# )
+
+# # Run simulation and collect results
+# key, rollout_key = jr.split(key)
+# _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+
+# # Analyze and visualize results
+# analyze_rollout(info, agent, env, render=True, plot=True, print=True)
+# print_parameter_learning(info, agent, learning_config, env, verbose=False)
+# #agent seems to be learning B matrix right under top left reward but not under top right reward. Need to investigate this
+# plot_parameter_learning(info, learning_config, env)
+
+#%% ### 3. Initial State Distribution (D) Learning Demo
+# #
+# # Enable D learning only
+
+# # Set up random key
+# key = jr.PRNGKey(key_idx)
+
+# # Enable D learning only
+# learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=True)
+
+# # Create agent directly from environment with environment config C matrices
+# agent, model, key = Agent.from_env(
+#     env=env,
+#     learning_config=learning_config,
+#     key=key,
+#     model_params={"T": 100},
+#     agent_params={"action_selection": "stochastic"}
+# )
+
+# # Run simulation and collect results
+# key, rollout_key = jr.split(key)
+# _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+
+# # Analyze and visualize results
+# analyze_rollout(info, agent, env, render=True, plot=True, print=True)
+# print_parameter_learning(info, agent, learning_config, env, verbose=False)
+# plot_parameter_learning(info, learning_config, env)
+
+#%% ### 4. Joint A, B, D Parameter Learning Demo
+#
+# Finally, we demonstrate learning of all parameters (A, B, D) simultaneously.
+
 # Set up random key
 key = jr.PRNGKey(key_idx)
 
-# Enable A, B parameter learning
-learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
+# Enable all parameter learning
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
 # Create agent directly from environment with environment config C matrices
 agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 10000},
+    model_params={"T": 100},
     agent_params={"action_selection": "stochastic"}
 )
 
@@ -81,13 +138,12 @@ key, rollout_key = jr.split(key)
 _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
 # Analyze and visualize results
-# analyze_rollout(info, agent, env, render=True, plot=True, print=True)
-
-print("\nRollout with A, B learning:")
+analyze_rollout(info, agent, env, render=True, plot=True, print=True)
 print_parameter_learning(info, agent, learning_config, env, verbose=False)
-#agent seems to be learning B matrix right under top left reward but not under top right reward. Need to investigate this
-# if learning_config.learn_A:
-#     plot_A_learning(agent, info, env)
 plot_parameter_learning(info, learning_config, env)
 
-#%% 
+#%%
+# Analyze and visualize results
+pe_analysis = compute_prediction_errors(info)
+plot_prediction_errors(pe_analysis)
+# %%
