@@ -509,6 +509,8 @@ def print_parameter_learning(info, agent, learning_config, env, verbose=False, b
     ----------
     info : Dict
         Dictionary containing agent learning information with keys like 'agent'
+    agent : Agent
+        Agent instance with learned parameters
     learning_config : object
         Configuration specifying which parameters are being learned.
         Should have boolean attributes: learn_A, learn_B, learn_D
@@ -532,13 +534,13 @@ def print_parameter_learning(info, agent, learning_config, env, verbose=False, b
         print('\n==== Parameter A learning ====')
         for m, modality in enumerate(modality_names):
             print(f"\nModality: {modality}")
-            print(f"Initial A matrix:\n{agent.A[m][0, batch_idx]}")
-            print(f"Final A matrix:\n{agent.A[m][-1, batch_idx]}")
+            print(f"Initial A matrix:\n{info["agent"].A[m][0, batch_idx]}")
+            print(f"Final A matrix:\n{info["agent"].A[m][-1, batch_idx]}")
             
             if verbose:
                 print(f"\nLearning progression for A matrix (Modality {modality}):")
                 for t in range(num_timesteps):
-                    print(f"t={t}:\n{agent.A[m][t, batch_idx]}")
+                    print(f"t={t}:\n{info["agent"].A[m][t, batch_idx]}")
     
     # Print B parameter learning if applicable
     if learning_config.learn_B:
@@ -547,31 +549,112 @@ def print_parameter_learning(info, agent, learning_config, env, verbose=False, b
         # Get B_action_dependencies - which control factors affect each state factor
         B_action_dependencies = agent.B_action_dependencies
         
-        for f, factor in enumerate(factor_names):y
+        for f, factor in enumerate(factor_names):
             print(f"\nState Factor: {factor}")
             
-            # Get number of actions for this control factor
-            num_actions = info["agent"].B[f][0, batch_idx].shape[-1]
+            # Get number of actions for this state factor
+            num_actions = agent.B[f][0, batch_idx].shape[-1]
             
+            # Get control factors that affect this state factor
+            control_indices = B_action_dependencies[f]
+            control_names = []
+            
+            # Get control factor names and their action labels
+            control_factor_actions = []
+            for idx in control_indices:
+                if idx < len(control_factor_names):
+                    control_name = control_factor_names[idx]
+                    control_names.append(control_name)
+                    control_factor_actions.append((control_name, env.labels['control_factors'][control_name]))
+            
+            if control_names:
+                print(f"Control factors affecting this state factor: {', '.join(control_names)}")
+            
+            # For each action in the B tensor
             for a in range(num_actions):
-                action_name = action_labels[f][a]
-                print(f"Initial B matrix under action {action_name}:\n{info['agent'].B[f][0, batch_idx, ..., a]}")
-                print(f"Final B matrix under action {action_name}:\n{info['agent'].B[f][-1, batch_idx, ..., a]}")
+                # Case 1: Single control factor affecting this state factor
+                if len(control_factor_actions) == 1:
+                    control_name, actions = control_factor_actions[0]
+                    action_name = f"Action {a}"
+                    if a < len(actions):
+                        action_name = actions[a]
+                    
+                    print(f"Initial B matrix under action {action_name}:\n{info["agent"].B[f][0, batch_idx, ..., a]}")
+                    print(f"Final B matrix under action {action_name}:\n{info["agent"].B[f][-1, batch_idx, ..., a]}")
+                
+                # Case 2: Multiple control factors affecting this state factor
+                elif len(control_factor_actions) > 1:
+                    # Need to unflatten the action index to combinations of actions from multiple control factors
+                    # For example, if we have control factors with 3 and 2 actions respectively,
+                    # then flat_action_idx 5 = control_action_idx (1, 1) as 3*1 + 2 = 5
+                    
+                    # Get the number of actions for each control factor
+                    num_actions_per_factor = [len(actions) for _, actions in control_factor_actions]
+                    
+                    # Convert flat action index to a tuple of action indices
+                    action_indices = []
+                    remaining_idx = a
+                    
+                    # Example: If num_actions_per_factor = [3, 2, 4] and a = 15:
+                    # First iteration: 15 // 8 = 1, 15 % 8 = 7 (factor with 3 actions)
+                    # Second iteration: 7 // 4 = 1, 7 % 4 = 3 (factor with 2 actions)
+                    # Third iteration: 3 // 1 = 3, 3 % 1 = 0 (factor with 4 actions)
+                    # Result: action_indices = [1, 1, 3]
+                    
+                    # Calculate the product of action counts for each control factor
+                    action_products = []
+                    for i in range(len(num_actions_per_factor) - 1, -1, -1):
+                        product = 1
+                        for j in range(i + 1, len(num_actions_per_factor)):
+                            product *= num_actions_per_factor[j]
+                        action_products.insert(0, product)
+                    
+                    # Convert flat index to action indices
+                    for i, product in enumerate(action_products):
+                        if product > 0:  # Avoid division by zero
+                            action_idx = remaining_idx // product
+                            remaining_idx = remaining_idx % product
+                            action_indices.append(action_idx)
+                    
+                    # Create a string representing the combination of actions
+                    action_names = []
+                    for i, (control_name, actions) in enumerate(control_factor_actions):
+                        if i < len(action_indices):
+                            action_idx = action_indices[i]
+                            if action_idx < len(actions):
+                                action_names.append(f"{control_name}:{actions[action_idx]}")
+                            else:
+                                action_names.append(f"{control_name}:Action {action_idx}")
+                    
+                    combined_action_name = ", ".join(action_names) if action_names else f"Action {a}"
+                    
+                    print(f"Initial B matrix under actions [{combined_action_name}]:\n{info["agent"].B[f][0, batch_idx, ..., a]}")
+                    print(f"Final B matrix under actions [{combined_action_name}]:\n{info["agent"].B[f][-1, batch_idx, ..., a]}")
+                
+                # Case 3: No control factors affecting this state factor
+                else:
+                    action_name = f"Action {a}"
+                    print(f"Initial B matrix under {action_name}:\n{info["agent"].B[f][0, batch_idx, ..., a]}")
+                    print(f"Final B matrix under {action_name}:\n{info["agent"].B[f][-1, batch_idx, ..., a]}")
                 
                 if verbose:
-                    print(f"\nLearning progression for B matrix (Factor {factor}, Action {action_name}):")
+                    if len(control_factor_actions) > 1:
+                        print(f"\nLearning progression for B matrix (Factor {factor}, Actions [{combined_action_name}]):")
+                    else:
+                        print(f"\nLearning progression for B matrix (Factor {factor}, Action {action_name}):")
+                    
                     for t in range(num_timesteps):
-                        print(f"t={t}:\n{info['agent'].B[f][t, batch_idx, ..., a]}")
+                        print(f"t={t}:\n{info["agent"].B[f][t, batch_idx, ..., a]}")
     
     # Print D parameter learning if applicable
     if learning_config.learn_D:
         print('\n==== Parameter D learning ====')
         for f, factor in enumerate(factor_names):
             print(f"\nState Factor: {factor}")
-            print(f"Initial D matrix:\n{info['agent'].D[f][0, batch_idx]}")
-            print(f"Final D matrix:\n{info['agent'].D[f][-1, batch_idx]}")
+            print(f"Initial D matrix:\n{info["agent"].D[f][0, batch_idx]}")
+            print(f"Final D matrix:\n{info["agent"].D[f][-1, batch_idx]}")
             
-            if verbose and info["agent"].pD:
+            if verbose and agent.pD:
                 print(f"\nLearning progression for D matrix (Factor {factor}):")
                 for t in range(num_timesteps):
-                    print(f"t={t}, qD: {info['agent'].pD[f][t, batch_idx]}, D: {info['agent'].D[f][t, batch_idx]}")
+                    print(f"t={t}, qD: {info["agent"].pD[f][t, batch_idx]}, D: {info["agent"].D[f][t, batch_idx]}")
