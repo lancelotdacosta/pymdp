@@ -274,4 +274,5 @@ def default_B_action_dependencies(num_factors: int) -> List[List[int]]:
     List[List[int]]
         Default B_action_dependencies where each factor is affected by the corresponding control factor
     """
+    #TODO: introduce safeguard in case there are not enough control factors?
     return [[f] for f in range(num_factors)]
