@@ -13,6 +13,7 @@ from PIL import Image
 import os
 import numpy as np
 import io
+from matplotlib.gridspec import GridSpec
 
 def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_preferences(agent, env)
@@ -664,3 +665,109 @@ def get_action_indices(flat_index, control_factor_actions):
             action_indices.append(action_idx)
     
     return action_indices
+
+def plot_parameter_learning(info, learning_config, env):
+    """Plot the agent's learning progress for parameters (A, B, D) over time.
+    
+    This function generates plots showing the distance between the agent's learned
+    parameters and the environment's true parameters over time. Only parameters
+    that are being learned (as specified in learning_config) will be plotted.
+    
+    Parameters
+    ----------
+    info : Dict
+        Dictionary containing rollout information with parameter history in info["agent"]
+    learning_config : object
+        Configuration specifying which parameters are being learned.
+        Should have boolean attributes: learn_A, learn_B, learn_D
+    env : Env
+        Environment instance containing true parameters
+        
+    Returns
+    -------
+    plt : matplotlib.pyplot
+        The pyplot object with the generated plots
+    """
+    
+    # Get agent from info dictionary
+    agent = info["agent"]
+    
+    # Create figure with appropriate number of subplots
+    n_plots = learning_config.learn_A + learning_config.learn_B + learning_config.learn_D
+    fig = plt.figure(figsize=(5*n_plots, 5))
+    gs = GridSpec(1, n_plots, figure=fig)
+    plot_idx = 0
+    
+    # Plot each parameter type if it's being learned
+    if learning_config.learn_A:
+        _plot_matrix_learning(
+            fig.add_subplot(gs[0, plot_idx]),
+            agent.A, env.params["A"],
+            list(env.labels['observation_modalities'].keys()),
+            'A Matrix Learning (Observations)',
+            'Distance to true A'
+        )
+        plot_idx += 1
+    
+    if learning_config.learn_B:
+        _plot_matrix_learning(
+            fig.add_subplot(gs[0, plot_idx]),
+            agent.B, env.params["B"],
+            list(env.labels['state_factors'].keys()),
+            'B Matrix Learning (Transitions)',
+            'Distance to true B'
+        )
+        plot_idx += 1
+    
+    if learning_config.learn_D:
+        _plot_matrix_learning(
+            fig.add_subplot(gs[0, plot_idx]),
+            agent.D, env.params["D"],
+            list(env.labels['state_factors'].keys()),
+            'D Matrix Learning (Initial States)',
+            'Distance to true D'
+        )
+    
+    plt.tight_layout()
+    plt.show()
+    return plt
+
+
+def _plot_matrix_learning(ax, agent_matrices, env_matrices, labels, title, ylabel):
+    """Helper function to plot learning curves for a set of matrices.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to plot on
+    agent_matrices : List[Array]
+        List of parameter history arrays from the agent
+    env_matrices : List[Array]
+        List of true parameter arrays from the environment
+    labels : List[str]
+        List of labels for each matrix (e.g., modality or factor names)
+    title : str
+        Plot title
+    ylabel : str
+        Y-axis label
+    """
+    
+    # Get timesteps
+    n_timesteps = agent_matrices[0].shape[0]
+    timesteps = range(n_timesteps)
+    
+    # Plot distance for each matrix
+    for i, matrix_hist in enumerate(agent_matrices):
+        # Calculate distances over time (using batch index 0)
+        distances = [float(jnp.linalg.norm(m[0] - env_matrices[i])) for m in matrix_hist]
+        
+        # Plot with label from environment if available
+        label = labels[i] if i < len(labels) else f"Matrix {i}"
+        ax.plot(timesteps, distances, label=label, linewidth=2)
+    
+    # Configure the plot
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel(ylabel)
+    ax.set_ylim(bottom=0)
+    ax.set_title(title)
+    ax.legend()
