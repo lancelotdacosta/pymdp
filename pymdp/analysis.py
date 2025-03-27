@@ -529,18 +529,25 @@ def print_parameter_learning(info, agent, learning_config, env, verbose=False, b
     factor_names = list(env.labels['state_factors'].keys())
     control_factor_names = list(env.labels['control_factors'].keys())
     
+    # Helper function to round array values to 2 decimal places for display
+    def round_array(arr, decimals=2):
+        # Convert to numpy array if it's not already
+        import numpy as np
+        arr_np = np.array(arr)
+        return np.round(arr_np, decimals)
+    
     # Print A parameter learning if applicable
     if learning_config.learn_A:
         print('\n==== Parameter A learning ====')
         for m, modality in enumerate(modality_names):
             print(f"\nModality: {modality}")
-            print(f"Initial A matrix:\n{info['agent'].A[m][0, batch_idx]}")
-            print(f"Final A matrix:\n{info['agent'].A[m][-1, batch_idx]}")
+            print(f"Initial A matrix:\n{round_array(info['agent'].A[m][0, batch_idx])}")
+            print(f"Final A matrix:\n{round_array(info['agent'].A[m][-1, batch_idx])}")
             
             if verbose:
                 print(f"\nLearning progression for A matrix (Modality {modality}):")
                 for t in range(num_timesteps):
-                    print(f"t={t}:\n{info['agent'].A[m][t, batch_idx]}")
+                    print(f"t={t}:\n{round_array(info['agent'].A[m][t, batch_idx])}")
     
     # Print B parameter learning if applicable
     if learning_config.learn_B:
@@ -597,28 +604,27 @@ def print_parameter_learning(info, agent, learning_config, env, verbose=False, b
                     action_label = ", ".join(action_labels) if action_labels else f"Action {a}"
                     action_label = f"[{action_label}]"
                 
-                # Print B matrices
-                print(f"Initial B matrix under action {action_label}:\n{info['agent'].B[f][0, batch_idx, ..., a]}")
-                print(f"Final B matrix under action {action_label}:\n{info['agent'].B[f][-1, batch_idx, ..., a]}")
+                # Print B matrices with rounded values
+                print(f"Initial B matrix under action {action_label}:\n{round_array(info['agent'].B[f][0, batch_idx, ..., a])}")
+                print(f"Final B matrix under action {action_label}:\n{round_array(info['agent'].B[f][-1, batch_idx, ..., a])}")
                 
                 if verbose:
                     print(f"\nLearning progression for B matrix (Factor {factor}, Action {action_label}):")
                     for t in range(num_timesteps):
-                        print(f"t={t}:\n{info['agent'].B[f][t, batch_idx, ..., a]}")
+                        print(f"t={t}:\n{round_array(info['agent'].B[f][t, batch_idx, ..., a])}")
     
     # Print D parameter learning if applicable
     if learning_config.learn_D:
         print('\n==== Parameter D learning ====')
         for f, factor in enumerate(factor_names):
             print(f"\nState Factor: {factor}")
-            print(f"Initial D matrix:\n{info['agent'].D[f][0, batch_idx]}")
-            print(f"Final D matrix:\n{info['agent'].D[f][-1, batch_idx]}")
+            print(f"Initial D matrix:\n{round_array(info['agent'].D[f][0, batch_idx])}")
+            print(f"Final D matrix:\n{round_array(info['agent'].D[f][-1, batch_idx])}")
             
             if verbose and agent.pD:
                 print(f"\nLearning progression for D matrix (Factor {factor}):")
                 for t in range(num_timesteps):
-                    print(f"t={t}, qD: {info['agent'].pD[f][t, batch_idx]}, D: {info['agent'].D[f][t, batch_idx]}")
-
+                    print(f"t={t}, qD: {round_array(info['agent'].pD[f][t, batch_idx])}, D: {round_array(info['agent'].D[f][t, batch_idx])}")
 
 def get_action_indices(flat_index, control_factor_actions):
     """Convert a flat action index to individual action indices for multiple control factors.
