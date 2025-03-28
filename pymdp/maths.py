@@ -135,9 +135,9 @@ def compute_log_likelihood_single_modality(o_m, A_m, distr_obs=True):
 def compute_log_likelihood(obs, A, distr_obs=True):
     """Compute likelihood over hidden states across observations from different modalities"""
     result = tree_util.tree_map(lambda o, a: compute_log_likelihood_single_modality(o, a, distr_obs=distr_obs), obs, A)
-    ll = jnp.sum(jnp.stack(result), axis=0)
+    log_likelihood = jnp.sum(jnp.stack(result), axis=0) #this line sums all elements of result (list of arrays) ie sums log likelihoods across all modalities
 
-    return ll
+    return log_likelihood
 
 
 def compute_log_likelihood_per_modality(obs, A, distr_obs=True):
