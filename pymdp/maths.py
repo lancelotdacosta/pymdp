@@ -203,10 +203,10 @@ def compute_free_energy(qs, prior, obs, A, A_deps=None, distr_obs=True):
     distr_obs : boolean, True if the observations are a distribution (eg one hot vector), False if they are the observation index
     """
     if A_deps is None:
-        acc= compute_accuracy(qs, obs, A, distr_obs=distr_obs)
+        accuracy = compute_accuracy(qs, obs, A, distr_obs=distr_obs)
     else:
-        acc= compute_accuracy_with_A_dependencies(qs, obs, A, A_deps, distr_obs=distr_obs)
-    vfe = compute_complexity(qs, prior) - acc
+        accuracy = compute_accuracy_with_A_dependencies(qs, obs, A, A_deps, distr_obs=distr_obs)
+    vfe = compute_complexity(qs, prior) - accuracy
     return vfe
 
 
@@ -246,8 +246,12 @@ def compute_prediction_errors(info):
         pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, A_deps, distr_obs=False))
         negacc_t = negacc_t.at[t].set(-compute_accuracy_with_A_dependencies(qs_t, obs_t, A_t, A_deps, distr_obs=False))
         comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
-        #TODO: complexity L2 norm will give wrong results outside of the simplest environment-- need to extend to multi-factor environments -- and beyond one batch
-        comp_l2_t = comp_l2_t.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
+
+        # For multi-factor environments, compute mean of L2 norms across all factors
+        factor_l2_complexity = jnp.stack([jnp.linalg.norm(q[0,0,:] - p[0,:]) for q, p in zip(qs_t, prior_t)])
+        comp_l2_t = comp_l2_t.at[t].set(jnp.mean(jnp.array(factor_l2_complexity)))
+        # Original single-factor implementation:
+        # comp_l2_t = comp_l2_t.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
 
     return {
         'pred_error': pe_t,
