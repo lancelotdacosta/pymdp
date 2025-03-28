@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
 from functools import partial
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Union
 from jax import tree_util, nn, jit, vmap, lax
 from jax.scipy.special import xlogy
 from opt_einsum import contract
@@ -160,6 +160,26 @@ def compute_accuracy(qs, obs, A, distr_obs=True):
     joint = log_likelihood * x
     return joint.sum()
 
+def compute_accuracy_with_A_dependencies(qs: List[jnp.ndarray], 
+    obs: List[Union[int, jnp.ndarray]], 
+    A: List[jnp.ndarray], 
+    A_deps: List[List[int]], 
+    distr_obs: bool = True
+) -> float:
+    """Compute the accuracy portion of the variational free energy under (possibly) non-full A dependencies"""
+
+    ll_per_modality = compute_log_likelihood_per_modality(obs, A, distr_obs=distr_obs)
+
+    for mod_idx in range(len(A)): #for each modality
+        dep = A_deps[mod_idx][0] #select first dependency
+        x = qs[dep]
+        for dep in A_deps[mod_idx][1:]: #for each additional dependency
+            x = jnp.expand_dims(x, -1) * qs[dep]
+        ll_per_modality[mod_idx] = ll_per_modality[mod_idx] * x #multiply log likelihood by the probability of the latent states it depends on
+
+    accuracy = sum(jnp.sum(arr) for arr in ll_per_modality) #sums accross modalities
+    return accuracy
+
 
 def compute_complexity(qs, prior):
     """
@@ -174,7 +194,7 @@ def compute_complexity(qs, prior):
     return complexity
 
 
-def compute_free_energy(qs, prior, obs, A, distr_obs=True):
+def compute_free_energy(qs, prior, obs, A, A_deps=None, distr_obs=True):
     """
     Calculate variational free energy by breaking its computation down into three steps:
     1. computation of the complexity term: -H[Q(s)] + H_{Q(s)}[-lnP(s)]
@@ -182,7 +202,11 @@ def compute_free_energy(qs, prior, obs, A, distr_obs=True):
     Then return 1. minus 2.
     distr_obs : boolean, True if the observations are a distribution (eg one hot vector), False if they are the observation index
     """
-    vfe = compute_complexity(qs, prior) - compute_accuracy(qs, obs, A, distr_obs=distr_obs)
+    if A_deps is None:
+        acc= compute_accuracy(qs, obs, A, distr_obs=distr_obs)
+    else:
+        acc= compute_accuracy_with_A_dependencies(qs, obs, A, A_deps, distr_obs=distr_obs)
+    vfe = compute_complexity(qs, prior) - acc
     return vfe
 
 
@@ -198,8 +222,9 @@ def compute_prediction_errors(info):
     empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
     actions=info["action"]
 
-    # Get A matrix history if available
+    # Get A matrix history and dependencies
     A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
+    A_deps = info["agent"].A_dependencies # list of lists (one per modality)
 
     # Initialize array to store free energy for each timestep
     num_timesteps = observations[0].shape[0]
@@ -211,15 +236,15 @@ def compute_prediction_errors(info):
     # Compute prediction error at each timestep
     for t in range(num_timesteps):
         # Get current variables
-        action_t=actions[t]
+
         prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
         obs_t = [jnp.array(o[t].squeeze(), dtype=jnp.int32) for o in observations]  # Current observation (list of arrays)
         qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
         A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
         
         # Compute prediction error and components
-        pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, distr_obs=False))
-        negacc_t = negacc_t.at[t].set(-compute_accuracy(qs_t, obs_t, A_t, distr_obs=False))
+        pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, A_deps, distr_obs=False))
+        negacc_t = negacc_t.at[t].set(-compute_accuracy_with_A_dependencies(qs_t, obs_t, A_t, A_deps, distr_obs=False))
         comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
         #TODO: complexity L2 norm will give wrong results outside of the simplest environment-- need to extend to multi-factor environments -- and beyond one batch
         comp_l2_t = comp_l2_t.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))

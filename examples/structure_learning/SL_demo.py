@@ -129,7 +129,7 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 100},
+    model_params={"T": 1000},
     agent_params={"action_selection": "stochastic"}
 )
 
@@ -138,12 +138,9 @@ key, rollout_key = jr.split(key)
 _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
 # Analyze and visualize results
-analyze_rollout(info, agent, env, render=True, plot=True, print=True)
-print_parameter_learning(info, agent, learning_config, env, verbose=False)
-plot_parameter_learning(info, learning_config, env)
-
-#%%
-# Analyze and visualize results
+# analyze_rollout(info, agent, env, render=True, plot=True, print=True)
+# print_parameter_learning(info, agent, learning_config, env, verbose=False)
+# plot_parameter_learning(info, learning_config, env)
 pe_analysis = compute_prediction_errors(info)
 plot_prediction_errors(pe_analysis)
 # %%
