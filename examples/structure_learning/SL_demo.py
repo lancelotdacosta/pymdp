@@ -130,7 +130,7 @@ agent, model, key = Agent.from_env(
     learning_config=learning_config,
     key=key,
     model_params={"T": 1000},
-    agent_params={"action_selection": "stochastic"}
+    agent_params=env.get_default_agent_params()
 )
 
 # Run simulation and collect results
@@ -143,4 +143,58 @@ _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollou
 # plot_parameter_learning(info, learning_config, env)
 pe_analysis = compute_prediction_errors(info)
 plot_prediction_errors(pe_analysis)
+
+# %% ### 5. Model Comparison: Well-Specified vs Misspecified Model
+#
+# Finally, we compare learning performance between well-specified and misspecified models.
+# A misspecified model has a different structure than the environment
+#
+# This allows us to:
+# 1. Study how agents learn with incorrect assumptions about their environment
+# 2. Compare prediction errors between well-specified and misspecified models
+# 3. Demonstrate Bayesian model comparison in active inference
+
+# Reinitialize random key for fair comparison
+key = jr.PRNGKey(key_idx)
+
+# Create misspecified model with more states than the environment
+true_structure = env.get_structure()
+
+misspecified_num_states = [5, 2]
+misspecified_structure = true_structure.modify(
+    num_states=misspecified_num_states,
+    T=model.structure.T
+)
+
+# Enable all parameter learning
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
+
+# Initialize misspecified model and agent
+misspecified_model, key = POMDPModel.from_structure(
+    structure=misspecified_structure,
+    learning=learning_config,
+    key=key
+)
+
+agent = Agent.from_model(
+    model=misspecified_model,
+    C=env.get_default_C(), #works for misspecified model as it is a preference over observations, not states
+    **env.get_default_agent_params()
+)
+
+key = jr.PRNGKey(key_idx)
+# Run simulation with misspecified model
+key, rollout_key = jr.split(key)
+_, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, rng_key=rollout_key)
+
+
+# Analyze and visualize results
+# plot_preferences(agent, env)
+# render_rollout(env, info) #takes time!
+# plot_beliefs(info, env) #BUG
+# print_rollout(info, env) #BUG
+# print_parameter_learning(info, agent, learning_config, env, verbose=False)
+# plot_parameter_learning(info, learning_config, env) #BUG: but this makes no sense to plot as we cannot compare it to the well-specified model
+
+
 # %%
