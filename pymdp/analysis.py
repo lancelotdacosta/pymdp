@@ -14,6 +14,7 @@ import os
 import numpy as np
 import io
 from matplotlib.gridspec import GridSpec
+from pymdp.maths import smooth_data
 
 def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_preferences(agent, env)
@@ -21,7 +22,7 @@ def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_beliefs(info, env)
     if print: print_rollout(info, env)
 
-def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5), yscale: str = 'log') -> plt.Figure:
+def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5), yscale: str = 'log', smoothing: Optional[int] = None) -> plt.Figure:
     """
     Plot prediction error metrics from the output of compute_prediction_errors.
 
@@ -38,18 +39,23 @@ def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsi
         Title for the plot. If None, no title is shown.
     figsize : tuple, optional
         Figure size as (width, height). Default is (10, 5).
+    smoothing : int, optional
+        Window size for moving average smoothing. If None or <= 1, no smoothing is applied.
 
     Returns
     -------
     plt.Figure
         The matplotlib figure object containing the plot
     """
+    # Apply smoothing if requested, creating a copy of the data
+    pe_data = smooth_data(pe_analysis, window_size=smoothing)
+    
     fig = plt.figure(figsize=figsize)
-    plt.plot(pe_analysis["pred_error"], label='Prediction error', alpha=1.0)
-    plt.plot(pe_analysis["complexity"], label='Complexity', alpha=0.7)
-    plt.plot(pe_analysis["neg_accuracy"], label='Negative accuracy', alpha=0.7)
-    plt.plot(pe_analysis["complexity_l2"], label='L2 norm Complexity', alpha=0.4)
-    plt.plot(pe_analysis["pe_accumulated"], label='Accumulated prediction errors')
+    plt.plot(pe_data["pred_error"], label='Prediction error', alpha=1.0)
+    plt.plot(pe_data["complexity"], label='Complexity', alpha=0.7)
+    plt.plot(pe_data["neg_accuracy"], label='Negative accuracy', alpha=0.7)
+    plt.plot(pe_data["complexity_l2"], label='L2 norm Complexity', alpha=0.4)
+    plt.plot(pe_data["pe_accumulated"], label='Accumulated prediction errors')
     plt.legend()
     plt.xlabel('Timestep')
     plt.ylabel('nats')
@@ -61,7 +67,7 @@ def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsi
     
     #return fig
 
-def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (15, 12), alpha: float = 0.7, lw: float = 1.0, yscale: str = 'log') -> plt.Figure:
+def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (15, 12), alpha: float = 0.7, lw: float = 1.0, yscale: str = 'log', smoothing: Optional[int] = None) -> plt.Figure:
     """
     Create comparison plots between multiple models showing their prediction error metrics.
 
@@ -74,8 +80,14 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
         Labels for the models in the plots. If None, will use 'Model 1', 'Model 2', etc.
     figsize : Tuple[int, int], optional
         Figure size as (width, height). Default is (15, 12)
-    alphas : Tuple[float, float, float, float], optional
-        Alpha values for transparency in each plot. Default is (0.5, 0.5, 0.5, 0.5)
+    alpha : float, optional
+        Alpha value for transparency in plots. Default is 0.7
+    lw : float, optional
+        Line width for plots. Default is 1.0
+    yscale : str, optional
+        Scale for y-axis. Default is 'log'
+    smoothing : int, optional
+        Window size for moving average smoothing. If None or <= 1, no smoothing is applied.
 
     Returns
     -------
@@ -86,6 +98,9 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
     if isinstance(pe_analyses, dict):
         # Single PE analysis
         pe_analyses = [pe_analyses]
+
+    # Apply smoothing to all analyses if requested
+    pe_analyses = [smooth_data(pe, window_size=smoothing) for pe in pe_analyses]
 
     # Handle labels
     if labels is None:

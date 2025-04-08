@@ -1,7 +1,6 @@
 import jax.numpy as jnp
-
 from functools import partial
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, List, Union, Dict, Any
 from jax import tree_util, nn, jit, vmap, lax
 from jax.scipy.special import xlogy
 from opt_einsum import contract
@@ -296,6 +295,46 @@ def dirichlet_expected_value(dir_arr):
 def dirichlet_expectation(arr: jnp.ndarray) -> jnp.ndarray:
     """Normalize Dirichlet parameters to get expected probabilities."""
     return arr / arr.sum(axis=1, keepdims=True)
+
+
+def smooth_data(data, window_size: int = None, copy: bool = True):
+    """
+    Apply moving average smoothing to dictionary of numerical data.
+    
+    This utility function handles dictionaries of data by applying convolution-based 
+    smoothing to any 1D numerical arrays found within the dictionary.
+    
+    Parameters
+    ----------
+    data : Dict[str, Any]
+        Dictionary of data to smooth
+    window_size : int, optional
+        Size of the smoothing window. If None or <= 1, original data is returned.
+    copy : bool, default=True
+        Whether to create a copy of the input data or modify in-place.
+        
+    Returns
+    -------
+    Dict[str, Any]
+        Smoothed data dictionary with same structure as input
+    """
+    # Return original data if no smoothing requested
+    if window_size is None or window_size <= 1:
+        return data.copy() if copy else data
+    
+    # Create smoothing kernel
+    kernel = jnp.ones(window_size) / window_size
+    
+    # Create a copy if requested
+    result = data.copy() if copy else data
+    
+    # Apply smoothing to each entry in the dictionary
+    for key in result.keys():
+        # Only smooth 1D arrays of numerical data
+        if isinstance(result[key], (jnp.ndarray, jnp.ndarray)) and result[key].ndim == 1:
+            result[key] = jnp.convolve(result[key], kernel, mode='same')
+    
+    return result
 
 
 if __name__ == "__main__":
