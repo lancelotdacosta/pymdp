@@ -21,7 +21,7 @@ def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_beliefs(info, env)
     if print: print_rollout(info, env)
 
-def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5)) -> plt.Figure:
+def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5), yscale: str = 'log') -> plt.Figure:
     """
     Plot prediction error metrics from the output of compute_prediction_errors.
 
@@ -53,7 +53,7 @@ def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsi
     plt.legend()
     plt.xlabel('Timestep')
     plt.ylabel('nats')
-    plt.yscale('log')
+    plt.yscale(yscale)
     plt.grid(True)
     
     if title is not None:
@@ -61,7 +61,7 @@ def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsi
     
     #return fig
 
-def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (15, 12), alpha: float = 0.7, lw: float = 1.0) -> plt.Figure:
+def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (15, 12), alpha: float = 0.7, lw: float = 1.0, yscale: str = 'log') -> plt.Figure:
     """
     Create comparison plots between multiple models showing their prediction error metrics.
 
@@ -109,7 +109,7 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
     ax1.set_xlabel('Timestep')
     ax1.set_ylabel('Accumulated PE (nats)')
     ax1.legend()
-    ax1.set_yscale('log')
+    ax1.set_yscale(yscale)
 
     # Plot 2: Prediction Error
     for i, pe_analysis in enumerate(pe_analyses):
@@ -118,7 +118,7 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
     ax2.set_xlabel('Timestep')
     ax2.set_ylabel('PE (nats)')
     ax2.legend()
-    ax2.set_yscale('log')
+    ax2.set_yscale(yscale)
 
     # Plot 3: Complexity
     for i, pe_analysis in enumerate(pe_analyses):
@@ -127,7 +127,7 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
     ax3.set_xlabel('Timestep')
     ax3.set_ylabel('Complexity (nats)')
     ax3.legend()
-    ax3.set_yscale('log')
+    ax3.set_yscale(yscale)
 
     # Plot 4: Negative Accuracy
     for i, pe_analysis in enumerate(pe_analyses):
@@ -136,7 +136,7 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
     ax4.set_xlabel('Timestep')
     ax4.set_ylabel('Negative Accuracy (nats)')
     ax4.legend()
-    ax4.set_yscale('log')
+    ax4.set_yscale(yscale)
 
     plt.tight_layout()
     #return fig
