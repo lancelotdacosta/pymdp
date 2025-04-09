@@ -15,3 +15,4 @@ data/
 examples/envs/simplest_numpy_demo.py
 examples/envs/tmaze_demo.py
 pymdp/envs/simplest_numpy.py
+examples/structure_learning/test_comparison.py
