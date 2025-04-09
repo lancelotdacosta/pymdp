@@ -113,6 +113,33 @@ class Env(Module):
 
     @vmap
     def reset(self, key: PRNGKeyArray, state: Optional[List[Array]] = None):
+        """Reset the environment to an initial state.
+        
+        This method initializes the environment state either to a provided state or by
+        sampling from the environment's initial state distribution (D parameter).
+        The initial state distribution is defined by each environment subclass in its
+        `generate_D()` method.
+        
+        Parameters
+        ----------
+        key : PRNGKeyArray
+            Random key for stochastic operations
+        state : Optional[List[Array]], optional
+            Specific initial state to set. If None, samples from D distribution.
+        
+        Returns
+        -------
+        Tuple[List[Array], Env]
+            A tuple containing:
+            - new_obs: Initial observations corresponding to the initial state
+            - env: Updated environment instance with new state and observations
+            
+        Notes
+        -----
+        When state=None, the environment uses the D distribution to sample an initial state.
+        For environments with deterministic D (e.g., SimplestEnv with D=[1.0, 0.0]), this
+        will always produce the same initial state (e.g., always left state for SimplestEnv).
+        """
         if state is None:
             probs = self.params["D"]
             keys = list(jr.split(key, len(probs) + 1))

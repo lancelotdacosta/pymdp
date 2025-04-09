@@ -760,7 +760,15 @@ class Agent(Module):
         learning_config : LearningConfig, optional
             Configuration for parameter learning (default: no learning)
         uniform_D : bool, optional
-            Whether to set uniform initial beliefs (default: False)
+            Whether to set uniform initial beliefs (default: False).
+            When True, the agent's initial state distribution D will be set to uniform
+            regardless of the environment's actual initial state distribution.
+            When False, the agent's D matches the environment's D, meaning the agent's
+            prior beliefs align with the environment's actual initialization pattern.
+            
+            For example, in SimplestEnv:
+            - uniform_D=False: Agent expects to start in the left state (D=[1.0, 0.0])
+            - uniform_D=True: Agent has equal expectations about starting states (D=[0.5, 0.5])
         model_params : dict, optional
             Override default model parameters
         agent_params : dict, optional

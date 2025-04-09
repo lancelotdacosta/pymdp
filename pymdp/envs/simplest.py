@@ -124,6 +124,30 @@ class SimplestEnv(POMDPEnv):
         """
         Generate initial state distribution.
         Always starts at location 0 (left).
+        
+        This method serves two important roles:
+        1. Environment Initialization: Determines the actual starting state distribution
+           when the environment is reset. With [1.0, 0.0], the environment will always
+           start deterministically in the left (0) state.
+        2. Agent's Prior Beliefs: When an agent is created from this environment,
+           this distribution becomes the agent's initial prior belief about states
+           (unless explicitly overridden).
+        
+        Returns
+        -------
+        List[jnp.ndarray]
+            A list containing the initial state distribution for the location factor.
+            [1.0, 0.0] means deterministically start in state 0 (left).
+            
+        Notes
+        -----
+        We use a deterministic initial state ([1.0, 0.0]) rather than uniform ([0.5, 0.5])
+        to make the environment behavior more predictable for testing and demonstration.
+        This simplifies debugging.
+        
+        If you want to test D learning or have more randomized initial states, you could
+        modify this to return a uniform distribution: jnp.array([0.5, 0.5]), 
+        or use model.set_uniform_D() for the agent's generative model.
         """
         D = []
         initial_location = jnp.array([1.0, 0.0])  # Start at location 0 (left)
