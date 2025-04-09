@@ -3,6 +3,8 @@
 # The demo goes in steps: structure learning is only toward the end
 
 # %% Importing necessary libraries
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
 import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
@@ -20,7 +22,7 @@ from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_p
 import matplotlib.pyplot as plt
 
 # if __name__ == "__main__":
-key_idx = 2 # Initialize master random key index at the start
+key_idx = 0 # Initialize master random key index at the start
 
 #%% Initialise environment
 
@@ -35,24 +37,24 @@ env = make(
 
 #%% ### 1. Basic Demo
 
-# # Set up random key
-# key = jr.PRNGKey(key_idx)
+# Set up random key
+key = jr.PRNGKey(key_idx)
 
-# # Initialize agent's learning config
-# learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
+# Initialize agent's learning config
+learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
 
-# # Create agent directly from environment with environment config C matrices
-# agent, model, key = Agent.from_env(
-#     env=env,
-#     learning_config=learning_config,
-#     key=key,
-#     model_params={"T": 10},
-#     agent_params={"action_selection": "stochastic"}
-# )
+# Create agent directly from environment with environment config C matrices
+agent, model, key = Agent.from_env(
+    env=env,
+    learning_config=learning_config,
+    key=key,
+    model_params={"T": 10},
+    agent_params={"action_selection": "stochastic"}
+)
 
-# # Run simulation
-# key, rollout_key = jr.split(key)
-# _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+# Run simulation
+key, rollout_key = jr.split(key)
+_, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
 # # Analyze rollout: print and visualize results
 # analyze_rollout(info, agent, env, render=True, plot=True, print=True)
@@ -61,24 +63,24 @@ env = make(
 #
 # Here we demonstrate how the agent can learn the observation (A) and transition (B) tensors through experience.
 
-# # Set up random key
-# key = jr.PRNGKey(key_idx)
+# Set up random key
+key = jr.PRNGKey(key_idx)
 
-# # Enable A, B parameter learning
-# learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
+# Enable A, B parameter learning
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
 
-# # Create agent directly from environment with environment config C matrices
-# agent, model, key = Agent.from_env(
-#     env=env,
-#     learning_config=learning_config,
-#     key=key,
-#     model_params={"T": 100},
-#     agent_params={"action_selection": "stochastic"}
-# )
+# Create agent directly from environment with environment config C matrices
+agent, model, key = Agent.from_env(
+    env=env,
+    learning_config=learning_config,
+    key=key,
+    model_params={"T": 100},
+    agent_params={"action_selection": "stochastic"}
+)
 
-# # Run simulation and collect results
-# key, rollout_key = jr.split(key)
-# _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+# Run simulation and collect results
+key, rollout_key = jr.split(key)
+_, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
 # # Analyze and visualize results
 # analyze_rollout(info, agent, env, render=True, plot=True, print=True)
@@ -87,27 +89,27 @@ env = make(
 # plot_parameter_learning(info, learning_config, env)
 
 #%% ### 3. Initial State Distribution (D) Learning Demo
-# #
-# # Enable D learning only
+#
+# Enable D learning only
 
-# # Set up random key
-# key = jr.PRNGKey(key_idx)
+# Set up random key
+key = jr.PRNGKey(key_idx)
 
-# # Enable D learning only
-# learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=True)
+# Enable D learning only
+learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=True)
 
-# # Create agent directly from environment with environment config C matrices
-# agent, model, key = Agent.from_env(
-#     env=env,
-#     learning_config=learning_config,
-#     key=key,
-#     model_params={"T": 100},
-#     agent_params={"action_selection": "stochastic"}
-# )
+# Create agent directly from environment with environment config C matrices
+agent, model, key = Agent.from_env(
+    env=env,
+    learning_config=learning_config,
+    key=key,
+    model_params={"T": 100},
+    agent_params={"action_selection": "stochastic"}
+)
 
-# # Run simulation and collect results
-# key, rollout_key = jr.split(key)
-# _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+# Run simulation and collect results
+key, rollout_key = jr.split(key)
+_, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
 # # Analyze and visualize results
 # analyze_rollout(info, agent, env, render=True, plot=True, print=True)
@@ -182,11 +184,9 @@ agent = Agent.from_model(
     **env.get_default_agent_params()
 )
 
-key = jr.PRNGKey(key_idx)
 # Run simulation with misspecified model
 key, rollout_key = jr.split(key)
 _, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, rng_key=rollout_key)
-
 
 # Analyze and visualize results
 # plot_preferences(agent, env)
