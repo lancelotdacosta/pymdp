@@ -135,3 +135,67 @@ def fig2img(fig):
     im = data.reshape((int(h), int(w), -1))
     plt.close(fig)
     return im[:, :, :3]
+
+
+def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True):
+    """
+    Compares two dictionaries of jnp arrays for equality.
+    
+    This function checks if two dictionaries have the same keys, and for each key,
+    checks if the corresponding arrays have the same shape and content.
+    
+    Parameters
+    ----------
+    dict1 : dict
+        First dictionary to compare. Values should be jnp arrays.
+    dict2 : dict
+        Second dictionary to compare. Values should be jnp arrays.
+    verbose : bool, optional
+        Whether to print detailed error messages. Default is True.
+    
+    Returns
+    -------
+    bool
+        True if dictionaries have identical keys and array values, False otherwise.
+    
+    Examples
+    --------
+    >>> d1 = {'a': jnp.array([1, 2, 3]), 'b': jnp.array([4, 5])}
+    >>> d2 = {'a': jnp.array([1, 2, 3]), 'b': jnp.array([4, 5])}
+    >>> are_equal_dicts_jnp_arrays(d1, d2)
+    True
+    
+    >>> d3 = {'a': jnp.array([1, 2, 4]), 'b': jnp.array([4, 5])}
+    >>> are_equal_dicts_jnp_arrays(d1, d3)
+    Contents for key 'a' don't match
+    False
+    """
+    # Check if they have the same keys
+    if dict1.keys() != dict2.keys():
+        if verbose:
+            missing_in_1 = set(dict2.keys()) - set(dict1.keys())
+            missing_in_2 = set(dict1.keys()) - set(dict2.keys())
+            print(f"Keys don't match: missing in dict1 {missing_in_1}, missing in dict2 {missing_in_2}")
+        return False
+    
+    # Compare each key-value pair individually
+    for key in dict1:
+        val1, val2 = dict1[key], dict2[key]
+
+        if not isinstance(val1, jnp.ndarray) or not isinstance(val2, jnp.ndarray):
+            print(f"Key '{key}' has non-jnp array values: {type(val1)} and {type(val2)}")
+        else:
+            # Check shapes
+            if val1.shape != val2.shape:
+                if verbose:
+                    print(f"Shapes for key '{key}' don't match: {val1.shape} vs {val2.shape}")
+                return False
+        
+            # Check contents
+            if not jnp.array_equal(val1, val2):
+                if verbose:
+                    print(f"Contents for key '{key}' don't match")
+                return False
+
+    
+    return True
