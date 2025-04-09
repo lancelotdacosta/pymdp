@@ -137,7 +137,7 @@ def fig2img(fig):
     return im[:, :, :3]
 
 
-def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True):
+def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True, atol=0, rtol=0):
     """
     Compares two dictionaries of jnp arrays for equality.
     
@@ -152,7 +152,8 @@ def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True):
         Second dictionary to compare. Values should be jnp arrays.
     verbose : bool, optional
         Whether to print detailed error messages. Default is True.
-    
+    tol : float, optional
+        Tolerance for floating point comparison. Default is 0.
     Returns
     -------
     bool
@@ -192,7 +193,7 @@ def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True):
                 return False
         
             # Check contents
-            if not jnp.array_equal(val1, val2):
+            if not jnp.allclose(val1, val2, atol=atol, rtol=rtol):
                 if verbose:
                     print(f"Contents for key '{key}' don't match")
                 return False
