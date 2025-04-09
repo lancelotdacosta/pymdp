@@ -1,3 +1,4 @@
+from jax.lax import scan
 import jax.numpy as jnp
 from functools import partial
 from typing import Optional, Tuple, List, Union, Dict, Any
@@ -219,7 +220,6 @@ def compute_prediction_errors(info):
     observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
     beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
     empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
-    actions=info["action"]
 
     # Get A matrix history and dependencies
     A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
@@ -227,37 +227,42 @@ def compute_prediction_errors(info):
 
     # Initialize array to store free energy for each timestep
     num_timesteps = observations[0].shape[0]
-    pe_t = jnp.zeros(num_timesteps) #initializes prediction error array
-    negacc_t = jnp.zeros(num_timesteps) #initializes negative accuracy array
-    comp_t = jnp.zeros(num_timesteps) #initializes complexity array
-    comp_l2_t = jnp.zeros(num_timesteps) #initializes L2 norm complexity array
 
-    # Compute prediction error at each timestep
-    for t in range(num_timesteps):
+    # Define the scan function that extracts prediction error statistics for one timestep
+    def scan_fn(carry, t):
         # Get current variables
-
         prior_t = [p[t] for p in empirical_priors]  # Current prior (list of arrays)
         obs_t = [jnp.array(o[t].squeeze(), dtype=jnp.int32) for o in observations]  # Current observation (list of arrays)
         qs_t = [q[t] for q in beliefs]  # Current beliefs (list of arrays)
         A_t = [A_hist_mod[t] for A_hist_mod in A_hist] # Current A matrix (list of arrays)
         
         # Compute prediction error and components
-        pe_t = pe_t.at[t].set(compute_free_energy(qs_t, prior_t, obs_t, A_t, A_deps, distr_obs=False))
-        negacc_t = negacc_t.at[t].set(-compute_accuracy_with_A_dependencies(qs_t, obs_t, A_t, A_deps, distr_obs=False))
-        comp_t = comp_t.at[t].set(compute_complexity(qs_t, prior_t))
+        pe_t = compute_free_energy(qs_t, prior_t, obs_t, A_t, A_deps, distr_obs=False)
+        negacc_t = -compute_accuracy_with_A_dependencies(qs_t, obs_t, A_t, A_deps, distr_obs=False)
+        comp_t = compute_complexity(qs_t, prior_t)
 
         # For multi-factor environments, compute mean of L2 norms across all factors
         factor_l2_complexity = jnp.stack([jnp.linalg.norm(q[0,0,:] - p[0,:]) for q, p in zip(qs_t, prior_t)])
-        comp_l2_t = comp_l2_t.at[t].set(jnp.mean(jnp.array(factor_l2_complexity)))
+        comp_l2_t = jnp.mean(jnp.array(factor_l2_complexity))
         # Original single-factor implementation:
-        # comp_l2_t = comp_l2_t.at[t].set(jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:]))
+        # comp_l2_t = jnp.linalg.norm(qs_t[0][0,0,:]- prior_t[0][0,:])
 
+        # Return results for this timestep
+        return carry, (pe_t, negacc_t, comp_t, comp_l2_t)
+
+    # Run scan over all timesteps
+    # We use a dummy carry value (None) since we're not accumulating anything across steps
+    _, (pe, negacc, comp, comp_l2) = scan(scan_fn, None, jnp.arange(num_timesteps))
+    
+    # Compute accumulated prediction errors
+    pe_accumulated = jnp.cumsum(pe)
+    
     return {
-        'pred_error': pe_t,
-        'neg_accuracy': negacc_t,
-        'complexity': comp_t,
-        'complexity_l2': comp_l2_t,
-        'pe_accumulated': jnp.cumsum(pe_t)
+        'pred_error': pe,
+        'neg_accuracy': negacc,
+        'complexity': comp,
+        'complexity_l2': comp_l2,
+        'pe_accumulated': pe_accumulated
     }
 
 
