@@ -327,16 +327,15 @@ def render_rollout(env, info, save_gif=False, filename=None, fps=1):
     # Get the number of observation modalities
     num_modalities = len(info["observation"])
     
-    frames = []
+    frames = [None] * num_timesteps
     for t in range(num_timesteps):  # iterate over timesteps
         # Prepare observations for current timestep
         observations_t = [info["observation"][mod_idx][t] for mod_idx in range(num_modalities)]
         
         # Call the environment's render method
         frame = env.render(mode="rgb_array", observations=observations_t)
-        frame = jnp.asarray(frame, dtype=jnp.uint8)
+        frames[t] = jnp.asarray(frame, dtype=jnp.uint8)
         plt.close()  # close the figure to prevent memory leak
-        frames.append(frame)
     
     # Convert frames to array and display video
     frames = jnp.array(frames, dtype=jnp.uint8)
