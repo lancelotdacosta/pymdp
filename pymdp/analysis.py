@@ -156,7 +156,7 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
     plt.tight_layout()
     #return fig
 
-def print_rollout(info, env, batch_idx=0):
+def print_rollout(info, env, batch_idx=0, timesteps=None):
     """Print a human-readable version of the rollout using environment labels.
     
     Parameters
@@ -213,28 +213,42 @@ def print_rollout(info, env, batch_idx=0):
                              for i, prob in enumerate(state_probs)])
         return f"[{probs_str}]"
     
-    # Print initial timestep info
-    print("\n=== Initial Timestep (t=0) ===")
+    # Process timesteps parameter
+    if timesteps is None:
+        timesteps_to_print = list(range(num_timesteps))
+    elif isinstance(timesteps, int):
+        timesteps_to_print = [timesteps] if timesteps in range(num_timesteps) else []
+    elif isinstance(timesteps, (list, range)):
+        timesteps_to_print = [t for t in timesteps if t in range(num_timesteps)]
+    else:
+        raise ValueError(f"Invalid timesteps parameter type: {type(timesteps)}")
     
-    # Print initial beliefs for each state factor
-    for f in range(num_state_factors):
-        print(f"Prior beliefs ({state_factor_names[f]}): ", 
-              format_state_dist(f, empirical_priors[f][0, batch_idx]))
-    
-    # Print initial observations for each modality
-    for m in range(num_obs_modalities):
-        modality_name = observation_modality_names[m]
-        obs_idx = int(observations[m][0, batch_idx, 0])
-        obs_label = labels["observation_modalities"][modality_name][obs_idx]
-        print(f"Observation ({modality_name}): [{obs_label}]")
-    
-    # Print posterior beliefs for each factor
-    for f in range(num_state_factors):
-        print(f"Posterior beliefs ({state_factor_names[f]}): ", 
-              format_state_dist(f, beliefs[f][0, batch_idx, 0]))
+    if 0 in timesteps_to_print:
+        # Print initial timestep info
+        print("\n=== Initial Timestep (t=0) ===")
+        
+        # Print initial beliefs for each state factor
+        for f in range(num_state_factors):
+            print(f"Prior beliefs ({state_factor_names[f]}): ", 
+                format_state_dist(f, empirical_priors[f][0, batch_idx]))
+        
+        # Print initial observations for each modality
+        for m in range(num_obs_modalities):
+            modality_name = observation_modality_names[m]
+            obs_idx = int(observations[m][0, batch_idx, 0])
+            obs_label = labels["observation_modalities"][modality_name][obs_idx]
+            print(f"Observation ({modality_name}): [{obs_label}]")
+        
+        # Print posterior beliefs for each factor
+        for f in range(num_state_factors):
+            print(f"Posterior beliefs ({state_factor_names[f]}): ", 
+                format_state_dist(f, beliefs[f][0, batch_idx, 0]))
+        
+        # Remove 0 from timesteps_to_print
+        timesteps_to_print.remove(0)
 
     # Print trajectory
-    for t in range(1, num_timesteps):
+    for t in timesteps_to_print:
         print(f"\n=== Timestep {t} ===")
         
         # Print policy distribution in a concise format
@@ -279,6 +293,7 @@ def print_rollout(info, env, batch_idx=0):
         for f in range(num_state_factors):
             print(f"Posterior beliefs ({state_factor_names[f]}): ", 
                   format_state_dist(f, beliefs[f][t, batch_idx, 0]))
+
 
 def render_rollout(env, info, save_gif=False, filename=None, fps=1):
     """Render a video of the agent's trajectory through any environment that implements a render method.
