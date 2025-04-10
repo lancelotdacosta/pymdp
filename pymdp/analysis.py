@@ -800,3 +800,11 @@ def _plot_matrix_learning(ax, agent_matrices, env_matrices, labels, title, ylabe
     ax.set_ylim(bottom=0)
     ax.set_title(title)
     ax.legend()
+
+def print_initial_state(info):
+    """Print the initial state of the environment."""
+    print(f"Initial state: {initial_state(info)}")
+
+def initial_state(info):
+    """Get the initial state of the environment."""
+    return [int(info['env'].state[f][0][0]) for f in range(len(info['env'].state))]
