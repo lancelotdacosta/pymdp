@@ -532,7 +532,7 @@ def plot_preferences(agent, env=None, figsize=None, show=True, batch_idx=0):
     
     return plt
 
-def print_parameter_learning(info, agent, learning_config, env, verbose=False, batch_idx=0):
+def print_parameter_learning(info, learning_config, env, verbose=False, batch_idx=0):
     """Print and analyze parameter learning results in an environment-agnostic way.
     
     Parameters
@@ -584,7 +584,7 @@ def print_parameter_learning(info, agent, learning_config, env, verbose=False, b
         print('\n==== Parameter B learning ====')
         
         # Get B_action_dependencies - which control factors affect each state factor
-        B_action_dependencies = agent.B_action_dependencies
+        B_action_dependencies = info["agent"].B_action_dependencies
         
         for f, factor in enumerate(factor_names):
             print(f"\nState Factor: {factor}")

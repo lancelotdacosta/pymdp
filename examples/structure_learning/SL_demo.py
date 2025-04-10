@@ -113,7 +113,7 @@ _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollou
 
 # # Analyze and visualize results
 # analyze_rollout(info, agent, env, render=True, plot=True, print=True)
-# print_parameter_learning(info, agent, learning_config, env, verbose=False)
+# print_parameter_learning(info, learning_config, env, verbose=False)
 # plot_parameter_learning(info, learning_config, env)
 
 #%% ### 4. Joint A, B, D Parameter Learning Demo
@@ -193,7 +193,7 @@ _, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, r
 # render_rollout(env, info) #takes time!
 # plot_beliefs(info, env) #BUG
 # print_rollout(info, env) #BUG
-# print_parameter_learning(info, agent, learning_config, env, verbose=False)
+# print_parameter_learning(info, learning_config, env, verbose=False)
 # plot_parameter_learning(info, learning_config, env) #BUG: but this makes no sense to plot as we cannot compare it to the well-specified model
 
 
