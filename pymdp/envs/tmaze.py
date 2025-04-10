@@ -249,6 +249,7 @@ class TMaze(POMDPEnv):
         return D
 
     def render(self, mode="human", observations=None):
+        
         if observations is not None:
             current_obs = observations
             batch_size = observations[0].shape[0]
@@ -256,8 +257,7 @@ class TMaze(POMDPEnv):
             current_obs = self.current_obs
             batch_size = self.params["A"][0].shape[0]
 
-        plt.clf()  # Clear the current figure
-        
+        plt.clf()  # Clear the current figure  
 
         # create n x n subplots for the batch_size
         n = math.ceil(math.sqrt(batch_size))
