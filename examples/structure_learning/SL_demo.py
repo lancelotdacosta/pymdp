@@ -17,7 +17,7 @@ from pymdp.envs.rollout import rollout, counterfactual_rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
-from pymdp.analysis import print_rollout, render_rollout, plot_beliefs, plot_preferences, analyze_rollout, print_parameter_learning
+from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_preferences, analyze_rollout, print_parameter_learning
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning
 import matplotlib.pyplot as plt
 
@@ -141,7 +141,7 @@ _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollou
 
 # Analyze and visualize results
 # analyze_rollout(info, agent, env, render=True, plot=True, print=True)
-# print_parameter_learning(info, agent, learning_config, env, verbose=False)
+# print_parameter_learning(info, learning_config, env, verbose=False)
 # plot_parameter_learning(info, learning_config, env)
 pe_analysis = compute_prediction_errors(info)
 plot_prediction_errors(pe_analysis)
