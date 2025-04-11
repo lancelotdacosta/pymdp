@@ -190,7 +190,7 @@ _, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, r
 
 # Analyze and visualize results
 # plot_preferences(agent, env)
-# render_rollout(env, info) #takes time!
+# render_rollout(env, info)
 # plot_beliefs(info, env) #BUG
 # print_rollout(info, env) #BUG
 # print_parameter_learning(info, learning_config, env, verbose=False)
