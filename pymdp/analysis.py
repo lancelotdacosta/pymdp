@@ -700,7 +700,7 @@ def get_action_indices(flat_index, control_factor_actions):
     
     return action_indices
 
-def plot_parameter_learning(info, learning_config, env):
+def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     
     """Plot the agent's learning progress for parameters (A, B, D) over time.
     
@@ -717,6 +717,8 @@ def plot_parameter_learning(info, learning_config, env):
         Should have boolean attributes: learn_A, learn_B, learn_D
     env : Env
         Environment instance containing true parameters
+    yscale : str, optional
+        Scale for y-axis, e.g. 'linear' or 'log', by default 'linear'
         
     Returns
     -------
@@ -740,7 +742,8 @@ def plot_parameter_learning(info, learning_config, env):
             agent.A, env.params["A"],
             list(env.labels['observation_modalities'].keys()),
             'A Matrix Learning (Observations)',
-            'L1 Distance to true A'
+            'L1 Distance to true A',
+            yscale=yscale
         )
         plot_idx += 1
     
@@ -750,7 +753,8 @@ def plot_parameter_learning(info, learning_config, env):
             agent.B, env.params["B"],
             list(env.labels['state_factors'].keys()),
             'B Matrix Learning (Transitions)',
-            'L1 Distance to true B'
+            'L1 Distance to true B',
+            yscale=yscale
         )
         plot_idx += 1
     
@@ -760,7 +764,8 @@ def plot_parameter_learning(info, learning_config, env):
             agent.D, env.params["D"],
             list(env.labels['state_factors'].keys()),
             'D Matrix Learning (Initial States)',
-            'L1 Distance to true D'
+            'L1 Distance to true D',
+            yscale=yscale
         )
     
     plt.tight_layout()
@@ -768,7 +773,7 @@ def plot_parameter_learning(info, learning_config, env):
     return plt
 
 
-def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel):
+def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel, yscale='linear'):
     #TODO: note this works only for batch_size==1
     """Helper function to plot learning curves for a set of matrices.
     
@@ -786,6 +791,8 @@ def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel):
         Plot title
     ylabel : str
         Y-axis label
+    yscale : str, optional
+        Scale for y-axis, either 'linear' or 'log', by default 'linear'
     """
     
     # Get timesteps
@@ -807,6 +814,7 @@ def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel):
     ax.set_ylabel(ylabel)
     ax.set_ylim(bottom=0)
     ax.set_title(title)
+    ax.set_yscale(yscale)
     ax.legend()
 
 def print_initial_state(info):
