@@ -13,7 +13,7 @@ from pymdp.envs.simplest import SimplestEnv, plot_A_learning
 from pymdp.envs.simplest import print_rollout as legacy_print_rollout
 from pymdp.envs.simplest import plot_beliefs as legacy_plot_beliefs
 from pymdp.envs.simplest import print_parameter_learning as legacy_print_parameter_learning
-from pymdp.envs.rollout import rollout, counterfactual_rollout
+from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
