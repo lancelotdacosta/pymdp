@@ -573,7 +573,7 @@ def print_parameter_learning(info, learning_config, env, verbose=False, batch_id
             print(f"\nModality: {modality}")
             print(f"Initial A matrix:\n{round_array(info['agent'].A[m][0, batch_idx])}")
             print(f"Final A matrix:\n{round_array(info['agent'].A[m][-1, batch_idx])}")
-            # Useful for debugging:
+            # Useful for debugging/comparison:
             # print(f"True A matrix:\n{round_array(env.params['A'][m])}")
             if verbose:
                 print(f"\nLearning progression for A matrix (Modality {modality}):")
@@ -638,7 +638,7 @@ def print_parameter_learning(info, learning_config, env, verbose=False, batch_id
                 # Print B matrices with rounded values
                 print(f"Initial B matrix under action {action_label}:\n{round_array(info['agent'].B[f][0, batch_idx, ..., a])}")
                 print(f"Final B matrix under action {action_label}:\n{round_array(info['agent'].B[f][-1, batch_idx, ..., a])}")
-                # Useful for debugging:
+                # Useful for debugging/comparison:
                 # print(f"True B matrix under action {action_label}:\n{round_array(env.params['B'][f][..., a])}")
                 # diff_B = env.params['B'][f][..., a] - info['agent'].B[f][-1, batch_idx, ..., a]
                 # print(f"Absolute difference (true - final) B matrix under action {action_label}:\n{round_array(jnp.abs(diff_B), decimals=1)}")
@@ -654,9 +654,9 @@ def print_parameter_learning(info, learning_config, env, verbose=False, batch_id
             print(f"\nState Factor: {factor}")
             print(f"Initial D matrix:\n{round_array(info['agent'].D[f][0, batch_idx])}")
             print(f"Final D matrix:\n{round_array(info['agent'].D[f][-1, batch_idx])}")
-            # Useful for debugging:
+            # Useful for debugging/comparison:
             # print(f"True D matrix:\n{round_array(env.params['D'][f])}")
-            if verbose and agent.pD:
+            if verbose:
                 print(f"\nLearning progression for D matrix (Factor {factor}):")
                 for t in range(num_timesteps):
                     print(f"t={t}, qD: {round_array(info['agent'].pD[f][t, batch_idx])}, D: {round_array(info['agent'].D[f][t, batch_idx])}")
