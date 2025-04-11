@@ -226,6 +226,65 @@ def _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0):
     return agent
 
 
+def multi_trial_rollout(agent: Agent, env: Env, num_timesteps: int, num_trials: int, rng_key: jr.PRNGKey):
+    """
+    Run multiple trials of rollout allowing learning across trials.
+    
+    This function preserves the agent's learned parameters across trials,
+    but resets the environment at the beginning of each trial.
+    
+    Parameters
+    ----------
+    agent : Agent
+        the active inference agent
+    env : Env
+        the environment
+    num_timesteps : int
+        number of timesteps to run in each trial
+    num_trials : int
+        number of trials to run
+    rng_key : PRNGKey
+        random key for the simulation
+        
+    Returns
+    -------
+    last_carry : dict 
+        dictionary containing the final state of the simulation
+    all_info : dict
+        nested dictionary containing the trajectory information from all trials
+    env : Env
+        the final state of the environment
+    """
+    
+    # Define function for a single trial
+    def rollout_trial(carry, _):
+        agent, rng_key = carry #env is carried over but actually reset within rollout at each trial
+        
+        # Split key for this trial
+        rng_key, rollout_key = jr.split(rng_key)
+        
+        # Run a single rollout
+        last, info, _ = rollout(agent, env, num_timesteps, rollout_key)
+        
+        # Get updated agent for next trial
+        agent = last["agent"]
+        
+        # Return updated state and info for this trial
+        return (agent, rng_key), info
+    
+    # Initialize carry state for scan
+    init_carry = (agent, rng_key)
+    
+    # Run all trials using scan
+    (final_agent, final_key), all_trial_info = jax.lax.scan(
+        rollout_trial,
+        init_carry,
+        jnp.arange(num_trials)
+    )
+
+    return (final_agent, final_key), all_trial_info
+
+
 def counterfactual_rollout(agent, obs_sequence, action_sequence):
     """
     Perform a counterfactual rollout using a (counterfactual) agent with assumed action and observation sequences.
@@ -382,7 +441,6 @@ def _concat_or_pass(init, steps):
             init = jnp.transpose(init, (1, 0) + tuple(range(2, init.ndim)))
         return jnp.concatenate([init, steps], axis=0)
     return steps
-
 
 # EXAMPLE TESTS FOR COUNTERFACTUAL ROLLOUT IN SIMPLEST DEMO THAT COULD BE USED LATER FOR A UNIT TEST FILE
 
