@@ -696,6 +696,7 @@ def get_action_indices(flat_index, control_factor_actions):
     return action_indices
 
 def plot_parameter_learning(info, learning_config, env):
+    
     """Plot the agent's learning progress for parameters (A, B, D) over time.
     
     This function generates plots showing the distance between the agent's learned
@@ -734,7 +735,7 @@ def plot_parameter_learning(info, learning_config, env):
             agent.A, env.params["A"],
             list(env.labels['observation_modalities'].keys()),
             'A Matrix Learning (Observations)',
-            'Distance to true A'
+            'L1 Distance to true A'
         )
         plot_idx += 1
     
@@ -744,7 +745,7 @@ def plot_parameter_learning(info, learning_config, env):
             agent.B, env.params["B"],
             list(env.labels['state_factors'].keys()),
             'B Matrix Learning (Transitions)',
-            'Distance to true B'
+            'L1 Distance to true B'
         )
         plot_idx += 1
     
@@ -754,7 +755,7 @@ def plot_parameter_learning(info, learning_config, env):
             agent.D, env.params["D"],
             list(env.labels['state_factors'].keys()),
             'D Matrix Learning (Initial States)',
-            'Distance to true D'
+            'L1 Distance to true D'
         )
     
     plt.tight_layout()
@@ -762,16 +763,17 @@ def plot_parameter_learning(info, learning_config, env):
     return plt
 
 
-def _plot_matrix_learning(ax, agent_matrices, env_matrices, labels, title, ylabel):
+def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel):
+    #TODO: note this works only for batch_size==1
     """Helper function to plot learning curves for a set of matrices.
     
     Parameters
     ----------
     ax : matplotlib.axes.Axes
         The axes to plot on
-    agent_matrices : List[Array]
+    agent_tensor : List[Array]
         List of parameter history arrays from the agent
-    env_matrices : List[Array]
+    env_tensor : List[Array]
         List of true parameter arrays from the environment
     labels : List[str]
         List of labels for each matrix (e.g., modality or factor names)
@@ -782,16 +784,17 @@ def _plot_matrix_learning(ax, agent_matrices, env_matrices, labels, title, ylabe
     """
     
     # Get timesteps
-    n_timesteps = agent_matrices[0].shape[0]
+    n_timesteps = agent_tensor[0].shape[0]
     timesteps = range(n_timesteps)
     
     # Plot distance for each matrix
-    for i, matrix_hist in enumerate(agent_matrices):
-        # Calculate distances over time (using batch index 0)
-        distances = [float(jnp.linalg.norm(m[0] - env_matrices[i])) for m in matrix_hist]
+    for i, array_hist in enumerate(agent_tensor):
+        # i loop over factors/modalities and array_hist is the history of the agent's parameters for that factor/modality
+        # Calculate distances over time
+        distances = [float(jnp.max(jnp.abs(array - env_tensor[i]))) for array in array_hist]
         
         # Plot with label from environment if available
-        label = labels[i] if i < len(labels) else f"Matrix {i}"
+        label = labels[i] if i < len(labels) else f"Factor/Modality {i}"
         ax.plot(timesteps, distances, label=label, linewidth=2)
     
     # Configure the plot
