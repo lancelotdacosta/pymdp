@@ -156,7 +156,47 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
     plt.tight_layout()
     #return fig
 
-def print_rollout(info, env, batch_idx=0, timesteps=None):
+def print_experiment_setup(info):
+    
+    multi_trials, num_trials = is_multi_trial(info)
+    info = get_info_trial(info, 0, verbose=False)
+    
+    # Extract variables from info dictionary
+    observations = info["observation"] # List of modality arrays, shape: (T+1, batch_size, 1)
+    beliefs = info["qs"] # List of factor arrays, shape: (T+1, batch_size, 1, num_states[f])
+    policies = info["qpi"] # Shape: (T+1, batch_size, num_policies)
+    actions = info["action"] # Shape: (T+1, batch_size, control_factors)
+    empirical_priors = info["empirical_prior"] # List of prior belief arrays for each state factor
+
+    # Get the environment labels
+    labels = info['env'].get_labels()
+    
+    # Get dimensions
+    num_timesteps = observations[0].shape[0] # Number of timesteps including initial (t=0)
+    num_state_factors = len(labels["state_factors"])
+    num_obs_modalities = len(labels["observation_modalities"])
+    num_control_factors = len(labels["control_factors"])
+    
+    # Get labels for each component
+    state_factor_names = list(labels["state_factors"].keys())
+    observation_modality_names = list(labels["observation_modalities"].keys())
+    control_factor_names = list(labels["control_factors"].keys())
+    
+    # Print experiment setup
+    print("\n=== Experiment Setup ===")
+    
+    # Trial information
+    if multi_trials: print(f"Multi-trial experiment: {num_trials} trials")
+    else: print("Single-trial experiment")
+    print(f"Number of timesteps per trial: {num_timesteps-1}")  # -1 because includes initial observation
+    print(f"Batch size: {observations[0].shape[1]}")
+    print(f"Number of policies: {policies.shape[-1]}")
+    print(f"State factors: {state_factor_names}")
+    print(f"Observation modalities: {observation_modality_names}")
+    print(f"Control factors: {control_factor_names}")
+    #TODO: add more info such as planning horizon of agent
+
+def print_rollout(info, batch_idx=0, timesteps=None):
     """Print a human-readable version of the rollout using environment labels.
     
     Parameters
