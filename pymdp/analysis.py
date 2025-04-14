@@ -219,6 +219,7 @@ def print_rollout(info, batch_idx=0, timesteps=None):
             info_trial = get_info_trial(info, trial_idx, verbose=False)
             print(f"\n=== Trial {trial_idx} ==================")
             print_rollout(info_trial, batch_idx=batch_idx, timesteps=timesteps)
+            #TODO: may select what trials to print
         return
 
     # Extract variables from info dictionary
