@@ -13,12 +13,12 @@ from pymdp.envs.simplest import SimplestEnv, plot_A_learning
 from pymdp.envs.simplest import print_rollout as legacy_print_rollout
 from pymdp.envs.simplest import plot_beliefs as legacy_plot_beliefs
 from pymdp.envs.simplest import print_parameter_learning as legacy_print_parameter_learning
-from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout, is_multi_trial
+from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout, is_multi_trial,get_info_trial
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
 from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_preferences, analyze_rollout, print_parameter_learning
-from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning
+from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning, print_experiment_setup
 import matplotlib.pyplot as plt
 from copy import deepcopy
 
@@ -78,14 +78,12 @@ key = jr.PRNGKey(key_idx)
 key, rollout_key = jr.split(key)
 last, combined_info = multi_trial_rollout(agent2, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=rollout_key)
 
+#%% ================ANALYSIS WHICH IS WORKING NOW IN THE MULTI-TRIAL ROLLOUT================
+print_experiment_setup(combined_info)
+#%%
+print_rollout(combined_info)
 
-#%% Is multi-trial helper function
-
-
-
-
-
-#%% ================ANALYSIS FROM NOW ON================
+#%% ================ANALYSIS REMAINING================
 # plot_parameter_learning(combined_info, learning_config, env)
 print_parameter_learning(combined_info, learning_config, env, verbose=False)
 
@@ -110,7 +108,7 @@ print_parameter_learning(info, learning_config, env, verbose=True)
 plot_preferences(agent, env)
 render_rollout(env, info, fps=10)
 plot_beliefs(info, env)
-print_rollout(info, env)
+
 
 #%% For just A learning complexity is infinite
 
