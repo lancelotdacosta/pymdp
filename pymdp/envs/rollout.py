@@ -364,10 +364,14 @@ def get_info_trial(combined_info, trial_idx, verbose=True):
     # Extraction of trial data
     info_trial = {key: None for key in combined_info.keys()}
     for key in combined_info.keys():
-        if key != 'agent' and key != 'env':
+        if key in ['action','qpi']: #these fields are jnp.ndarray with an extra dimension upfront for num_trials
             info_trial[key] = combined_info[key][trial_idx]
-        else: 
-            info_trial[key] = combined_info[key]  # These are already the final objects from the last trial, cf. this function's documentation
+        elif key in ['empirical_prior', 'observation', 'qs']: #these fields are lists of jnp.ndarray per factor/modality, where each jnp.array has an extra dimension upfront for num_trials
+            info_trial[key] = [combined_info[key][f][trial_idx] for f in range(len(combined_info[key]))] #here we loop over factors/modalities 
+        elif key in ['agent', 'env']: #these fields are just the final objects from the last trial, cf. this function's documentation
+            info_trial[key] = combined_info[key]  
+        else:
+            raise ValueError(f"Key {key} not recognized in info dictionary.")
     return info_trial
 
 def counterfactual_rollout(agent, obs_sequence, action_sequence):
