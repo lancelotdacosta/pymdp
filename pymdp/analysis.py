@@ -15,6 +15,7 @@ import numpy as np
 import io
 from matplotlib.gridspec import GridSpec
 from pymdp.maths import smooth_data
+from pymdp.envs.rollout import is_multi_trial, get_info_trial
 
 def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_preferences(agent, env)
@@ -208,20 +209,27 @@ def print_rollout(info, batch_idx=0, timesteps=None):
         - 'qpi': Policy distributions
         - 'action': Selected actions
         - 'empirical_prior': Prior beliefs before observations
-    env : Env
-        Environment instance containing labels dictionary
     batch_idx : int, optional
         Batch index to print for, by default 0
     """
-    # Get the environment labels
-    labels = env.get_labels()
-    
+    # Check if multi-trial, and call recursively for each trial if so
+    multi_trials, num_trials = is_multi_trial(info)
+    if multi_trials:
+        for trial_idx in range(num_trials):
+            info_trial = get_info_trial(info, trial_idx, verbose=False)
+            print(f"\n=== Trial {trial_idx} ==================")
+            print_rollout(info_trial, batch_idx=batch_idx, timesteps=timesteps)
+        return
+
     # Extract variables from info dictionary
     observations = info["observation"] # List of modality arrays, shape: (T+1, batch_size, 1)
     beliefs = info["qs"] # List of factor arrays, shape: (T+1, batch_size, 1, num_states[f])
     policies = info["qpi"] # Shape: (T+1, batch_size, num_policies)
     actions = info["action"] # Shape: (T+1, batch_size, control_factors)
     empirical_priors = info["empirical_prior"] # List of prior belief arrays for each state factor
+
+    # Get the environment labels
+    labels = info['env'].get_labels()
     
     # Get dimensions
     num_timesteps = observations[0].shape[0] # Number of timesteps including initial (t=0)
@@ -233,15 +241,6 @@ def print_rollout(info, batch_idx=0, timesteps=None):
     state_factor_names = list(labels["state_factors"].keys())
     observation_modality_names = list(labels["observation_modalities"].keys())
     control_factor_names = list(labels["control_factors"].keys())
-    
-    # Print experiment setup
-    print("\n=== Experiment Setup ===")
-    print(f"Number of timesteps: {num_timesteps-1}")  # -1 because includes initial observation
-    print(f"Batch size: {observations[0].shape[1]}")
-    print(f"Number of policies: {policies.shape[-1]}")
-    print(f"State factors: {state_factor_names}")
-    print(f"Observation modalities: {observation_modality_names}")
-    print(f"Control factors: {control_factor_names}")
     
     def format_state_dist(factor_idx, state_probs):
         """Helper to format state distribution nicely using labels"""
@@ -265,7 +264,7 @@ def print_rollout(info, batch_idx=0, timesteps=None):
     
     if 0 in timesteps_to_print:
         # Print initial timestep info
-        print("\n=== Initial Timestep (t=0) ===")
+        print("\n--- Initial Timestep (t=0) ---")
         
         # Print initial beliefs for each state factor
         for f in range(num_state_factors):
@@ -289,7 +288,7 @@ def print_rollout(info, batch_idx=0, timesteps=None):
 
     # Print trajectory
     for t in timesteps_to_print:
-        print(f"\n=== Timestep {t} ===")
+        print(f"\n--- Timestep {t} ---")
         
         # Print policy distribution in a concise format
         # Get top 5 policies by probability
