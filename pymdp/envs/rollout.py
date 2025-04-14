@@ -322,6 +322,53 @@ def is_multi_trial(info):
     else:
         raise ValueError("Unsupported: Action key not found in info")
 
+def get_info_trial(combined_info, trial_idx, verbose=True):
+    """
+    Extract a single trial's information from a multi-trial rollout.
+    
+    Parameters
+    ----------
+    info : dict
+        Dictionary containing rollout information with keys:
+        - 'observation': List of observation arrays from environment
+        - 'qs': List of belief arrays for each state factor
+        - 'qpi': Policy distributions
+        - 'action': Selected actions
+        - 'empirical_prior': Prior beliefs before observations
+        
+        Note on 'agent' and 'env' keys: Due to how JAX's lax.scan handles custom Python
+        objects that aren't registered with its pytree system, these keys (if present)
+        contain only the final objects from the last trial, not a history of objects
+        across all trials. This is because JAX cannot "stack" custom Python objects
+        like it does with arrays, and instead keeps only the most recent value.
+        
+    trial_idx : int
+        Index of the trial to extract
+    verbose : bool, default=True
+        Whether to print warnings about agent/env state mismatch
+    
+    Returns
+    -------
+    trial_info : dict
+        Dictionary containing information for the specified trial
+    """
+    # Checks and warnings
+    is_multi, num_trials = is_multi_trial(combined_info)
+    if not is_multi:
+        raise ValueError("Input info is not multi-trial, cannot extract trial data.")
+    elif verbose and trial_idx < num_trials - 1:
+        print(f"WARNING: Extracting data for trial {trial_idx}. However, 'agent' and 'env' in the result " 
+              f"will be from the final trial ({num_trials-1}), not trial {trial_idx}. "
+              f"See get_info_trial documentation for details.")
+    
+    # Extraction of trial data
+    info_trial = {key: None for key in combined_info.keys()}
+    for key in combined_info.keys():
+        if key != 'agent' and key != 'env':
+            info_trial[key] = combined_info[key][trial_idx]
+        else: 
+            info_trial[key] = combined_info[key]  # These are already the final objects from the last trial, cf. this function's documentation
+    return info_trial
 
 def counterfactual_rollout(agent, obs_sequence, action_sequence):
     """
