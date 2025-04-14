@@ -1,6 +1,8 @@
-# This is a demo of structure learning on the TMaze environment
+# This is a demo of learning onthe TMaze environment
 # The code should be as modular as possible so that it is straightforward to change the environment
-# The demo goes in steps: structure learning is only toward the end
+#
+# Authors: Lancelot da Costa
+
 
 # %% Importing necessary libraries
 get_ipython().run_line_magic('load_ext', 'autoreload')
