@@ -284,6 +284,44 @@ def multi_trial_rollout(agent: Agent, env: Env, num_timesteps: int, num_trials: 
 
     return (final_agent, final_key), all_trial_info
 
+def is_multi_trial(info):
+    """Check if info contains data from multiple trials
+    
+    This function examines the shape of the action array to determine if the info
+    dictionary contains data from multiple trials or just a single trial.
+    
+    In pymdp, action arrays have the following dimension structure:
+    - For single-trial data (from rollout function):
+      shape = (timesteps, batch_size, control_factors)
+      Example: (3, 1, 2) means 3 timesteps, batch size of 1, and 2 control factors
+    
+    - For multi-trial data (from multi_trial_rollout function):
+      shape = (num_trials, timesteps, batch_size, control_factors)
+      Example: (5, 3, 1, 2) means 5 trials, 3 timesteps per trial, batch size of 1,
+      and 2 control factors
+    
+    The key insight is that JAX's lax.scan automatically adds a leading dimension
+    for the trial number when used in multi_trial_rollout.
+    
+    Returns
+    -------
+    is_multi : bool
+        True if info contains multiple trials, False otherwise
+    num_trials : int or None
+        Number of trials if multi-trial, None otherwise
+    """
+    if 'action' in info:
+        # If there's an extra leading dimension for trials
+        if len(info['action'].shape) == 4:
+            num_trials = info['action'].shape[0]
+            return True, num_trials
+        elif len(info['action'].shape) == 3:
+            return False, None
+        else:
+            raise ValueError("Unexpected shape of action array")
+    else:
+        raise ValueError("Unsupported: Action key not found in info")
+
 
 def counterfactual_rollout(agent, obs_sequence, action_sequence):
     """

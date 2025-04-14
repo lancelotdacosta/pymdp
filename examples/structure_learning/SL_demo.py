@@ -31,7 +31,7 @@ batch_size = 1
 
 # Initialize environment
 env = make(
-    EnvType.T_MAZE, 
+    EnvType.SIMPLEST, 
     batch_size=batch_size
 )
 
@@ -59,34 +59,83 @@ _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollou
 # # Analyze rollout: print and visualize results
 # analyze_rollout(info, agent, env, render=True, plot=True, print=True)
 
-# %% ### 2. Parameter (A, B) Learning Demo
+# %% ### 2b. Parameter (B) Learning Demo
 #
-# Here we demonstrate how the agent can learn the observation (A) and transition (B) tensors through experience.
+# Here we demonstrate how the agent can learn the transition (B) tensor through experience.
 
 # Set up random key
 key = jr.PRNGKey(key_idx)
 
 # Enable A, B parameter learning
-learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
 # Create agent directly from environment with environment config C matrices
 agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 100},
-    agent_params={"action_selection": "stochastic"}
+    model_params={"T": 2},
+    agent_params={"action_selection": "stochastic"},
+    #uniform_D=True
 )
 
-# Run simulation and collect results
+key = jr.PRNGKey(0)
+# Run simulation with multiple trials
+# Checked that this works! :)
+num_trials = 5  # Number of trials to run
+all_info = []
+for trial in range(num_trials):
+    print(f"\n--- Trial {trial+1}/{num_trials} ---")
+    key, rollout_key = jr.split(key)
+    last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+    print_initial_state(info)
+    all_info.append(info)
+    agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
+
+#%%
+# Run simulation with multiple trials
+# num_trials = 5  # Number of trials to run
+
+key = jr.PRNGKey(0)
+# Use the multi_trial_rollout function for efficient multi-trial learning
 key, rollout_key = jr.split(key)
-_, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+last, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=rollout_key)
+
+
+#%%
+# plot_parameter_learning(combined_info, learning_config, env)
+print_parameter_learning(combined_info, learning_config, env, verbose=False)
+
+#%%
+# print_rollout(all_info[0], env), print_rollout(all_info[1], env)
+print_parameter_learning(all_info[0], learning_config, env, verbose=False)
+print_parameter_learning(all_info[1], learning_config, env, verbose=False)
+
+#%%
+# Analysis after all trials are done
+pe_analysis = compute_prediction_errors(info)  # Analyze the final trial
 
 # # Analyze and visualize results
-# analyze_rollout(info, agent, env, render=True, plot=True, print=True)
-# print_parameter_learning(info, agent, learning_config, env, verbose=False)
-# #agent seems to be learning B matrix right under top left reward but not under top right reward. Need to investigate this
-# plot_parameter_learning(info, learning_config, env)
+# plot_prediction_errors(pe_analysis, yscale='linear', smoothing=1000)
+
+plot_parameter_learning(info, learning_config, env)
+#agent seems to be learning B matrix right under top left reward but not under top right reward. Need to investigate this
+print_parameter_learning(info, learning_config, env, verbose=True)
+
+#%%
+plot_preferences(agent, env)
+render_rollout(env, info, fps=10)
+plot_beliefs(info, env)
+print_rollout(info, env)
+
+#%% For just A learning complexity is infinite
+
+prior_t = [p[1] for p in info["empirical_prior"]]  # Current prior (list of arrays)
+qs_t = [q[1] for q in info["qs"]]
+action_t = info["action"][1,]
+
+
+#======END OF TESTING HERE======
 
 #%% ### 3. Initial State Distribution (D) Learning Demo
 #
@@ -196,5 +245,51 @@ _, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, r
 # print_parameter_learning(info, learning_config, env, verbose=False)
 # plot_parameter_learning(info, learning_config, env) #BUG: but this makes no sense to plot as we cannot compare it to the well-specified model
 
+# pe_analysis_misspecified = compute_prediction_errors(info)
+# plot_prediction_errors(pe_analysis_misspecified)
 
+# plot_model_comparison((pe_analysis, pe_analysis_misspecified), 
+#                      labels=('Well-specified', 'Misspecified'))
+# %% TEST: Bayesian model comparison with different models
+
+# Create misspecified model with more states than the environment
+true_structure = env.get_structure()
+
+pe_analysis_misspecified = []
+
+labels = list(range(1,8))
+
+for num_states in labels:
+    print(f"Testing model with {num_states} location states")
+    misspecified_num_states = [num_states, 2]
+    misspecified_structure = true_structure.modify(
+        num_states=misspecified_num_states,
+        T=model.structure.T
+    )
+
+    # Enable all parameter learning
+    learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
+
+    # Initialize misspecified model and agent
+    key = jr.PRNGKey(key_idx)
+    misspecified_model, key = POMDPModel.from_structure(
+        structure=misspecified_structure,
+        learning=learning_config,
+        key=key
+    )
+
+    agent = Agent.from_model(
+        model=misspecified_model,
+        C=env.get_default_C(), #works for misspecified model as it is a preference over observations, not states
+        **env.get_default_agent_params()
+    )
+
+    key = jr.PRNGKey(key_idx)
+    # Run simulation with misspecified model
+    key, rollout_key = jr.split(key)
+    _, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, rng_key=rollout_key)
+
+    pe_analysis_misspecified.append(compute_prediction_errors(info))
+
+plot_model_comparison(pe_analysis_misspecified,labels=labels, yscale='log', smoothing=10)
 # %%

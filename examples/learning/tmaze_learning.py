@@ -13,13 +13,14 @@ from pymdp.envs.simplest import SimplestEnv, plot_A_learning
 from pymdp.envs.simplest import print_rollout as legacy_print_rollout
 from pymdp.envs.simplest import plot_beliefs as legacy_plot_beliefs
 from pymdp.envs.simplest import print_parameter_learning as legacy_print_parameter_learning
-from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout
+from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout, is_multi_trial
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
 from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_preferences, analyze_rollout, print_parameter_learning
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 # if __name__ == "__main__":
 key_idx = 0 # Initialize master random key index at the start
@@ -31,7 +32,7 @@ batch_size = 1
 
 # Initialize environment
 env = make(
-    EnvType.SIMPLEST, 
+    EnvType.T_MAZE,
     batch_size=batch_size
 )
 
@@ -54,6 +55,8 @@ agent, model, key = Agent.from_env(
     agent_params={"action_selection": "stochastic"},
     #uniform_D=True
 )
+agent2 = deepcopy(agent)
+#%%
 
 key = jr.PRNGKey(key_idx)
 # Run simulation with multiple trials
@@ -73,10 +76,16 @@ for trial in range(num_trials):
 key = jr.PRNGKey(key_idx)
 # Use the multi_trial_rollout function for efficient multi-trial learning
 key, rollout_key = jr.split(key)
-last, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=rollout_key)
+last, combined_info = multi_trial_rollout(agent2, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=rollout_key)
 
 
-#%%
+#%% Is multi-trial helper function
+
+
+
+
+
+#%% ================ANALYSIS FROM NOW ON================
 # plot_parameter_learning(combined_info, learning_config, env)
 print_parameter_learning(combined_info, learning_config, env, verbose=False)
 
@@ -105,9 +114,6 @@ print_rollout(info, env)
 
 #%% For just A learning complexity is infinite
 
-prior_t = [p[1] for p in info["empirical_prior"]]  # Current prior (list of arrays)
-qs_t = [q[1] for q in info["qs"]]
-action_t = info["action"][1,]
-
-
-#======END OF TESTING HERE======
+# prior_t = [p[1] for p in info["empirical_prior"]]  # Current prior (list of arrays)
+# qs_t = [q[1] for q in info["qs"]]
+# action_t = info["action"][1,]
