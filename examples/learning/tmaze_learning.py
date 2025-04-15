@@ -53,7 +53,7 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 1},
+    model_params={"T": 3},
     agent_params={"action_selection": "stochastic"},
     #uniform_D=True
 )
@@ -64,41 +64,37 @@ key = jr.PRNGKey(key_idx)
 # Run simulation with multiple trials
 # Checked that this works! :)
 num_trials = 5  # Number of trials to run
-all_info = []
-for trial in range(num_trials):
-    print(f"\n--- Trial {trial+1}/{num_trials} ---")
-    key, rollout_key = jr.split(key)
-    last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
-    print_initial_state(info)
-    all_info.append(info)
-    agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
-
-#%%
+# all_info = []
+# for trial in range(num_trials):
+#     print(f"\n--- Trial {trial+1}/{num_trials} ---")
+#     key, rollout_key = jr.split(key)
+#     last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+#     print_initial_state(info)
+#     all_info.append(info)
+#     agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
 
 key = jr.PRNGKey(key_idx)
 # Use the multi_trial_rollout function for efficient multi-trial learning
 # This was validated against the slower for loop counterpart above!
 _, key, combined_info = multi_trial_rollout(agent2, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
+
 #%% ================ANALYSIS WHICH IS WORKING NOW IN THE MULTI-TRIAL ROLLOUT================
 print_experiment_setup(combined_info)
 print_rollout(combined_info)
 print_parameter_learning(combined_info, learning_config, verbose=False)
 plot_parameter_learning(combined_info, learning_config, env)
-
-#%% ================ANALYSIS REMAINING================
-# Compute prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
+plot_prediction_errors(pe_analysis, yscale='log', smoothing=None, num_trials=num_trials)
 
-#%%
-# # Analyze and visualize results
-plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None)
 
-#%%
+#%% ================ANALYSIS REMAINING FOR ADAPTATION================
 plot_preferences(agent, env)
 render_rollout(env, info, fps=10)
 plot_beliefs(info, env)
-
+# plot_model_comparison
+# print_initial_state
+# initial_state
 
 #%% For just A learning complexity is infinite
 
