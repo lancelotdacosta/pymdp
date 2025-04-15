@@ -790,9 +790,9 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     
     # Get agent from info dictionary, get its tensors, and flatten them along the time dimension if multi-trial
     agent = info["agent"]
-    A_flat = flatten_multi_trial_tensor(agent.A, multi_trials)
-    B_flat = flatten_multi_trial_tensor(agent.B, multi_trials)
-    D_flat = flatten_multi_trial_tensor(agent.D, multi_trials)
+    A_flat = [flatten_multi_trial_tensor(agent.A[m], multi_trials) for m in range(len(agent.A))]
+    B_flat = [flatten_multi_trial_tensor(agent.B[f], multi_trials) for f in range(len(agent.B))]
+    D_flat = [flatten_multi_trial_tensor(agent.D[f], multi_trials) for f in range(len(agent.D))]
     #TODO: Optionally, one could remove dependency on env of this function by extracting its tensors directly from info.
     #This would be like this if multi_trial (indexing at zeroth trial and timestep)
     # A_true = [combined_info["env"].params["A"][m][0,0] for m in range(len(combined_info["env"].params["A"]))] # this is the same as env.params["A"]

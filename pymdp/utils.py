@@ -137,7 +137,7 @@ def fig2img(fig):
     return im[:, :, :3]
 
 
-def flatten_multi_trial_tensor(tensor_list, multi_trials=True):
+def flatten_multi_trial_tensor(tensor, multi_trials=True):
     """
     Helper function to flatten multi-trial tensor data into a single time series.
     
@@ -147,18 +147,18 @@ def flatten_multi_trial_tensor(tensor_list, multi_trials=True):
     
     Parameters
     ----------
-    tensor_list : list of ndarray or jax.Array
-        List of multi-dimensional arrays with shape [trials, timesteps, ...] 
+    tensor : ndarray or jax.Array
+        Multi-dimensional array with shape [trials, timesteps, ...] 
         
     Returns
     -------
-    list of ndarray or jax.Array
-        Flattened list of arrays with shape [trials*timesteps, ...]
+    ndarray or jax.Array
+        Flattened array with shape [trials*timesteps, ...]
     """
     if multi_trials:
-        return [tensor.reshape(tensor.shape[0] * tensor.shape[1], *tensor.shape[2:]) for tensor in tensor_list]
+        return tensor.reshape(tensor.shape[0] * tensor.shape[1], *tensor.shape[2:])
     else:
-        return tensor_list
+        return tensor
 
 
 def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True, atol=0, rtol=0):
