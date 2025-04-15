@@ -87,12 +87,12 @@ print_rollout(combined_info)
 
 #%% ================ANALYSIS REMAINING================
 # plot_parameter_learning(combined_info, learning_config, env)
-print_parameter_learning(combined_info, learning_config, env, verbose=False)
+print_parameter_learning(combined_info, learning_config, verbose=False)
 
 #%%
 # print_rollout(all_info[0], env), print_rollout(all_info[1], env)
-print_parameter_learning(all_info[0], learning_config, env, verbose=False)
-print_parameter_learning(all_info[1], learning_config, env, verbose=False)
+print_parameter_learning(all_info[0], learning_config, verbose=False)
+print_parameter_learning(all_info[1], learning_config, verbose=False)
 
 #%%
 # Analysis after all trials are done

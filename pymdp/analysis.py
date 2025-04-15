@@ -572,20 +572,16 @@ def plot_preferences(agent, env=None, figsize=None, show=True, batch_idx=0):
     
     return plt
 
-def print_parameter_learning(info, learning_config, env, verbose=False, batch_idx=0):
+def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
     """Print and analyze parameter learning results in an environment-agnostic way.
     
     Parameters
     ----------
     info : Dict
         Dictionary containing agent learning information with keys like 'agent'
-    agent : Agent
-        Agent instance with learned parameters
     learning_config : object
         Configuration specifying which parameters are being learned.
         Should have boolean attributes: learn_A, learn_B, learn_D
-    env : Env
-        Environment instance, used to get labels for actions and states
     verbose : bool, optional
         Whether to print learned parameters at each timestep, by default False
     batch_idx : int, optional
@@ -595,9 +591,9 @@ def print_parameter_learning(info, learning_config, env, verbose=False, batch_id
     num_timesteps = info["agent"].A[0].shape[0]
     
     # Extract labels from environment
-    modality_names = list(env.labels['observation_modalities'].keys())
-    factor_names = list(env.labels['state_factors'].keys())
-    control_factor_names = list(env.labels['control_factors'].keys())
+    modality_names = list(info["env"].labels['observation_modalities'].keys())
+    factor_names = list(info["env"].labels['state_factors'].keys())
+    control_factor_names = list(info["env"].labels['control_factors'].keys())
     
     # Helper function to round array values to 2 decimal places for display
     def round_array(arr, decimals=2):
@@ -645,7 +641,7 @@ def print_parameter_learning(info, learning_config, env, verbose=False, batch_id
             for idx in control_indices:
                 if idx < len(control_factor_names):
                     control_name = control_factor_names[idx]
-                    control_factor_actions.append((control_name, env.labels['control_factors'][control_name]))
+                    control_factor_actions.append((control_name, info["env"].labels['control_factors'][control_name]))
             
             if control_factor_actions:
                 control_names = [name for name, _ in control_factor_actions]
