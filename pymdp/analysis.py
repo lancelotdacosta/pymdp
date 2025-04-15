@@ -16,6 +16,7 @@ import io
 from matplotlib.gridspec import GridSpec
 from pymdp.maths import smooth_data
 from pymdp.envs.rollout import is_multi_trial, get_info_trial
+from pymdp.utils import flatten_multi_trial_tensor
 
 def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_preferences(agent, env)
@@ -783,9 +784,15 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     plt : matplotlib.pyplot
         The pyplot object with the generated plots
     """
+
+    # Check if multi-trial
+    multi_trials, _ = is_multi_trial(info)
     
-    # Get agent from info dictionary
+    # Get agent from info dictionary, get its tensors, and flatten them along the time dimension if multi-trial
     agent = info["agent"]
+    A_flat = flatten_multi_trial_tensor(agent.A, multi_trials)
+    B_flat = flatten_multi_trial_tensor(agent.B, multi_trials)
+    D_flat = flatten_multi_trial_tensor(agent.D, multi_trials)
     
     # Create figure with appropriate number of subplots
     n_plots = learning_config.learn_A + learning_config.learn_B + learning_config.learn_D
@@ -797,10 +804,10 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     if learning_config.learn_A:
         _plot_matrix_learning(
             fig.add_subplot(gs[0, plot_idx]),
-            agent.A, env.params["A"],
+            A_flat, env.params["A"],
             list(env.labels['observation_modalities'].keys()),
             'A Matrix Learning (Observations)',
-            'L1 Distance to true A',
+            'Linf distance to true A',
             yscale=yscale
         )
         plot_idx += 1
@@ -808,10 +815,10 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     if learning_config.learn_B:
         _plot_matrix_learning(
             fig.add_subplot(gs[0, plot_idx]),
-            agent.B, env.params["B"],
+            B_flat, env.params["B"],
             list(env.labels['state_factors'].keys()),
             'B Matrix Learning (Transitions)',
-            'L1 Distance to true B',
+            'Linf distance to true B',
             yscale=yscale
         )
         plot_idx += 1
@@ -819,10 +826,10 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     if learning_config.learn_D:
         _plot_matrix_learning(
             fig.add_subplot(gs[0, plot_idx]),
-            agent.D, env.params["D"],
+            D_flat, env.params["D"],
             list(env.labels['state_factors'].keys()),
             'D Matrix Learning (Initial States)',
-            'L1 Distance to true D',
+            'Linf distance to true D',
             yscale=yscale
         )
     

@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 
 # if __name__ == "__main__":
-key_idx = 0 # Initialize master random key index at the start
+key_idx = 1 # Initialize master random key index at the start
 
 #%% Initialise environment
 
@@ -46,14 +46,14 @@ env = make(
 key = jr.PRNGKey(key_idx)
 
 # Enable A, B parameter learning
-learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
+learning_config = LearningConfig(learn_A=False, learn_B=True, learn_D=False)
 
 # Create agent directly from environment with environment config C matrices
 agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 2},
+    model_params={"T": 10},
     agent_params={"action_selection": "stochastic"},
     #uniform_D=True
 )
@@ -63,15 +63,15 @@ agent2 = deepcopy(agent)
 key = jr.PRNGKey(key_idx)
 # Run simulation with multiple trials
 # Checked that this works! :)
-num_trials = 5  # Number of trials to run
-all_info = []
-for trial in range(num_trials):
-    print(f"\n--- Trial {trial+1}/{num_trials} ---")
-    key, rollout_key = jr.split(key)
-    last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
-    print_initial_state(info)
-    all_info.append(info)
-    agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
+num_trials = 100  # Number of trials to run
+# all_info = []
+# for trial in range(num_trials):
+#     print(f"\n--- Trial {trial+1}/{num_trials} ---")
+#     key, rollout_key = jr.split(key)
+#     last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+#     print_initial_state(info)
+#     all_info.append(info)
+#     agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
 
 #%%
 
@@ -87,6 +87,7 @@ print_parameter_learning(combined_info, learning_config, verbose=False)
 
 #%% ================ANALYSIS REMAINING================
 plot_parameter_learning(combined_info, learning_config, env)
+
 
 #%%
 plot_parameter_learning(all_info[4], learning_config, env)
