@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
 import jax.lax
+from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list
 
 from pymdp.agent import Agent
 from pymdp.envs.env import Env
@@ -379,6 +380,66 @@ def get_info_trial(combined_info, trial_idx, verbose=True):
         else:
             raise ValueError(f"Key {key} not recognized in info dictionary.")
     return info_trial
+
+def flatten_multi_trial_info(info):
+    """
+    Flatten multi-trial info data into a single continuous time series.
+    
+    This function converts data from a multi-trial rollout (with separate
+    trials) into a format where all trials are concatenated into one continuous
+    sequence. This is useful for analysis that treats the entire learning
+    experience as a single time series.
+    
+    The function handles the different data types in the info dictionary:
+    - For arrays like 'action' and 'qpi', it flattens the trial dimension
+    - For lists of arrays like 'observation', it flattens each array separately
+    - For custom Python objects ('agent', 'env'), it keeps the objects themselves.
+      Note: Due to the immutability of agent and environment objects, their internal
+      parameters (A, B, D) are not flattened directly.
+    
+    Parameters
+    ----------
+    info : dict
+        Information dictionary from a rollout, potentially containing
+        multi-trial data where the first dimension of arrays corresponds
+        to different trials
+    
+    Returns
+    -------
+    dict
+        Flattened information dictionary where all trial data is concatenated
+        into a single time sequence. If the input was not multi-trial,
+        the original dictionary is returned unchanged.
+        
+    Notes
+    -----
+    This is useful for visualizations and analyses that want to view
+    learning as a continuous process rather than separate trials.
+    The agent and environment objects from the original info are kept as-is
+    (without attempting to flatten their internal parameters) due to their
+    immutable nature.
+    """
+    is_multi, _ = is_multi_trial(info)
+
+    if not is_multi:
+        return info
+    else:
+        flat_info = {key: None for key in info.keys()}
+        for key in info.keys():
+            if key in ['action','qpi']: #these fields are jnp.ndarray with an extra dimension upfront for num_trials
+                flat_info[key] = flatten_multi_trial_tensor(info[key])
+            elif key in ['empirical_prior', 'observation', 'qs']:
+                flat_info[key] = flatten_multi_trial_tensor_list(info[key])
+            elif key in ['agent', 'env']:
+                # Keep the original objects - they are immutable and cannot be directly modified
+                flat_info[key] = info[key]    
+                # NOTE: If you need to access flattened parameters, you can do it like this:
+                # flat_A = [flatten_multi_trial_tensor(info[key].A[m]) for m in range(len(info[key].A))]
+                # But we cannot modify the agent object directly due to immutability
+            else:
+                raise ValueError(f"Key {key} not recognized in info dictionary.")
+        return flat_info
+
 
 def counterfactual_rollout(agent, obs_sequence, action_sequence):
     """
