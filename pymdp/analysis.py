@@ -24,7 +24,7 @@ def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_beliefs(info, env)
     if print: print_rollout(info, env)
 
-def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5), yscale: str = 'log', smoothing: Optional[int] = None) -> plt.Figure:
+def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5), yscale: str = 'log', smoothing: Optional[int] = None, num_trials: Optional[int] = None) -> plt.Figure:
     """
     Plot prediction error metrics from the output of compute_prediction_errors.
 
@@ -53,6 +53,17 @@ def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsi
     pe_data = smooth_data(pe_analysis, window_size=smoothing)
     
     fig = plt.figure(figsize=figsize)
+
+    # Add vertical lines at the beginning of each trial if there are trials
+    if num_trials is not None and num_trials > 1:
+        # Calculate timesteps per trial by dividing total timesteps by number of trials
+        n_timesteps = len(pe_data["pred_error"])
+        timesteps_per_trial = n_timesteps // num_trials
+        
+        for trial in range(num_trials):
+            trial_start = trial * timesteps_per_trial
+            plt.axvline(x=trial_start, color='gray', linestyle=':', alpha=0.3)
+
     plt.plot(pe_data["complexity_l2"], label='L2 norm Complexity', alpha=0.4)
     plt.plot(pe_data["complexity"], label='Complexity', alpha=0.7)
     plt.plot(pe_data["neg_accuracy"], label='Negative accuracy', alpha=0.7)
@@ -62,7 +73,7 @@ def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsi
     plt.xlabel('Timestep')
     plt.ylabel('nats')
     plt.yscale(yscale)
-    plt.grid(True)
+    # plt.grid(True)
     
     if title is not None:
         plt.title(title)
@@ -673,7 +684,7 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
                     action_label = actions[a] if a < len(actions) else f"Action {a}"
                 else:
                     # Multiple control factors - map flat index to action combinations
-                    action_indices = get_action_indices(a, control_factor_actions)
+                    action_indices = _get_action_indices(a, control_factor_actions)
                     action_labels = []
                     
                     for i, (control_name, actions) in enumerate(control_factor_actions):
@@ -720,7 +731,7 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
                 for t in range(num_timesteps):
                     print(f"t={t}, qD: {round_array(info['agent'].pD[f][t, batch_idx])}, D: {round_array(info['agent'].D[f][t, batch_idx])}")
 
-def get_action_indices(flat_index, control_factor_actions):
+def _get_action_indices(flat_index, control_factor_actions):
     """Convert a flat action index to individual action indices for multiple control factors.
     #TODO: consider moving this to a utils file
     
