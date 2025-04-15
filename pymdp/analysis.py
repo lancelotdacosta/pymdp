@@ -53,10 +53,10 @@ def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsi
     pe_data = smooth_data(pe_analysis, window_size=smoothing)
     
     fig = plt.figure(figsize=figsize)
-    plt.plot(pe_data["pred_error"], label='Prediction error', alpha=1.0)
+    plt.plot(pe_data["complexity_l2"], label='L2 norm Complexity', alpha=0.4)
     plt.plot(pe_data["complexity"], label='Complexity', alpha=0.7)
     plt.plot(pe_data["neg_accuracy"], label='Negative accuracy', alpha=0.7)
-    plt.plot(pe_data["complexity_l2"], label='L2 norm Complexity', alpha=0.4)
+    plt.plot(pe_data["pred_error"], label='Prediction error', alpha=1.0)
     plt.plot(pe_data["pe_accumulated"], label='Accumulated prediction errors')
     plt.legend()
     plt.xlabel('Timestep')
