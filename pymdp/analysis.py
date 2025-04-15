@@ -587,8 +587,14 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
     batch_idx : int, optional
         Batch index to analyze, by default 0
     """
+    # Check if multi-trial and produce a summary (beginning of initial trial and end of final trial)
+    multi_trial, _ = is_multi_trial(info)
+    if multi_trial and verbose:
+        raise ValueError('Verbose option not implemented for multi trial parameter learning')
+
     # Get number of timesteps
-    num_timesteps = info["agent"].A[0].shape[0]
+    if not multi_trial: num_timesteps = info["agent"].A[0].shape[0]
+    else: num_timesteps = info["agent"].A[0].shape[1]
     
     # Extract labels from environment
     modality_names = list(info["env"].labels['observation_modalities'].keys())
@@ -607,8 +613,15 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
         print('\n==== Parameter A learning ====')
         for m, modality in enumerate(modality_names):
             print(f"\nModality: {modality}")
-            print(f"Initial A matrix:\n{round_array(info['agent'].A[m][0, batch_idx])}")
-            print(f"Final A matrix:\n{round_array(info['agent'].A[m][-1, batch_idx])}")
+            if not multi_trial:
+                # For single-trial data, show first and last timesteps
+                print(f"Initial A matrix:\n{round_array(info['agent'].A[m][0, batch_idx])}") # First timestep
+                print(f"Final A matrix:\n{round_array(info['agent'].A[m][-1, batch_idx])}") # Last timestep
+            else:
+                # For multi-trial data, we have an additional trial dimension
+                # First index is trial, second is timestep within trial
+                print(f"Initial A matrix (start of first trial):\n{round_array(info['agent'].A[m][0, 0, batch_idx])}")
+                print(f"Final A matrix (end of last trial):\n{round_array(info['agent'].A[m][-1, -1, batch_idx])}")
             # Useful for debugging/comparison:
             # print(f"True A matrix:\n{round_array(env.params['A'][m])}")
             if verbose:
@@ -671,13 +684,18 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
                     action_label = ", ".join(action_labels) if action_labels else f"Action {a}"
                     action_label = f"[{action_label}]"
                 
-                # Print B matrices with rounded values
-                print(f"Initial B matrix under action {action_label}:\n{round_array(info['agent'].B[f][0, batch_idx, ..., a])}")
-                print(f"Final B matrix under action {action_label}:\n{round_array(info['agent'].B[f][-1, batch_idx, ..., a])}")
-                # Useful for debugging/comparison:
-                # print(f"True B matrix under action {action_label}:\n{round_array(env.params['B'][f][..., a])}")
-                # diff_B = env.params['B'][f][..., a] - info['agent'].B[f][-1, batch_idx, ..., a]
-                # print(f"Absolute difference (true - final) B matrix under action {action_label}:\n{round_array(jnp.abs(diff_B), decimals=1)}")
+                # Print B matrices with rounded values - single trial case
+                if not multi_trial:
+                    print(f"Initial B matrix under action {action_label}:\n{round_array(info['agent'].B[f][0, batch_idx, ..., a])}") #beginning of trial
+                    print(f"Final B matrix under action {action_label}:\n{round_array(info['agent'].B[f][-1, batch_idx, ..., a])}") #end of trial
+                    # Useful for debugging/comparison:
+                    # print(f"True B matrix under action {action_label}:\n{round_array(env.params['B'][f][..., a])}")
+                    # diff_B = env.params['B'][f][..., a] - info['agent'].B[f][-1, batch_idx, ..., a]
+                    # print(f"Absolute difference (true - final) B matrix under action {action_label}:\n{round_array(jnp.abs(diff_B), decimals=1)}")
+                else:
+                    # Multi-trial case - first index is trial, second is timestep within trial
+                    print(f"Initial B matrix under action {action_label} (start of first trial):\n{round_array(info['agent'].B[f][0, 0, batch_idx, ..., a])}")
+                    print(f"Final B matrix under action {action_label} (end of last trial):\n{round_array(info['agent'].B[f][-1, -1, batch_idx, ..., a])}")
                 if verbose:
                     print(f"\nLearning progression for B matrix (Factor {factor}, Action {action_label}):")
                     for t in range(num_timesteps):
@@ -688,10 +706,14 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
         print('\n==== Parameter D learning ====')
         for f, factor in enumerate(factor_names):
             print(f"\nState Factor: {factor}")
-            print(f"Initial D matrix:\n{round_array(info['agent'].D[f][0, batch_idx])}")
-            print(f"Final D matrix:\n{round_array(info['agent'].D[f][-1, batch_idx])}")
+            if not multi_trial:
+                print(f"Initial D matrix:\n{round_array(info['agent'].D[f][0, batch_idx])}") #beginning of trial
+                print(f"Final D matrix:\n{round_array(info['agent'].D[f][-1, batch_idx])}") #end of trial
             # Useful for debugging/comparison:
             # print(f"True D matrix:\n{round_array(env.params['D'][f])}")
+            else:
+                print(f"Initial D matrix (start of first trial):\n{round_array(info['agent'].D[f][0,0, batch_idx])}") #beginning of first trial
+                print(f"Final D matrix (end of last trial):\n{round_array(info['agent'].D[f][-1, -1, batch_idx])}") #end of last trial
             if verbose:
                 print(f"\nLearning progression for D matrix (Factor {factor}):")
                 for t in range(num_timesteps):
