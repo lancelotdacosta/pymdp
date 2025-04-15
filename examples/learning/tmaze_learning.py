@@ -82,17 +82,11 @@ _, key, combined_info = multi_trial_rollout(agent2, env, num_timesteps=model.str
 
 #%% ================ANALYSIS WHICH IS WORKING NOW IN THE MULTI-TRIAL ROLLOUT================
 print_experiment_setup(combined_info)
-#%%
 print_rollout(combined_info)
-
-#%% ================ANALYSIS REMAINING================
-# plot_parameter_learning(combined_info, learning_config, env)
 print_parameter_learning(combined_info, learning_config, verbose=False)
 
-#%%
-# print_rollout(all_info[0], env), print_rollout(all_info[1], env)
-# print_parameter_learning(all_info[0], learning_config, verbose=False)
-print_parameter_learning(all_info[4], learning_config, verbose=False)
+#%% ================ANALYSIS REMAINING================
+plot_parameter_learning(combined_info, learning_config, env)
 
 #%%
 # Analysis after all trials are done
