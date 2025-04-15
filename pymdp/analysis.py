@@ -786,7 +786,7 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     """
 
     # Check if multi-trial
-    multi_trials, _ = is_multi_trial(info)
+    multi_trials, num_trials = is_multi_trial(info)
     
     # Get agent from info dictionary, get its tensors, and flatten them along the time dimension if multi-trial
     agent = info["agent"]
@@ -808,7 +808,8 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
             list(env.labels['observation_modalities'].keys()),
             'A Matrix Learning (Observations)',
             'Linf distance to true A',
-            yscale=yscale
+            yscale=yscale,
+            num_trials=num_trials
         )
         plot_idx += 1
     
@@ -819,7 +820,8 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
             list(env.labels['state_factors'].keys()),
             'B Matrix Learning (Transitions)',
             'Linf distance to true B',
-            yscale=yscale
+            yscale=yscale,
+            num_trials=num_trials
         )
         plot_idx += 1
     
@@ -830,7 +832,8 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
             list(env.labels['state_factors'].keys()),
             'D Matrix Learning (Initial States)',
             'Linf distance to true D',
-            yscale=yscale
+            yscale=yscale,
+            num_trials=num_trials
         )
     
     plt.tight_layout()
@@ -838,7 +841,7 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     return plt
 
 
-def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel, yscale='linear'):
+def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel, yscale='linear', num_trials= None):
     #TODO: note this works only for batch_size==1
     """Helper function to plot learning curves for a set of matrices.
     
@@ -870,6 +873,16 @@ def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel, y
         # Calculate distances over time
         distances = [float(jnp.max(jnp.abs(array - env_tensor[i]))) for array in array_hist]
         
+        #add dashed grey vertical line at the start of each trial
+        if num_trials is not None and num_trials > 1:
+            # Calculate timesteps per trial by dividing total timesteps by number of trials
+            timesteps_per_trial = n_timesteps // num_trials
+            
+            # Add vertical lines at the beginning of each trial
+            for trial in range(num_trials):
+                trial_start = trial * timesteps_per_trial
+                ax.axvline(x=trial_start, color='gray', linestyle=':', alpha=0.1)
+
         # Plot with label from environment if available
         label = labels[i] if i < len(labels) else f"Factor/Modality {i}"
         ax.plot(timesteps, distances, label=label, linewidth=2)

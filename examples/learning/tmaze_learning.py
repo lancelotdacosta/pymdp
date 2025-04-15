@@ -53,7 +53,7 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 10},
+    model_params={"T": 9},
     agent_params={"action_selection": "stochastic"},
     #uniform_D=True
 )
@@ -63,7 +63,7 @@ agent2 = deepcopy(agent)
 key = jr.PRNGKey(key_idx)
 # Run simulation with multiple trials
 # Checked that this works! :)
-num_trials = 100  # Number of trials to run
+num_trials = 10  # Number of trials to run
 # all_info = []
 # for trial in range(num_trials):
 #     print(f"\n--- Trial {trial+1}/{num_trials} ---")
@@ -87,7 +87,6 @@ print_parameter_learning(combined_info, learning_config, verbose=False)
 
 #%% ================ANALYSIS REMAINING================
 plot_parameter_learning(combined_info, learning_config, env)
-
 
 #%%
 plot_parameter_learning(all_info[4], learning_config, env)
