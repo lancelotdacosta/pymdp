@@ -9,6 +9,8 @@ from multimethod import multimethod
 from jaxtyping import ArrayLike
 from jax.experimental import sparse
 from jax.experimental.sparse._base import JAXSparse
+from pymdp.envs.rollout import flatten_multi_trial_info,is_multi_trial
+from pymdp.utils import flatten_multi_trial_tensor_list
 
 MINVAL = jnp.finfo(float).eps
 
@@ -215,14 +217,18 @@ def compute_prediction_errors(info):
     Compute various prediction error metrics from rollout info
     Designed to work with output of rollout function under fpi inference algorithm
     """
+    #Flatten the rollout info if multi-trial
+    is_multi, _ = is_multi_trial(info)
+    if is_multi: flat_info = flatten_multi_trial_info(info)
+    else: flat_info = info
 
     # Get variables from rollout info
-    observations = info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
-    beliefs = info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
-    empirical_priors = info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
+    observations = flat_info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)
+    beliefs = flat_info["qs"]  # list of arrays (one per factor) shape: (T+1, batch_size, 1, num_states)
+    empirical_priors = flat_info["empirical_prior"]  # list of arrays (one per factor) shape: (T+1, batch_size, num_states)
 
-    # Get A matrix history and dependencies
-    A_hist = info["agent"].A # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
+    # Get A matrix history and dependencies (flatten if necessary; recall these are not flattened yet)
+    A_hist = flatten_multi_trial_tensor_list(info["agent"].A, is_multi) # list of arrays (one per modality) shape: (T+1, batch_size, num_obs, num_states)
     A_deps = info["agent"].A_dependencies # list of lists (one per modality)
 
     # Initialize array to store free energy for each timestep

@@ -15,7 +15,7 @@ from pymdp.envs.simplest import SimplestEnv, plot_A_learning
 from pymdp.envs.simplest import print_rollout as legacy_print_rollout
 from pymdp.envs.simplest import plot_beliefs as legacy_plot_beliefs
 from pymdp.envs.simplest import print_parameter_learning as legacy_print_parameter_learning
-from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout, is_multi_trial,get_info_trial
+from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout, is_multi_trial,get_info_trial, flatten_multi_trial_info
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
@@ -64,14 +64,14 @@ key = jr.PRNGKey(key_idx)
 # Run simulation with multiple trials
 # Checked that this works! :)
 num_trials = 5  # Number of trials to run
-# all_info = []
-# for trial in range(num_trials):
-#     print(f"\n--- Trial {trial+1}/{num_trials} ---")
-#     key, rollout_key = jr.split(key)
-#     last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
-#     print_initial_state(info)
-#     all_info.append(info)
-#     agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
+all_info = []
+for trial in range(num_trials):
+    print(f"\n--- Trial {trial+1}/{num_trials} ---")
+    key, rollout_key = jr.split(key)
+    last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+    print_initial_state(info)
+    all_info.append(info)
+    agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
 
 #%%
 
@@ -86,10 +86,9 @@ print_rollout(combined_info)
 print_parameter_learning(combined_info, learning_config, verbose=False)
 plot_parameter_learning(combined_info, learning_config, env)
 
-
 #%% ================ANALYSIS REMAINING================
-# Analysis after all trials are done
-pe_analysis = compute_prediction_errors(combined_info)  # Analyze the final trial
+# Compute prediction errors
+pe_analysis = compute_prediction_errors(combined_info)
 
 #%%
 # # Analyze and visualize results
