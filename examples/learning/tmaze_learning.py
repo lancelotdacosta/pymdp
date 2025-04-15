@@ -84,14 +84,14 @@ _, key, combined_info = multi_trial_rollout(agent2, env, num_timesteps=model.str
 print_experiment_setup(combined_info)
 print_rollout(combined_info)
 print_parameter_learning(combined_info, learning_config, verbose=False)
-
-#%% ================ANALYSIS REMAINING================
 plot_parameter_learning(combined_info, learning_config, env)
 
-#%%
-# Analysis after all trials are done
-pe_analysis = compute_prediction_errors(info)  # Analyze the final trial
 
+#%% ================ANALYSIS REMAINING================
+# Analysis after all trials are done
+pe_analysis = compute_prediction_errors(combined_info)  # Analyze the final trial
+
+#%%
 # # Analyze and visualize results
 plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None)
 
