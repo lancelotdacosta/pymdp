@@ -282,7 +282,7 @@ def multi_trial_rollout(agent: Agent, env: Env, num_timesteps: int, num_trials: 
         jnp.arange(num_trials)
     )
 
-    return (final_agent, final_key), all_trial_info
+    return final_agent, final_key, all_trial_info
 
 def is_multi_trial(info):
     """Check if info contains data from multiple trials
