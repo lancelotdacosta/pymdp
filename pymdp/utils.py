@@ -160,6 +160,29 @@ def flatten_multi_trial_tensor(tensor, multi_trials=True):
     else:
         return tensor
 
+def flatten_multi_trial_tensor_list(tensor_list, multi_trials=True):
+    """
+    Helper function to flatten multi-trial tensor data into a single time series.
+    
+    For multi-trial data, tensors have shape [num_trials, timesteps_per_trial, ...].
+    This function reshapes the tensor to [num_trials*timesteps_per_trial, ...],
+    effectively treating the entire multi-trial history as one continuous timeline.
+    
+    Parameters
+    ----------
+    tensor_list : list of ndarray or jax.Array
+        List of multi-dimensional arrays with shape [trials, timesteps, ...] 
+        
+    Returns
+    -------
+    list of ndarray or jax.Array
+        Flattened array with shape [trials*timesteps, ...]
+    """
+    if multi_trials:
+        return [flatten_multi_trial_tensor(tensor, multi_trials) for tensor in tensor_list]
+    else:
+        return tensor_list
+
 
 def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True, atol=0, rtol=0):
     """
