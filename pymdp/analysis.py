@@ -793,7 +793,13 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     A_flat = flatten_multi_trial_tensor(agent.A, multi_trials)
     B_flat = flatten_multi_trial_tensor(agent.B, multi_trials)
     D_flat = flatten_multi_trial_tensor(agent.D, multi_trials)
-    
+    #TODO: Optionally, one could remove dependency on env of this function by extracting its tensors directly from info.
+    #This would be like this if multi_trial (indexing at zeroth trial and timestep)
+    # A_true = [combined_info["env"].params["A"][m][0,0] for m in range(len(combined_info["env"].params["A"]))] # this is the same as env.params["A"]
+    # B_true = [combined_info["env"].params["B"][f][0,0] for f in range(len(combined_info["env"].params["B"]))] # this is the same as env.params["B"]
+    # D_true = [combined_info["env"].params["D"][f][0,0] for f in range(len(combined_info["env"].params["D"]))] # this is the same as env.params["D"]
+    # And would have one less zero indexing in the absence of trials (indexing at zeroth timestep only)
+
     # Create figure with appropriate number of subplots
     n_plots = learning_config.learn_A + learning_config.learn_B + learning_config.learn_D
     fig = plt.figure(figsize=(5*n_plots, 5))
