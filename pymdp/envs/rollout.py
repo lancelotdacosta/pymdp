@@ -336,11 +336,17 @@ def get_info_trial(combined_info, trial_idx, verbose=True):
         - 'action': Selected actions
         - 'empirical_prior': Prior beliefs before observations
         
-        Note on 'agent' and 'env' keys: Due to how JAX's lax.scan handles custom Python
-        objects that aren't registered with its pytree system, these keys (if present)
-        contain only the final objects from the last trial, not a history of objects
-        across all trials. This is because JAX cannot "stack" custom Python objects
-        like it does with arrays, and instead keeps only the most recent value.
+        Note on 'agent' and 'env' keys: There's a nuanced behavior with these objects:
+        1. The agent/env objects themselves are the final ones from the last trial, due to how
+           JAX's lax.scan handles custom Python objects that aren't registered with its pytree system.
+        2. However, the learned parameters WITHIN the agent (A, B, D matrices) DO have a trial dimension
+           and contain the full history across trials. These can be accessed as:
+           - agent.A[modality_idx][trial_idx, timestep, batch_idx, ...]
+           - agent.B[factor_idx][trial_idx, timestep, batch_idx, ...]
+           - agent.D[factor_idx][trial_idx, timestep, batch_idx, ...]
+        
+        This mixed behavior occurs because JAX automatically adds a scan dimension to arrays,
+        but can't do the same with custom objects (like the agent container itself).
         
     trial_idx : int
         Index of the trial to extract
@@ -368,7 +374,7 @@ def get_info_trial(combined_info, trial_idx, verbose=True):
             info_trial[key] = combined_info[key][trial_idx]
         elif key in ['empirical_prior', 'observation', 'qs']: #these fields are lists of jnp.ndarray per factor/modality, where each jnp.array has an extra dimension upfront for num_trials
             info_trial[key] = [combined_info[key][f][trial_idx] for f in range(len(combined_info[key]))] #here we loop over factors/modalities 
-        elif key in ['agent', 'env']: #these fields are just the final objects from the last trial, cf. this function's documentation
+        elif key in ['agent', 'env']: #these fields are just the final objects from the last trial, but see this function's documentation for details
             info_trial[key] = combined_info[key]  
         else:
             raise ValueError(f"Key {key} not recognized in info dictionary.")
