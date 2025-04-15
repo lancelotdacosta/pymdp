@@ -77,8 +77,8 @@ for trial in range(num_trials):
 
 key = jr.PRNGKey(key_idx)
 # Use the multi_trial_rollout function for efficient multi-trial learning
-key, rollout_key = jr.split(key)
-last, combined_info = multi_trial_rollout(agent2, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=rollout_key)
+# This was validated against the slower for loop counterpart above!
+_, key, combined_info = multi_trial_rollout(agent2, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
 #%% ================ANALYSIS WHICH IS WORKING NOW IN THE MULTI-TRIAL ROLLOUT================
 print_experiment_setup(combined_info)
