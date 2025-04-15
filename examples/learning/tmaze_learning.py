@@ -89,16 +89,14 @@ print_parameter_learning(combined_info, learning_config, verbose=False)
 plot_parameter_learning(combined_info, learning_config, env)
 
 #%%
+plot_parameter_learning(all_info[4], learning_config, env)
+
+#%%
 # Analysis after all trials are done
 pe_analysis = compute_prediction_errors(info)  # Analyze the final trial
 
 # # Analyze and visualize results
 plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None)
-
-#%%
-plot_parameter_learning(info, learning_config, env)
-#agent seems to be learning B matrix right under top left reward but not under top right reward. Need to investigate this
-print_parameter_learning(info, learning_config, verbose=True)
 
 #%%
 plot_preferences(agent, env)
