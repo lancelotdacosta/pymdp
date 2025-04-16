@@ -11,18 +11,12 @@ import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
 from pymdp.envs.env_factory import make, EnvType
-from pymdp.envs.simplest import SimplestEnv, plot_A_learning
-from pymdp.envs.simplest import print_rollout as legacy_print_rollout
-from pymdp.envs.simplest import plot_beliefs as legacy_plot_beliefs
-from pymdp.envs.simplest import print_parameter_learning as legacy_print_parameter_learning
 from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout, is_multi_trial,get_info_trial, flatten_multi_trial_info
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
 from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_preferences, analyze_rollout, print_parameter_learning
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning, print_experiment_setup
-import matplotlib.pyplot as plt
-from copy import deepcopy
 
 # if __name__ == "__main__":
 key_idx = 1 # Initialize master random key index at the start
@@ -46,55 +40,37 @@ env = make(
 key = jr.PRNGKey(key_idx)
 
 # Enable A, B parameter learning
-learning_config = LearningConfig(learn_A=False, learn_B=True, learn_D=False)
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
 
 # Create agent directly from environment with environment config C matrices
 agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 3},
+    model_params={"T": 10},
     agent_params={"action_selection": "stochastic"},
     #uniform_D=True
 )
-agent2 = deepcopy(agent)
-#%%
+#%% Run simulation with multiple trials
 
-key = jr.PRNGKey(key_idx)
-# Run simulation with multiple trials
-# Checked that this works! :)
 num_trials = 5  # Number of trials to run
-# all_info = []
-# for trial in range(num_trials):
-#     print(f"\n--- Trial {trial+1}/{num_trials} ---")
-#     key, rollout_key = jr.split(key)
-#     last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
-#     print_initial_state(info)
-#     all_info.append(info)
-#     agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
-
 key = jr.PRNGKey(key_idx)
 # Use the multi_trial_rollout function for efficient multi-trial learning
-# This was validated against the slower for loop counterpart above!
-_, key, combined_info = multi_trial_rollout(agent2, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
+_, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
-
-#%% ================ANALYSIS WHICH IS WORKING NOW IN THE MULTI-TRIAL ROLLOUT================
+#%% ================ANALYSIS================
 print_experiment_setup(combined_info)
 print_rollout(combined_info)
 print_parameter_learning(combined_info, learning_config, verbose=False)
 plot_parameter_learning(combined_info, learning_config, env)
 pe_analysis = compute_prediction_errors(combined_info)
 plot_prediction_errors(pe_analysis, yscale='log', smoothing=None, num_trials=num_trials)
-
-
-#%% ================ANALYSIS REMAINING FOR ADAPTATION================
 plot_preferences(agent, env)
-render_rollout(env, info, fps=10)
-plot_beliefs(info, env)
 # plot_model_comparison
 # print_initial_state
 # initial_state
+render_rollout(env, info, fps=10)
+plot_beliefs(info, env)
 
 #%% For just A learning complexity is infinite
 
