@@ -9,7 +9,6 @@ from multimethod import multimethod
 from jaxtyping import ArrayLike
 from jax.experimental import sparse
 from jax.experimental.sparse._base import JAXSparse
-from pymdp.envs.rollout import flatten_multi_trial_info,is_multi_trial
 from pymdp.utils import flatten_multi_trial_tensor_list
 
 MINVAL = jnp.finfo(float).eps
@@ -217,6 +216,8 @@ def compute_prediction_errors(info):
     Compute various prediction error metrics from rollout info
     Designed to work with output of rollout function under fpi inference algorithm
     """
+    from pymdp.envs.rollout import flatten_multi_trial_info, is_multi_trial
+
     #Flatten the rollout info if multi-trial
     is_multi, _ = is_multi_trial(info)
     if is_multi: flat_info = flatten_multi_trial_info(info)
