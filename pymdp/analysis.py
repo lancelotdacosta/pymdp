@@ -24,6 +24,19 @@ def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if render: render_rollout(env, info)
     if plot: plot_beliefs(info, env)
     if print: print_rollout(info, env)
+    # List of further possible analysis functions 
+    # print_experiment_setup(info)
+    # print_rollout(info)
+    # print_parameter_learning(info, learning_config, verbose=False)
+    # plot_parameter_learning(info, learning_config, env)
+    # pe_analysis = compute_prediction_errors(info)
+    # plot_prediction_errors(pe_analysis, yscale='log', smoothing=None, num_trials=num_trials)
+    # plot_preferences(agent, env)
+    # plot_model_comparison
+    # print_initial_state(info)
+    # # initial_state
+    # render_rollout(env, info, fps=10)
+    # plot_beliefs(info, env)
 
 def plot_prediction_errors(pe_analysis: Dict, 
     title: Optional[str] = None, 
