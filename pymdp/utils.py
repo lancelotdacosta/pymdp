@@ -247,3 +247,32 @@ def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True, atol=0, rtol=0):
 
     
     return True
+
+def add_trial_boundary_lines(ax, n_timesteps, num_trials, color='gray', linestyle=':', alpha=0.3):
+    """
+    Add vertical lines at the boundaries between trials on a matplotlib axis.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes object to add vertical lines to
+    n_timesteps : int
+        Total number of timesteps across all trials
+    num_trials : int or None
+        Number of trials. If None, no lines are added.
+    trial_lines : bool, optional
+        Whether to add trial boundary lines, by default True
+    color : str, optional
+        Color of the boundary lines, by default 'gray'
+    linestyle : str, optional
+        Line style of the boundary lines, by default ':'
+    alpha : float, optional
+        Transparency of the boundary lines, by default 0.1
+    """
+    # Calculate timesteps per trial by dividing total timesteps by number of trials
+    timesteps_per_trial = n_timesteps // num_trials
+    
+    # Add vertical lines at the beginning of each trial
+    for trial in range(num_trials):
+        trial_start = trial * timesteps_per_trial
+        ax.axvline(x=trial_start, color=color, linestyle=linestyle, alpha=alpha)

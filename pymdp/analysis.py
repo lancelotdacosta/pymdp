@@ -16,7 +16,7 @@ import io
 from matplotlib.gridspec import GridSpec
 from pymdp.maths import smooth_data
 from pymdp.envs.rollout import is_multi_trial, get_info_trial
-from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list
+from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list, add_trial_boundary_lines
 
 def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_preferences(agent, env)
@@ -24,7 +24,13 @@ def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_beliefs(info, env)
     if print: print_rollout(info, env)
 
-def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsize: Tuple[int, int] = (10, 5), yscale: str = 'log', smoothing: Optional[int] = None, num_trials: Optional[int] = None) -> plt.Figure:
+def plot_prediction_errors(pe_analysis: Dict, 
+    title: Optional[str] = None, 
+    figsize: Tuple[int, int] = (10, 5), 
+    yscale: str = 'log', 
+    smoothing: Optional[int] = None, 
+    num_trials: Optional[int] = None, 
+    trial_lines: Optional[bool] = True) -> plt.Figure:
     """
     Plot prediction error metrics from the output of compute_prediction_errors.
 
@@ -55,14 +61,9 @@ def plot_prediction_errors(pe_analysis: Dict, title: Optional[str] = None, figsi
     fig = plt.figure(figsize=figsize)
 
     # Add vertical lines at the beginning of each trial if there are trials
-    if num_trials is not None and num_trials > 1:
-        # Calculate timesteps per trial by dividing total timesteps by number of trials
+    if trial_lines and num_trials is not None and num_trials > 1:
         n_timesteps = len(pe_data["pred_error"])
-        timesteps_per_trial = n_timesteps // num_trials
-        
-        for trial in range(num_trials):
-            trial_start = trial * timesteps_per_trial
-            plt.axvline(x=trial_start, color='gray', linestyle=':', alpha=0.3)
+        add_trial_boundary_lines(plt.gca(), n_timesteps, num_trials)
 
     plt.plot(pe_data["complexity_l2"], label='L2 norm Complexity', alpha=0.4)
     plt.plot(pe_data["complexity"], label='Complexity', alpha=0.7)
@@ -770,7 +771,7 @@ def _get_action_indices(flat_index, control_factor_actions):
     
     return action_indices
 
-def plot_parameter_learning(info, learning_config, env, yscale='linear'):
+def plot_parameter_learning(info, learning_config, env, yscale='linear', trial_lines: Optional[bool] = True, num_trials: Optional[int] = None):
     
     """Plot the agent's learning progress for parameters (A, B, D) over time.
     
@@ -826,7 +827,8 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
             'A Matrix Learning (Observations)',
             'Linf distance to true A',
             yscale=yscale,
-            num_trials=num_trials
+            num_trials=num_trials,
+            trial_lines=trial_lines
         )
         plot_idx += 1
     
@@ -838,7 +840,8 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
             'B Matrix Learning (Transitions)',
             'Linf distance to true B',
             yscale=yscale,
-            num_trials=num_trials
+            num_trials=num_trials,
+            trial_lines=trial_lines
         )
         plot_idx += 1
     
@@ -850,7 +853,8 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
             'D Matrix Learning (Initial States)',
             'Linf distance to true D',
             yscale=yscale,
-            num_trials=num_trials
+            num_trials=num_trials,
+            trial_lines=trial_lines
         )
     
     plt.tight_layout()
@@ -858,7 +862,15 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear'):
     return plt
 
 
-def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel, yscale='linear', num_trials= None):
+def _plot_matrix_learning(ax, 
+agent_tensor, 
+env_tensor, 
+labels, 
+title, 
+ylabel, 
+yscale='linear', 
+num_trials= None, 
+trial_lines: Optional[bool] = True):
     #TODO: note this works only for batch_size==1
     """Helper function to plot learning curves for a set of matrices.
     
@@ -883,22 +895,16 @@ def _plot_matrix_learning(ax, agent_tensor, env_tensor, labels, title, ylabel, y
     # Get timesteps
     n_timesteps = agent_tensor[0].shape[0]
     timesteps = range(n_timesteps)
+
+    # Add dashed grey vertical line at the start of each trial
+    if trial_lines and num_trials is not None and num_trials > 1:
+        add_trial_boundary_lines(ax, n_timesteps, num_trials)
     
     # Plot distance for each matrix
     for i, array_hist in enumerate(agent_tensor):
         # i loop over factors/modalities and array_hist is the history of the agent's parameters for that factor/modality
         # Calculate distances over time
         distances = [float(jnp.max(jnp.abs(array - env_tensor[i]))) for array in array_hist]
-        
-        #add dashed grey vertical line at the start of each trial
-        if num_trials is not None and num_trials > 1:
-            # Calculate timesteps per trial by dividing total timesteps by number of trials
-            timesteps_per_trial = n_timesteps // num_trials
-            
-            # Add vertical lines at the beginning of each trial
-            for trial in range(num_trials):
-                trial_start = trial * timesteps_per_trial
-                ax.axvline(x=trial_start, color='gray', linestyle=':', alpha=0.1)
 
         # Plot with label from environment if available
         label = labels[i] if i < len(labels) else f"Factor/Modality {i}"
