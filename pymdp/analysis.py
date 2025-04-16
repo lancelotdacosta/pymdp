@@ -81,7 +81,15 @@ def plot_prediction_errors(pe_analysis: Dict,
     
     #return fig
 
-def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (15, 12), alpha: float = 0.7, lw: float = 1.0, yscale: str = 'log', smoothing: Optional[int] = None) -> plt.Figure:
+def plot_model_comparison(pe_analyses,
+ labels=None, 
+ figsize: Tuple[int, int] = (15, 12), 
+ alpha: float = 0.7, 
+ lw: float = 1.0, 
+ yscale: str = 'log', 
+ smoothing: Optional[int] = None, 
+ num_trials: Optional[int] = None, 
+ trial_lines: bool = True) -> plt.Figure:
     """
     Create comparison plots between multiple models showing their prediction error metrics.
 
@@ -102,6 +110,11 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
         Scale for y-axis. Default is 'log'
     smoothing : int, optional
         Window size for moving average smoothing. If None or <= 1, no smoothing is applied.
+    num_trials : int, optional
+        Number of trials in the data. If provided along with trial_lines=True, 
+        vertical lines will be added at trial boundaries.
+    trial_lines : bool, optional
+        Whether to show vertical lines at trial boundaries. Default is True.
 
     Returns
     -------
@@ -130,6 +143,14 @@ def plot_model_comparison(pe_analyses, labels=None, figsize: Tuple[int, int] = (
 
     # Create figure and axes
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=figsize)
+
+    # Add vertical lines at the beginning of each trial if requested and there are trials
+    if trial_lines and num_trials is not None and num_trials > 1:
+        n_timesteps = len(pe_analyses[0]["pred_error"])
+        add_trial_boundary_lines(ax1, n_timesteps, num_trials)
+        add_trial_boundary_lines(ax2, n_timesteps, num_trials)
+        add_trial_boundary_lines(ax3, n_timesteps, num_trials)
+        add_trial_boundary_lines(ax4, n_timesteps, num_trials)
 
     # Plot 1: Accumulated Prediction Error
     for i, pe_analysis in enumerate(pe_analyses):
@@ -790,7 +811,12 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear', trial_l
         Environment instance containing true parameters
     yscale : str, optional
         Scale for y-axis, e.g. 'linear' or 'log', by default 'linear'
-        
+    num_trials : int, optional
+        Number of trials in the data. If provided along with trial_lines=True, 
+        vertical lines will be added at trial boundaries.
+    trial_lines : bool, optional
+        Whether to show vertical lines at trial boundaries. Default is True.
+
     Returns
     -------
     plt : matplotlib.pyplot
