@@ -17,6 +17,7 @@ from matplotlib.gridspec import GridSpec
 from pymdp.maths import smooth_data
 from pymdp.envs.rollout import is_multi_trial, get_info_trial
 from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list, add_trial_boundary_lines
+from warnings import warn
 
 def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
     if plot: plot_preferences(agent, env)
@@ -394,6 +395,12 @@ def render_rollout(env, info, save_gif=False, filename=None, fps=1):
     None
         Displays the animation in the notebook or saves it as a gif
     """
+
+    # Check if multi-trial
+    is_multi, _ = is_multi_trial(info)
+    if is_multi: 
+        warn("render_rollout is currently not implemented for multi-trial rollouts.")
+        return 0
     
     # Get the number of timesteps in the rollout
     num_timesteps = info["observation"][0].shape[0]
@@ -455,6 +462,12 @@ def plot_beliefs(info, env=None, save_gif=False, filename=None, figsize=None, fp
     None
         Displays the animation in the notebook or saves it as a gif
     """
+    # Check if multi-trial
+    is_multi, _ = is_multi_trial(info)
+    if is_multi: 
+        warn("plot_beliefs is currently not implemented for multi-trial rollouts.")
+        return 0
+
     # Extract beliefs and num_state_factors
     beliefs = info['qs']
     num_state_factors = len(beliefs)
@@ -946,8 +959,20 @@ trial_lines: Optional[bool] = True):
 
 def print_initial_state(info):
     """Print the initial state of the environment."""
+    # Check if multi-trial
+    is_multi, _ = is_multi_trial(info)
+    if is_multi: 
+        warn("print_initial_state is currently not implemented for multi-trial rollouts.")
+        return 0
+
     print(f"Initial state: {initial_state(info)}")
 
 def initial_state(info):
     """Get the initial state of the environment."""
+    # Check if multi-trial
+    is_multi, _ = is_multi_trial(info)
+    if is_multi: 
+        warn("initial_state is currently not implemented for multi-trial rollouts.")
+        return 0
+
     return [int(info['env'].state[f][0][0]) for f in range(len(info['env'].state))]
