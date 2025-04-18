@@ -341,11 +341,12 @@ def get_info_trial(combined_info, trial_idx, verbose=True):
         Note on 'agent' and 'env' keys: There's a nuanced behavior with these objects:
         1. The agent/env objects themselves are the final ones from the last trial, due to how
            JAX's lax.scan handles custom Python objects that aren't registered with its pytree system.
-        2. However, the learned parameters WITHIN the agent (A, B, D matrices) DO have a trial dimension
+        2. However, the tensors within agent and env objects (e.g.,A, B, D matrices) DO have a trial dimension
            and contain the full history across trials. These can be accessed as:
            - agent.A[modality_idx][trial_idx, timestep, batch_idx, ...]
            - agent.B[factor_idx][trial_idx, timestep, batch_idx, ...]
            - agent.D[factor_idx][trial_idx, timestep, batch_idx, ...]
+           the same goes with all other
         
         This mixed behavior occurs because JAX automatically adds a scan dimension to arrays,
         but can't do the same with custom objects (like the agent container itself).
