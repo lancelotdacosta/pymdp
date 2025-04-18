@@ -27,7 +27,7 @@ class TMaze(POMDPEnv):
     """
     Implementation of the 3-arm T-Maze environment.
     A T-shaped maze where an agent must navigate to find a reward, with:
-    - 4 locations: centre, left arm, right arm, and cue position (bottom arm) 
+    - 5 locations: centre, top left arm, top right arm, bottom arm (cue position), and top position
     - 2 reward conditions: reward in left or right arm
     - Cues that indicate which arm contains the reward
     """
