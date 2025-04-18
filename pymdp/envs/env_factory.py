@@ -1,6 +1,5 @@
 from enum import IntEnum
-from typing import List
-
+from typing import List, Dict, Any
 from pymdp.envs import Env
 from pymdp.envs.tmaze import TMaze
 from pymdp.envs.simplest import SimplestEnv
@@ -16,7 +15,7 @@ class EnvType(IntEnum):
     T_MAZE = 1
 
 
-def make(env_type : EnvType, **kwargs : List[int]) -> Env:
+def make(env_type : EnvType, **kwargs : Dict[str, Any]) -> Env:
     """
     Create the environment requested by the user.
     :param env_type: the type of environment to create
@@ -36,11 +35,11 @@ def make(env_type : EnvType, **kwargs : List[int]) -> Env:
         # [TMaze Environment]
         # ==> States:
         # LOCATION_FACTOR_ID = 0 -> Describe the agent location (center, left?, right?, bottom/cue).
-        # TRIAL_FACTOR_ID = 1 => Describe the reward location (left arm?, right arm?).
+        # REWARD_FACTOR_ID = 1 -> Describe the reward location (left arm?, right arm?).
         # ==> Actions.
         # There are two actions per time step, i.e., one for each latent factor:
         # LOCATION_FACTOR_ID = 0 => Move agent, four possibilities (move center, move left?, move right?, move bottom/cue).
-        # TRIAL_FACTOR_ID = 1 => Only one action (dummy/do nothing) as the agent does not control reward.
+        # REWARD_FACTOR_ID = 1 => Only one action (dummy/do nothing) as the agent does not control reward.
         # ==> Observations:
         # LOCATION_MODALITY_ID = 0  => Agent observes its locations (center, left?, right?, bottom/cue).
         # REWARD_MODALITY_ID = 1 => Agent observes rewards (NO_REWARD = 0, REWARD_IDX = 1, LOSS_IDX = 2).
