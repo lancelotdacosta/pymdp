@@ -245,7 +245,7 @@ def print_experiment_setup(info):
     print(f"Control factors: {control_factor_names}")
     #TODO: add more info such as planning horizon of agent
 
-def print_rollout(info, batch_idx=0, timesteps=None):
+def print_rollout(info, batch_idx=0, timesteps='all', trials='all'):
     """Print a human-readable version of the rollout using environment labels.
     
     Parameters
@@ -259,15 +259,29 @@ def print_rollout(info, batch_idx=0, timesteps=None):
         - 'empirical_prior': Prior beliefs before observations
     batch_idx : int, optional
         Batch index to print for, by default 0
+    timesteps : str, int, list, optional
+        Timesteps to print, by default 'all'
+    trials : str, int, list, optional
+        Trials to print (for multi-trial rollouts), by default 'all'
     """
     # Check if multi-trial, and call recursively for each trial if so
     is_multi, num_trials = is_multi_trial(info)
     if is_multi:
-        for trial_idx in range(num_trials):
+        # Process trials parameter
+        if trials == 'all':
+            trials_to_print = list(range(num_trials))
+        elif isinstance(trials, int):   
+            trials_to_print = [trials] if trials in range(num_trials) else []
+        elif isinstance(trials, (list, range)):
+            trials_to_print = [t for t in trials if t in range(num_trials)]
+        else:
+            raise ValueError(f"Invalid trials parameter type: {type(trials)}")
+                 
+        # Call print rollout for each trial in trials_to_print
+        for trial_idx in trials_to_print:
             info_trial = get_info_trial(info, trial_idx, verbose=False)
             print(f"\n=== Trial {trial_idx} ==================")
             print_rollout(info_trial, batch_idx=batch_idx, timesteps=timesteps)
-            #TODO: may select what trials to print
         return
 
     # Extract variables from info dictionary
@@ -302,7 +316,7 @@ def print_rollout(info, batch_idx=0, timesteps=None):
         return f"[{probs_str}]"
     
     # Process timesteps parameter
-    if timesteps is None:
+    if timesteps == 'all':
         timesteps_to_print = list(range(num_timesteps))
     elif isinstance(timesteps, int):
         timesteps_to_print = [timesteps] if timesteps in range(num_timesteps) else []
