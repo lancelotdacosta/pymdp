@@ -4,6 +4,7 @@ import jax.random as jr
 import jax.tree_util as jtu
 import jax.lax
 from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list
+import warnings
 
 from pymdp.agent import Agent
 from pymdp.envs.env import Env
@@ -364,9 +365,12 @@ def get_info_trial(combined_info, trial_idx, verbose=True):
     if not is_multi:
         raise ValueError("Input info is not multi-trial, cannot extract trial data.")
     elif verbose and trial_idx < num_trials - 1:
-        print(f"WARNING: Extracting data for trial {trial_idx}. However, 'agent' and 'env' in the result " 
-              f"will be from the final trial ({num_trials-1}), not trial {trial_idx}. "
-              f"See get_info_trial documentation for details.")
+        warnings.warn(f"WARNING: Extracting data for trial {trial_idx}. However, 'agent' and 'env' in the result "
+                      f"will be from the final trial ({num_trials-1}), not trial {trial_idx}. "
+                      f"See get_info_trial documentation for details.")
+    
+    if trial_idx not in range(num_trials):
+        raise ValueError(f"Trial index {trial_idx} is out of bounds. Valid indices are 0 to {num_trials-1}.")
     
     # Extraction of trial data
     info_trial = {key: None for key in combined_info.keys()}
