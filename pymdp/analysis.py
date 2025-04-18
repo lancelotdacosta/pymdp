@@ -986,6 +986,8 @@ trial_lines: Optional[bool] = True):
 
 def print_initial_state(info, trial_idx=None):
     """Print the initial state of the environment."""
+    #TODO: note this works only for batch_size==1
+    #TODO: add printing initial state for several trials
     # Check if multi-trial
     is_multi, _ = is_multi_trial(info)
     if is_multi and trial_idx is None: 
