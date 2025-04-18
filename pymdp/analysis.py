@@ -992,6 +992,9 @@ def print_initial_state(info, trial_idx=None):
     is_multi, _ = is_multi_trial(info)
     if is_multi and trial_idx is None: 
         raise ValueError("trial_idx must be specified for printing initial state in a multi-trial rollout.")
+    elif is_multi:
+        print(f"Initial state at trial {trial_idx}: {initial_state(info, trial_idx)}")
+        return
 
     print(f"Initial state: {initial_state(info, trial_idx)}")
 
