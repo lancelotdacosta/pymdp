@@ -261,8 +261,8 @@ def print_rollout(info, batch_idx=0, timesteps=None):
         Batch index to print for, by default 0
     """
     # Check if multi-trial, and call recursively for each trial if so
-    multi_trials, num_trials = is_multi_trial(info)
-    if multi_trials:
+    is_multi, num_trials = is_multi_trial(info)
+    if is_multi:
         for trial_idx in range(num_trials):
             info_trial = get_info_trial(info, trial_idx, verbose=False)
             print(f"\n=== Trial {trial_idx} ==================")
