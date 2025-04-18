@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import List, Dict, Any
+from typing import Dict, Any
 from pymdp.envs import Env
 from pymdp.envs.tmaze import TMaze
 from pymdp.envs.simplest import SimplestEnv
