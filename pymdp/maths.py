@@ -20,7 +20,7 @@ def stable_entropy(x):
     return - stable_xlogx(x).sum()
 
 def stable_cross_entropy(x, y):
-    return - xlogy(x, y).sum()
+    return - xlogy(x, jnp.clip(y, MINVAL)).sum()
 
 def log_stable(x):
     return jnp.log(jnp.clip(x, min=MINVAL))
