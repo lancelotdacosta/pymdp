@@ -970,22 +970,24 @@ trial_lines: Optional[bool] = True):
     ax.set_yscale(yscale)
     ax.legend()
 
-def print_initial_state(info):
+def print_initial_state(info, trial_idx=None):
     """Print the initial state of the environment."""
     # Check if multi-trial
     is_multi, _ = is_multi_trial(info)
-    if is_multi: 
-        warn("print_initial_state is currently not implemented for multi-trial rollouts.")
-        return 0
+    if is_multi and trial_idx is None: 
+        raise ValueError("trial_idx must be specified for printing initial state in a multi-trial rollout.")
 
-    print(f"Initial state: {initial_state(info)}")
+    print(f"Initial state: {initial_state(info, trial_idx)}")
 
-def initial_state(info):
+def initial_state(info, trial_idx=None):
     """Get the initial state of the environment."""
     # Check if multi-trial
-    is_multi, _ = is_multi_trial(info)
-    if is_multi: 
-        warn("initial_state is currently not implemented for multi-trial rollouts.")
-        return 0
-
-    return [int(info['env'].state[f][0][0]) for f in range(len(info['env'].state))]
+    is_multi, num_trials = is_multi_trial(info)
+    if is_multi and trial_idx is None: 
+        raise ValueError("trial_idx must be specified for getting initial state in a multi-trial rollout.")
+    elif is_multi and trial_idx not in range(num_trials):
+        raise ValueError(f"trial_idx must be in range(0, {num_trials-1}) for getting initial state in a multi-trial rollout.")
+    elif is_multi:
+        return [int(info['env'].state[f][trial_idx][0][0]) for f in range(len(info['env'].state))]
+    elif not is_multi:
+        return [int(info['env'].state[f][0][0]) for f in range(len(info['env'].state))]
