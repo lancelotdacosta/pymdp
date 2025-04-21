@@ -664,12 +664,12 @@ def print_parameter_learning(info, learning_config, env=None, verbose=False, bat
         Batch index to analyze, by default 0
     """
     # Check if multi-trial and produce a summary (beginning of initial trial and end of final trial)
-    multi_trial, _ = is_multi_trial(info)
-    if multi_trial and verbose:
+    is_multi, _ = is_multi_trial(info)
+    if is_multi and verbose:
         raise ValueError('Verbose option not implemented for multi trial parameter learning')
 
     # Get number of timesteps
-    if not multi_trial: num_timesteps = info["agent"].A[0].shape[0]
+    if not is_multi: num_timesteps = info["agent"].A[0].shape[0]
     else: num_timesteps = info["agent"].A[0].shape[1]
     
     # Extract labels from environment
@@ -689,7 +689,7 @@ def print_parameter_learning(info, learning_config, env=None, verbose=False, bat
         print('\n==== Parameter A learning ====')
         for m, modality in enumerate(modality_names):
             print(f"\nModality: {modality}")
-            if not multi_trial:
+            if not is_multi:
                 # For single-trial data, show first and last timesteps
                 print(f"Initial A matrix:\n{round_array(info['agent'].A[m][0, batch_idx])}") # First timestep
                 print(f"Final A matrix:\n{round_array(info['agent'].A[m][-1, batch_idx])}") # Last timestep
@@ -761,7 +761,7 @@ def print_parameter_learning(info, learning_config, env=None, verbose=False, bat
                     action_label = f"[{action_label}]"
                 
                 # Print B matrices with rounded values - single trial case
-                if not multi_trial:
+                if not is_multi:
                     print(f"Initial B matrix under action {action_label}:\n{round_array(info['agent'].B[f][0, batch_idx, ..., a])}") #beginning of trial
                     print(f"Final B matrix under action {action_label}:\n{round_array(info['agent'].B[f][-1, batch_idx, ..., a])}") #end of trial
                     # diff_B = env.params['B'][f][..., a] - info['agent'].B[f][-1, batch_idx, ..., a]
@@ -783,7 +783,7 @@ def print_parameter_learning(info, learning_config, env=None, verbose=False, bat
         print('\n==== Parameter D learning ====')
         for f, factor in enumerate(factor_names):
             print(f"\nState Factor: {factor}")
-            if not multi_trial:
+            if not is_multi:
                 print(f"Initial D matrix:\n{round_array(info['agent'].D[f][0, batch_idx])}") #beginning of trial
                 print(f"Final D matrix:\n{round_array(info['agent'].D[f][-1, batch_idx])}") #end of trial
             else:
