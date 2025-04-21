@@ -646,7 +646,7 @@ def plot_preferences(agent, env=None, figsize=None, show=True, batch_idx=0):
     
     return plt
 
-def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
+def print_parameter_learning(info, learning_config, env=None, verbose=False, batch_idx=0):
     """Print and analyze parameter learning results in an environment-agnostic way.
     
     Parameters
@@ -656,6 +656,8 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
     learning_config : object
         Configuration specifying which parameters are being learned.
         Should have boolean attributes: learn_A, learn_B, learn_D
+    env : Env, optional
+        Environment instance containing true parameters for comparison, by default None
     verbose : bool, optional
         Whether to print learned parameters at each timestep, by default False
     batch_idx : int, optional
@@ -696,8 +698,8 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
                 # First index is trial, second is timestep within trial
                 print(f"Initial A matrix (start of first trial):\n{round_array(info['agent'].A[m][0, 0, batch_idx])}")
                 print(f"Final A matrix (end of last trial):\n{round_array(info['agent'].A[m][-1, -1, batch_idx])}")
-            # Useful for debugging/comparison:
-            # print(f"True A matrix:\n{round_array(env.params['A'][m])}")
+            if env is not None: # Useful for debugging/comparison:
+                print(f"True A matrix:\n{round_array(env.params['A'][m])}")
             if verbose:
                 print(f"\nLearning progression for A matrix (Modality {modality}):")
                 for t in range(num_timesteps):
@@ -762,16 +764,15 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
                 if not multi_trial:
                     print(f"Initial B matrix under action {action_label}:\n{round_array(info['agent'].B[f][0, batch_idx, ..., a])}") #beginning of trial
                     print(f"Final B matrix under action {action_label}:\n{round_array(info['agent'].B[f][-1, batch_idx, ..., a])}") #end of trial
-                    # Useful for debugging/comparison:
-                    # print(f"True B matrix under action {action_label}:\n{round_array(env.params['B'][f][..., a])}")
                     # diff_B = env.params['B'][f][..., a] - info['agent'].B[f][-1, batch_idx, ..., a]
                     # print(f"Absolute difference (true - final) B matrix under action {action_label}:\n{round_array(jnp.abs(diff_B), decimals=1)}")
                 else:
                     # Multi-trial case - first index is trial, second is timestep within trial
                     print(f"Initial B matrix under action {action_label} (start of first trial):\n{round_array(info['agent'].B[f][0, 0, batch_idx, ..., a])}")
                     print(f"Final B matrix under action {action_label} (end of last trial):\n{round_array(info['agent'].B[f][-1, -1, batch_idx, ..., a])}")
-                    # # Useful for debugging/comparison:
                     # print(f"True B matrix under action {action_label}:\n{round_array(info['env'].params['B'][f][0,0,..., a])}")
+                if env is not None: # Useful for debugging/comparison:
+                    print(f"True B matrix under action {action_label}:\n{round_array(env.params['B'][f][..., a])}")
                 if verbose:
                     print(f"\nLearning progression for B matrix (Factor {factor}, Action {action_label}):")
                     for t in range(num_timesteps):
@@ -785,11 +786,11 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
             if not multi_trial:
                 print(f"Initial D matrix:\n{round_array(info['agent'].D[f][0, batch_idx])}") #beginning of trial
                 print(f"Final D matrix:\n{round_array(info['agent'].D[f][-1, batch_idx])}") #end of trial
-            # Useful for debugging/comparison:
-            # print(f"True D matrix:\n{round_array(env.params['D'][f])}")
             else:
                 print(f"Initial D matrix (start of first trial):\n{round_array(info['agent'].D[f][0,0, batch_idx])}") #beginning of first trial
                 print(f"Final D matrix (end of last trial):\n{round_array(info['agent'].D[f][-1, -1, batch_idx])}") #end of last trial
+            if env is not None: # Useful for debugging/comparison:
+                print(f"True D matrix:\n{round_array(env.params['D'][f])}")
             if verbose:
                 print(f"\nLearning progression for D matrix (Factor {factor}):")
                 for t in range(num_timesteps):
