@@ -770,6 +770,8 @@ def print_parameter_learning(info, learning_config, verbose=False, batch_idx=0):
                     # Multi-trial case - first index is trial, second is timestep within trial
                     print(f"Initial B matrix under action {action_label} (start of first trial):\n{round_array(info['agent'].B[f][0, 0, batch_idx, ..., a])}")
                     print(f"Final B matrix under action {action_label} (end of last trial):\n{round_array(info['agent'].B[f][-1, -1, batch_idx, ..., a])}")
+                    # # Useful for debugging/comparison:
+                    # print(f"True B matrix under action {action_label}:\n{round_array(info['env'].params['B'][f][0,0,..., a])}")
                 if verbose:
                     print(f"\nLearning progression for B matrix (Factor {factor}, Action {action_label}):")
                     for t in range(num_timesteps):
