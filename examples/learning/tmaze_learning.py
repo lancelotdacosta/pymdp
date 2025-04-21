@@ -43,6 +43,42 @@ env = make(
     dependent_outcomes=dependent_outcomes
 )
 
+# %% ### 2a. Parameter (A) Learning Demo
+# NOT YET WORKING FINE!!!
+# Here we demonstrate how the agent can learn the observation (A) tensor through experience.
+
+# Set up random key
+key = jr.PRNGKey(key_idx)
+
+# Enable A, B parameter learning
+learning_config = LearningConfig(learn_A=False, learn_B=True, learn_D=False)
+
+# Create agent directly from environment with environment config C matrices
+agent, model, key = Agent.from_env(
+    env=env,
+    learning_config=learning_config,
+    key=key,
+    model_params={"T": 100},
+    agent_params={"action_selection": "stochastic", "policy_len": 3},
+    uniform_D=False
+)
+
+# Run simulation with multiple trials
+
+num_trials = 200 # Number of trials to run
+_, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
+
+#print last trial of rollout
+print_initial_state(combined_info, trial_idx= num_trials - 1)
+print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+#print and plot parameter learning
+plot_parameter_learning(combined_info, learning_config, env)
+print_parameter_learning(combined_info, learning_config, env)
+#compute and plot prediction errors
+pe_analysis = compute_prediction_errors(combined_info)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials)
+
+
 # %% ### 2b. Parameter (B) Learning Demo
 #
 # Here we demonstrate how the agent can learn the transition (B) tensor through experience.
@@ -51,25 +87,34 @@ env = make(
 key = jr.PRNGKey(key_idx)
 
 # Enable A, B parameter learning
-learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
+learning_config = LearningConfig(learn_A=False, learn_B=True, learn_D=False)
 
 # Create agent directly from environment with environment config C matrices
 agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 10},
-    agent_params={"action_selection": "stochastic"},
-    #uniform_D=True
+    model_params={"T": 100},
+    agent_params={"action_selection": "stochastic", "policy_len": 3},
+    uniform_D=False
 )
-#%% Run simulation with multiple trials
 
-num_trials = 5  # Number of trials to run
-key = jr.PRNGKey(key_idx)
-# Use the multi_trial_rollout function for efficient multi-trial learning
+# Run simulation with multiple trials
+
+num_trials = 200 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
-#%% ================ANALYSIS================
+#print last trial of rollout
+print_initial_state(combined_info, trial_idx= num_trials - 1)
+print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+#print and plot parameter learning
+plot_parameter_learning(combined_info, learning_config, env)
+print_parameter_learning(combined_info, learning_config, env)
+#compute and plot prediction errors
+pe_analysis = compute_prediction_errors(combined_info)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials)
+
+#%% ================FURTHER POSSIBLE ANALYSIS================
 print_experiment_setup(combined_info)
 print_rollout(combined_info)
 print_parameter_learning(combined_info, learning_config, verbose=False)
