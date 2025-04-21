@@ -26,10 +26,11 @@ key_idx = 1 # Initialize master random key index at the start
 # Set up environment parameters
 batch_size = 1
 reward_condition = None # 0 is reward in left arm, 1 is reward in right arm, None is random allocation
-reward_probability = 0.8 # 100% chance of reward in the correct arm
-punishment_probability = 0.2 # 100% chance of punishment in the other arm
-cue_validity = 0.8 # 100% valid cues
-dependent_outcomes = True # if True, punishment occurs as a function of reward probability (i.e., if reward probability is 0.8, then 20% punishment). If False, punishment occurs with set probability (i.e., 20% no outcome and punishment will only occur in the other (non-rewarding) arm)
+reward_probability = 1.0 # 100% chance of reward in the correct arm
+punishment_probability = 1.0 # 100% chance of punishment in the other arm
+cue_validity = 1.0 # 100% valid cues
+dependent_outcomes = False # if True, punishment occurs as a function of reward probability (i.e., if reward probability is 0.8, then 20% punishment). If False, punishment occurs with set probability (i.e., 20% no outcome and punishment will only occur in the other (non-rewarding) arm)
+
 
 # Initialize environment
 env = make(
