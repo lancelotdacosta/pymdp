@@ -83,8 +83,3 @@ plot_preferences(agent, env)
 render_rollout(env, info, fps=10)
 plot_beliefs(info, env)
 
-#%% For just A learning complexity is infinite
-
-# prior_t = [p[1] for p in info["empirical_prior"]]  # Current prior (list of arrays)
-# qs_t = [q[1] for q in info["qs"]]
-# action_t = info["action"][1,]
