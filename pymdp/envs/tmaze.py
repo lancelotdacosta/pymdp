@@ -96,11 +96,18 @@ class TMaze(POMDPEnv):
                 "Reward": ["Neutral", "Reward", "Punishment"],
                 "Cue": ["None", "Left", "Right"]
             },
+            #- Actions correspond directly to target locations:
+            #   - Action 0: Try to go to Center
+            #   - Action 1: Try to go to Top Left
+            #   - Action 2: Try to go to Top Right
+            #   - Action 3: Try to go to Bottom
+            #   - Action 4: Try to go to Top
             "control_factors": {
-                "Go": ["Up", "Left", "Right", "Down", "Stay"],
+                "Go": ["to Center", "to Top Left", "to Top Right", "to Bottom", "to Top"],
                 "Dummy": ["Dummy"]
             }
         }
+
 
     def generate_A(self) -> Tuple[List[jnp.ndarray], List[List[int]]]:
         """
@@ -172,6 +179,12 @@ class TMaze(POMDPEnv):
         Returns two transition matrices:
         B[0]: Location transitions (5x5x5)
             - Agent can move between adjacent locations in the T-maze
+            - Actions correspond directly to target locations:
+              - Action 0: Try to go to Center
+              - Action 1: Try to go to Top Left
+              - Action 2: Try to go to Top Right
+              - Action 3: Try to go to Bottom
+              - Action 4: Try to go to Top
         B[1]: Reward condition transitions (2x2x1)
             - Reward location stays fixed
         """
