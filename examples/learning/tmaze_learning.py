@@ -51,7 +51,7 @@ env = make(
 key = jr.PRNGKey(key_idx)
 
 # Enable A, B parameter learning
-learning_config = LearningConfig(learn_A=False, learn_B=True, learn_D=False)
+learning_config = LearningConfig(learn_A=True, learn_B=False, learn_D=False)
 
 # Create agent directly from environment with environment config C matrices
 agent, model, key = Agent.from_env(
@@ -95,7 +95,7 @@ agent, model, key = Agent.from_env(
     learning_config=learning_config,
     key=key,
     model_params={"T": 100},
-    agent_params={"action_selection": "stochastic", "policy_len": 3},
+    agent_params={"action_selection": "stochastic", "policy_len": 2},
     uniform_D=False
 )
 
