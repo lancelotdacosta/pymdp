@@ -571,7 +571,7 @@ def plot_beliefs(info, env=None, save_gif=False, filename=None, figsize=None, fp
         )
         print(f"GIF saved to {filename}")
 
-def plot_preferences(agent, env=None, figsize=None, show=True, batch_idx=0):
+def plot_agent_preferences(agent, env=None, figsize=None, show=True, batch_idx=0):
     """Plot the agent's preferences for each modality (Note: does not currently support time-dependent preferences)
     
     Parameters
