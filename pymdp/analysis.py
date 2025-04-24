@@ -1013,3 +1013,37 @@ def initial_state(info, trial_idx=None):
         return [int(info['env'].state[f][trial_idx][0][0]) for f in range(len(info['env'].state))]
     elif not is_multi:
         return [int(info['env'].state[f][0][0]) for f in range(len(info['env'].state))]
+
+
+def plot_rollout_preferences(prefs: Dict,
+dict_key: str, # "cumulative_preferences" or "combined_preferences"
+batch_idx: Optional[int] = 0,
+title: Optional[str] = None, 
+figsize: Tuple[int, int] = (10, 5), 
+trial_lines: Optional[bool] = True):
+    
+    # get number of trials
+    if prefs[dict_key].ndim == 2: 
+        is_multi, num_trials = False, None
+    elif prefs[dict_key].ndim == 3: 
+        is_multi, num_trials = True, prefs[dict_key].shape[0]
+    else: 
+        raise ValueError("Unexpected shape for combined preferences.")
+
+    plt.figure(figsize=figsize)
+
+    # Flatten preference data for plotting (time axis)
+    prefs_to_plot = flatten_multi_trial_tensor(prefs[dict_key][..., batch_idx], is_multi)
+    total_timesteps = prefs_to_plot.shape[0]
+
+    # Add vertical lines at the beginning of each trial if there are trials
+    if trial_lines and num_trials is not None and num_trials > 1:
+        add_trial_boundary_lines(plt.gca(), total_timesteps, num_trials)
+
+    # Plot preferences as a bar plot
+    plt.bar(range(total_timesteps), prefs_to_plot, width=0.8)
+    plt.xlabel('Timestep')
+    plt.ylabel('nats')
+
+    if title is not None:
+        plt.title(title)
