@@ -315,7 +315,6 @@ def compute_preferences(info):
         "cumulative_preferences": cumulative_preferences
     }
 
-
 def compute_preferences_multitrial(info):
     """Compute preferences for multi-trial data using lax.scan. Returns results with an added trial dimension."""
 
@@ -337,7 +336,7 @@ def compute_preferences_multitrial(info):
 
     # Return with trial dimension as leading axis
     return {
-        "modality_preferences": modality_all,         # shape: (num_trials, num_modalities, T, batch)
+        "modality_preferences": modality_all,         # list of len num_modalities, each with shape: (num_trials, T, batch)
         "combined_preferences": combined_all,         # shape: (num_trials, T, batch)
         "cumulative_preferences": cumulative_all      # shape: (num_trials, T, batch)
     }
