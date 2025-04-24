@@ -315,6 +315,72 @@ def compute_preferences(info):
         "cumulative_preferences": cumulative_preferences
     }
 
+def compute_preferences2(observations, C):
+    """This is for single trial data"""
+
+    # Number of modalities
+    num_modalities = len(observations)
+    
+    # Single-trial data: observations shape is (num_timesteps, batch_size, 1)
+    num_timesteps = observations[0].shape[0]
+    batch_size = observations[0].shape[1]
+
+    # Initialize results with appropriate shapes
+    modality_preferences = [jnp.zeros((num_timesteps, batch_size)) for _ in range(num_modalities)]
+
+    for m in range(num_modalities):
+        # Get observations for this modality
+        obs_m = observations[m]  # Shape: (num_timesteps, batch_size, 1)
+        
+        # Process each timestep and batch element
+        for t in range(num_timesteps):
+            for b in range(batch_size):
+                # Get observation index
+                obs_idx = obs_m[t, b, 0].astype(int)
+                
+                # Get preferences for this modality
+                C_value = C[m][t, b, obs_idx].astype(float)
+                
+                # Store preference
+                modality_preferences[m] = modality_preferences[m].at[t, b].set(C_value)
+
+    
+    # Accumulate modality preferences into combined preferences (sum because preferences are in log space)
+    combined_preferences = sum(modality_preferences)
+    
+    # Compute cumulative preferences
+    cumulative_preferences = jnp.cumsum(combined_preferences, axis=0)
+
+    # Return results
+    return {
+        "modality_preferences": modality_preferences,
+        "combined_preferences": combined_preferences,
+        "cumulative_preferences": cumulative_preferences
+    }
+
+def compute_preferences_multitrial(info):
+    """Compute preferences for multi-trial data using lax.scan. Returns results with an added trial dimension."""
+
+    _, num_trials = is_multi_trial(info)
+    num_modalities = len(info['observation'])
+
+    # Define scan function over trials
+    def scan_fn(carry, trial_idx):
+        # Extract single-trial info
+        trial_observations = [info['observation'][m][trial_idx] for m in range(num_modalities)]
+        trial_C = [info['agent'].C[m][trial_idx] for m in range(num_modalities)]
+        trial_prefs = compute_preferences2(trial_observations, trial_C)
+        return carry, tuple(trial_prefs.values())
+
+    # Scan over all trials
+    _, (modality_all, combined_all, cumulative_all) = scan(scan_fn, None, jnp.arange(num_trials))
+
+    # Return with trial dimension as leading axis
+    return {
+        "modality_preferences": modality_all,         # shape: (num_trials, num_modalities, T, batch)
+        "combined_preferences": combined_all,         # shape: (num_trials, T, batch)
+        "cumulative_preferences": cumulative_all      # shape: (num_trials, T, batch)
+    }
 
 def multidimensional_outer(arrs):
     """Compute the outer product of a list of arrays by iteratively expanding the first array and multiplying it with the next array"""
