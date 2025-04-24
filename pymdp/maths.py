@@ -352,14 +352,12 @@ def compute_preferences2(observations, C):
     cumulative_preferences = jnp.cumsum(combined_preferences, axis=0)
 
     # Return results
-    return {
-        "modality_preferences": modality_preferences,
-        "combined_preferences": combined_preferences,
-        "cumulative_preferences": cumulative_preferences
-    }
+    return (modality_preferences, combined_preferences, cumulative_preferences)
 
 def compute_preferences_multitrial(info):
     """Compute preferences for multi-trial data using lax.scan. Returns results with an added trial dimension."""
+
+    from pymdp.envs.rollout import is_multi_trial
 
     _, num_trials = is_multi_trial(info)
     num_modalities = len(info['observation'])
@@ -370,7 +368,7 @@ def compute_preferences_multitrial(info):
         trial_observations = [info['observation'][m][trial_idx] for m in range(num_modalities)]
         trial_C = [info['agent'].C[m][trial_idx] for m in range(num_modalities)]
         trial_prefs = compute_preferences2(trial_observations, trial_C)
-        return carry, tuple(trial_prefs.values())
+        return carry, trial_prefs
 
     # Scan over all trials
     _, (modality_all, combined_all, cumulative_all) = scan(scan_fn, None, jnp.arange(num_trials))
