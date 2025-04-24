@@ -387,6 +387,7 @@ def _compute_preferences(observations, C):
     # Return results
     return (modality_preferences, combined_preferences, cumulative_preferences)
 
+
 def multidimensional_outer(arrs):
     """Compute the outer product of a list of arrays by iteratively expanding the first array and multiplying it with the next array"""
 
