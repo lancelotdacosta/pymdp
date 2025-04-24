@@ -15,7 +15,7 @@ from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_roll
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors, compute_preferences
-from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_preferences, analyze_rollout, print_parameter_learning
+from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_agent_preferences, analyze_rollout, print_parameter_learning, plot_rollout_preferences
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning, print_experiment_setup
 
 # if __name__ == "__main__":
@@ -77,7 +77,19 @@ print_parameter_learning(combined_info, learning_config, env)
 #compute and plot prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
 plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials)
+#compute and plot preferences for multiple trials
+preferences= compute_preferences(combined_info)
+plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences")
 
+#%% # DEBUGGING:run simulation for one trial of the learned (?) agent?
+for i in range(10):
+    key = jr.PRNGKey(i)
+    key, rollout_key = jr.split(key)
+    _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+
+    # print_rollout(info)
+    preferences= compute_preferences(info)
+    plot_rollout_preferences(preferences, "cumulative_preferences", title="Cumulative preferences")
 
 # %% ### 2b. Parameter (B) Learning Demo
 #
@@ -121,7 +133,7 @@ print_parameter_learning(combined_info, learning_config, verbose=False)
 plot_parameter_learning(combined_info, learning_config, env)
 pe_analysis = compute_prediction_errors(combined_info)
 plot_prediction_errors(pe_analysis, yscale='log', smoothing=None, num_trials=num_trials)
-plot_preferences(agent, env)
+plot_agent_preferences(agent, env)
 # plot_model_comparison
 # print_initial_state
 # initial_state
