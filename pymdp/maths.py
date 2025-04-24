@@ -272,73 +272,35 @@ def compute_prediction_errors(info):
         'pe_accumulated': pe_accumulated
     }
 
+
 def compute_preferences(info):
-    """This is for single trial data"""
-
-    # Number of modalities
-    num_modalities = len(info['observation'])
-    
-    # Single-trial data: observations shape is (num_timesteps, batch_size, 1)
-    num_timesteps = info['observation'][0].shape[0]
-    batch_size = info['observation'][0].shape[1]
-
-    # Initialize results with appropriate shapes
-    modality_preferences = [jnp.zeros((num_timesteps, batch_size)) for _ in range(num_modalities)]
-
-    for m in range(num_modalities):
-        # Get observations for this modality
-        obs_m = info['observation'][m]  # Shape: (num_timesteps, batch_size, 1)
-        
-        # Process each timestep and batch element
-        for t in range(num_timesteps):
-            for b in range(batch_size):
-                # Get observation index
-                obs_idx = int(obs_m[t, b, 0])
-                
-                # Get preferences for this modality
-                C_value = float(info['agent'].C[m][t, b, obs_idx])
-                
-                # Store preference
-                modality_preferences[m] = modality_preferences[m].at[t, b].set(C_value)
-
-    
-    # Accumulate modality preferences into combined preferences (sum because preferences are in log space)
-    combined_preferences = sum(modality_preferences)
-    
-    # Compute cumulative preferences
-    cumulative_preferences = jnp.cumsum(combined_preferences, axis=0)
-
-    # Return results
-    return {
-        "modality_preferences": modality_preferences,
-        "combined_preferences": combined_preferences,
-        "cumulative_preferences": cumulative_preferences
-    }
-
-def compute_preferences_multitrial(info):
     """Compute preferences for multi-trial data using lax.scan. Returns results with an added trial dimension."""
 
     from pymdp.envs.rollout import is_multi_trial
 
-    _, num_trials = is_multi_trial(info)
+    is_multi, num_trials = is_multi_trial(info)
     num_modalities = len(info['observation'])
 
-    # Define scan function over trials
-    def scan_fn(carry, trial_idx):
-        # Extract single-trial info
-        trial_observations = [info['observation'][m][trial_idx] for m in range(num_modalities)]
-        trial_C = [info['agent'].C[m][trial_idx] for m in range(num_modalities)]
-        trial_prefs = _compute_preferences(trial_observations, trial_C)
-        return carry, trial_prefs
+    if not is_multi: #compute preferences for single trial
+        (modality_prefs, combined_prefs, cumulative_prefs) = _compute_preferences(info['observation'], info['agent'].C)
+    else: #compute preferences for multi-trial using a scan function
 
-    # Scan over all trials
-    _, (modality_all, combined_all, cumulative_all) = scan(scan_fn, None, jnp.arange(num_trials))
+        # Define scan function over trials
+        def scan_fn(carry, trial_idx):
+            # Extract single-trial info
+            trial_observations = [info['observation'][m][trial_idx] for m in range(num_modalities)]
+            trial_C = [info['agent'].C[m][trial_idx] for m in range(num_modalities)]
+            trial_prefs = _compute_preferences(trial_observations, trial_C)
+            return carry, trial_prefs
 
-    # Return with trial dimension as leading axis
+        # Scan over all trials
+        _, (modality_prefs, combined_prefs, cumulative_prefs) = scan(scan_fn, None, jnp.arange(num_trials))
+
+    # Return dict of preferences
     return {
-        "modality_preferences": modality_all,         # list of len num_modalities, each with shape: (num_trials, T, batch)
-        "combined_preferences": combined_all,         # shape: (num_trials, T, batch)
-        "cumulative_preferences": cumulative_all      # shape: (num_trials, T, batch)
+        "modality_preferences": modality_prefs,         # list of len num_modalities, each with shape: (num_trials, T, batch)
+        "combined_preferences": combined_prefs,         # shape: (num_trials, T, batch)
+        "cumulative_preferences": cumulative_prefs      # shape: (num_trials, T, batch)
     }
 
 def _compute_preferences(observations, C):

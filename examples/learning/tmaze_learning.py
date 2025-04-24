@@ -14,7 +14,7 @@ from pymdp.envs.env_factory import make, EnvType
 from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout, is_multi_trial,get_info_trial, flatten_multi_trial_info
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
-from pymdp.maths import compute_prediction_errors
+from pymdp.maths import compute_prediction_errors, compute_preferences
 from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_preferences, analyze_rollout, print_parameter_learning
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning, print_experiment_setup
 
