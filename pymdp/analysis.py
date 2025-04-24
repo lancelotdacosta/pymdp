@@ -7,7 +7,7 @@ __author__: Lancelot Da Costa
 import jax.numpy as jnp
 import jax.nn as nn
 import matplotlib.pyplot as plt
-from typing import Dict, Optional, Tuple, List, Union
+from typing import Dict, Optional, Tuple
 import mediapy
 from PIL import Image
 import os
@@ -16,7 +16,7 @@ import io
 from matplotlib.gridspec import GridSpec
 from pymdp.maths import smooth_data
 from pymdp.envs.rollout import is_multi_trial, get_info_trial
-from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list, add_trial_boundary_lines
+from pymdp.utils import flatten_multi_trial_tensor_list, flatten_multi_trial_tensor, add_trial_boundary_lines
 from warnings import warn
 
 def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
