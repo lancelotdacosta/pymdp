@@ -274,7 +274,33 @@ def compute_prediction_errors(info):
 
 
 def compute_preferences(info):
-    """Compute preferences for multi-trial data using lax.scan. Returns results with an added trial dimension."""
+    """
+    Compute observation preferences from rollout information.
+
+    Analyzes preferences (C values) for observations in a rollout, handling both 
+    single-trial and multi-trial data. For multi-trial data, it processes each 
+    trial using jax.lax.scan to compute preferences across all trials efficiently.
+
+    Parameters
+    ----------
+    info : dict
+        Rollout information containing:
+        - observation: list of observation arrays
+        - agent: agent object with preference (C) matrices
+
+    Returns
+    -------
+    dict
+        - modality_preferences: list of arrays, one per modality
+          For single-trial: shape (num_timesteps, batch_size)
+          For multi-trial: shape (num_trials, num_timesteps, batch_size)
+        - combined_preferences: sum of preferences across modalities
+          For single-trial: shape (num_timesteps, batch_size)
+          For multi-trial: shape (num_trials, num_timesteps, batch_size)
+        - cumulative_preferences: cumulative sum of combined preferences
+          For single-trial: shape (num_timesteps, batch_size)
+          For multi-trial: shape (num_trials, num_timesteps, batch_size)
+    """
 
     from pymdp.envs.rollout import is_multi_trial
 
