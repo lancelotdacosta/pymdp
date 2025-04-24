@@ -330,7 +330,26 @@ def compute_preferences(info):
     }
 
 def _compute_preferences(observations, C):
-    """This is for single trial data"""
+    """
+    Helper function to compute preferences for single-trial data.
+    
+    Extracts the C-values (preferences) associated with each observed state and
+    computes both modality-specific and combined preferences across timesteps.
+    
+    Parameters
+    ----------
+    observations : list of arrays
+        List of observation arrays, one per modality, each with shape (num_timesteps, batch_size, 1)
+    C : list of arrays
+        List of preference matrices, one per modality
+        
+    Returns
+    -------
+    tuple
+        - modality_preferences: list of arrays, one per modality, each with shape (num_timesteps, batch_size)
+        - combined_preferences: sum of preferences across modalities, shape (num_timesteps, batch_size)
+        - cumulative_preferences: cumulative sum of combined preferences, shape (num_timesteps, batch_size)
+    """
 
     # Number of modalities
     num_modalities = len(observations)
