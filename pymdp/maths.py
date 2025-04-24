@@ -272,6 +272,55 @@ def compute_prediction_errors(info):
         'pe_accumulated': pe_accumulated
     }
 
+def compute_preferences(info):
+    """This is for single trial data"""
+
+    # Number of modalities
+    num_modalities = len(info['observation'])
+    
+    # Single-trial data: observations shape is (num_timesteps, batch_size, 1)
+    num_timesteps = info['observation'][0].shape[0]
+    batch_size = info['observation'][0].shape[1]
+
+    # Initialize results with appropriate shapes
+    modality_preferences = []
+
+    # Process each modality
+    for m in range(num_modalities):
+        # Get observations for this modality
+        obs_m = info['observation'][m]  # Shape: (num_timesteps, batch_size, 1)
+        
+        # Initialize preferences for this modality
+        prefs_m = jnp.zeros((num_timesteps, batch_size))
+        
+        # Process each timestep and batch element
+        for t in range(num_timesteps):
+            for b in range(batch_size):
+                # Get observation index
+                obs_idx = int(obs_m[t, b, 0])
+                
+                # Get preferences for this modality
+                C_value = float(info['agent'].C[m][t, b, obs_idx])
+                
+                # Store preference
+                prefs_m = prefs_m.at[t, b].set(C_value)
+
+        # Add to modality preferences
+        modality_preferences.append(prefs_m)
+    
+    # Accumulate modality preferences into combined preferences (sum because preferences are in log space)
+    combined_preferences = sum(modality_preferences)
+    
+    # Compute cumulative preferences
+    cumulative_preferences = jnp.cumsum(combined_preferences, axis=0)
+
+    # Return results
+    return {
+        "modality_preferences": modality_preferences,
+        "combined_preferences": combined_preferences,
+        "cumulative_preferences": cumulative_preferences
+    }
+
 
 def multidimensional_outer(arrs):
     """Compute the outer product of a list of arrays by iteratively expanding the first array and multiplying it with the next array"""
