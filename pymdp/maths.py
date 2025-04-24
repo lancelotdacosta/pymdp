@@ -283,15 +283,11 @@ def compute_preferences(info):
     batch_size = info['observation'][0].shape[1]
 
     # Initialize results with appropriate shapes
-    modality_preferences = []
+    modality_preferences = [jnp.zeros((num_timesteps, batch_size)) for _ in range(num_modalities)]
 
-    # Process each modality
     for m in range(num_modalities):
         # Get observations for this modality
         obs_m = info['observation'][m]  # Shape: (num_timesteps, batch_size, 1)
-        
-        # Initialize preferences for this modality
-        prefs_m = jnp.zeros((num_timesteps, batch_size))
         
         # Process each timestep and batch element
         for t in range(num_timesteps):
@@ -303,10 +299,8 @@ def compute_preferences(info):
                 C_value = float(info['agent'].C[m][t, b, obs_idx])
                 
                 # Store preference
-                prefs_m = prefs_m.at[t, b].set(C_value)
+                modality_preferences[m] = modality_preferences[m].at[t, b].set(C_value)
 
-        # Add to modality preferences
-        modality_preferences.append(prefs_m)
     
     # Accumulate modality preferences into combined preferences (sum because preferences are in log space)
     combined_preferences = sum(modality_preferences)
