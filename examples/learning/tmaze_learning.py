@@ -58,14 +58,14 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 100},
-    agent_params={"action_selection": "stochastic", "policy_len": 3},
+    model_params={"T": 10},
+    agent_params={"action_selection": "stochastic", "policy_len": 4},
     uniform_D=False
 )
 
 # Run simulation with multiple trials
 
-num_trials = 200 # Number of trials to run
+num_trials = 2000 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
 #print last trial of rollout
@@ -79,19 +79,9 @@ pe_analysis = compute_prediction_errors(combined_info)
 plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials)
 #compute and plot preferences for multiple trials
 preferences= compute_preferences(combined_info)
-plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences")
+plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
-#%% # DEBUGGING:run simulation for one trial of the learned (?) agent?
-for i in range(10):
-    key = jr.PRNGKey(i)
-    key, rollout_key = jr.split(key)
-    _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
-
-    # print_rollout(info)
-    preferences= compute_preferences(info)
-    plot_rollout_preferences(preferences, "cumulative_preferences", title="Cumulative preferences")
-
-# %% ### 2b. Parameter (B) Learning Demo
+#%% ### 2b. Parameter (B) Learning Demo
 #
 # Here we demonstrate how the agent can learn the transition (B) tensor through experience.
 
@@ -106,14 +96,14 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 100},
-    agent_params={"action_selection": "stochastic", "policy_len": 2},
+    model_params={"T": 10},
+    agent_params={"action_selection": "stochastic", "policy_len": 4},
     uniform_D=False
 )
 
 # Run simulation with multiple trials
 
-num_trials = 200 # Number of trials to run
+num_trials = 2000 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
 #print last trial of rollout
