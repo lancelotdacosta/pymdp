@@ -288,7 +288,9 @@ def print_experiment_setup(info):
     print("\n=== Experiment Setup ===")
     
     # Trial information
-    if multi_trials: print(f"Multi-trial experiment: {num_trials} trials")
+    if multi_trials: 
+        print(f"Multi-trial experiment: {num_trials} trials")
+        warnings.warn("The following may be wrong in multi-trial setting")
     else: print("Single-trial experiment")
     print(f"Number of timesteps per trial: {num_timesteps-1}")  # -1 because includes initial observation
     print(f"Batch size: {observations[0].shape[1]}")
