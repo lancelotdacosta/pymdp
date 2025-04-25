@@ -19,25 +19,56 @@ from pymdp.envs.rollout import is_multi_trial, get_info_trial
 from pymdp.utils import flatten_multi_trial_tensor_list, flatten_multi_trial_tensor, add_trial_boundary_lines
 from warnings import warn
 
-# def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
-#     if plot: plot_preferences(agent, env)
-#     if render: render_rollout(env, info)
-#     if plot: plot_beliefs(info, env)
-#     if print: print_rollout(info, env)
-#     # List of further possible analysis functions 
-#     # print_experiment_setup(info)
-#     # print_rollout(info)
-#     # print_parameter_learning(info, learning_config, verbose=False)
-#     # plot_parameter_learning(info, learning_config, env)
-#     # pe_analysis = compute_prediction_errors(info)
-#     # plot_prediction_errors(pe_analysis, yscale='log', smoothing=None, num_trials=num_trials)
-#     # plot_preferences(agent, env)
-#     # plot_model_comparison
-#     # print_initial_state(info)
-#     # # initial_state
-#     # render_rollout(env, info, fps=10)
-#     # plot_beliefs(info, env)
+# -----------------------------------------------------------------------------
+# Analysis function registry and helper utilities
+# -----------------------------------------------------------------------------
 
+analysis_registry: Dict[str, list] = {}
+
+def register_analysis(category: str):
+    """Decorator to register an analysis function under a given *category*.
+    Usage::
+
+        @register_analysis("Prediction Errors")
+        def plot_prediction_errors(...):
+            ...
+    """
+    def decorator(func):
+        analysis_registry.setdefault(category, []).append(func)
+        return func
+    return decorator
+
+def list_analysis_functions(category: Optional[str] = None) -> None:
+    """Print names of available analysis functions.
+    Parameters
+    ----------
+    category : str, optional
+        If provided, only list functions within this category. Otherwise list all.
+
+    Usage:
+    from pymdp.analysis import list_analysis_functions
+    list_analysis_functions()                # show everything
+    list_analysis_functions("Rollout prints")
+    """
+    if category:
+        funcs = analysis_registry.get(category, [])
+        if not funcs:
+            print(f"No analysis functions registered under category '{category}'.") 
+            return
+        print(f"\n=== {category} ===")
+        for f in funcs:
+            print(f"- {f.__name__}: {f.__doc__.split('\n')[0] if f.__doc__ else ''}")
+    else:
+        for cat, funcs in analysis_registry.items():
+            print(f"\n=== {cat} ===")
+            for f in funcs:
+                print(f"- {f.__name__}: {f.__doc__.split('\n')[0] if f.__doc__ else ''}")
+
+# -----------------------------------------------------------------------------
+# Analysis functions
+# -----------------------------------------------------------------------------
+
+@register_analysis("Rollout plots")
 def plot_prediction_errors(pe_analysis: Dict, 
     title: Optional[str] = None, 
     figsize: Tuple[int, int] = (10, 5), 
@@ -95,6 +126,7 @@ def plot_prediction_errors(pe_analysis: Dict,
     
     #return fig
 
+@register_analysis("Rollout plots")
 def plot_model_comparison(pe_analyses,
  labels=None, 
  figsize: Tuple[int, int] = (15, 12), 
@@ -205,6 +237,7 @@ def plot_model_comparison(pe_analyses,
     plt.tight_layout()
     #return fig
 
+@register_analysis("Rollout prints")
 def print_experiment_setup(info):
     
     multi_trials, num_trials = is_multi_trial(info)
@@ -245,6 +278,7 @@ def print_experiment_setup(info):
     print(f"Control factors: {control_factor_names}")
     #TODO: add more info such as planning horizon of agent
 
+@register_analysis("Rollout prints")
 def print_rollout(info, batch_idx=0, timesteps='all', trials='all'):
     """Print a human-readable version of the rollout using environment labels.
     
@@ -396,7 +430,7 @@ def print_rollout(info, batch_idx=0, timesteps='all', trials='all'):
             print(f"Posterior beliefs ({state_factor_names[f]}): ", 
                   format_state_dist(f, beliefs[f][t, batch_idx, 0]))
 
-
+@register_analysis("Rollout renders")
 def render_rollout(env, info, save_gif=False, filename=None, fps=1):
     """Render a video of the agent's trajectory through any environment that implements a render method.
     
@@ -464,6 +498,7 @@ def render_rollout(env, info, save_gif=False, filename=None, fps=1):
             loop=0
         )
 
+@register_analysis("Rollout renders")
 def plot_beliefs(info, env=None, save_gif=False, filename=None, figsize=None, fps=1, batch_idx=0):
     """Create a GIF animation showing the evolution of beliefs for each state factor over time.
     
@@ -571,6 +606,7 @@ def plot_beliefs(info, env=None, save_gif=False, filename=None, figsize=None, fp
         )
         print(f"GIF saved to {filename}")
 
+@register_analysis("Agent config")
 def plot_agent_preferences(agent, env=None, figsize=None, show=True, batch_idx=0):
     """Plot the agent's preferences for each modality (Note: does not currently support time-dependent preferences)
     
@@ -584,6 +620,8 @@ def plot_agent_preferences(agent, env=None, figsize=None, show=True, batch_idx=0
         Figure size as (width, height), by default None (auto-calculated)
     show : bool, optional
         Whether to call plt.show(), by default True
+    batch_idx : int, optional
+        Batch index to plot, by default 0
         
     Returns
     -------
@@ -646,6 +684,7 @@ def plot_agent_preferences(agent, env=None, figsize=None, show=True, batch_idx=0
     
     return plt
 
+@register_analysis("Rollout prints")
 def print_parameter_learning(info, learning_config, env=None, verbose=False, batch_idx=0):
     """Print and analyze parameter learning results in an environment-agnostic way.
     
@@ -835,6 +874,7 @@ def _get_action_indices(flat_index, control_factor_actions):
     
     return action_indices
 
+@register_analysis("Rollout plots")
 def plot_parameter_learning(info, learning_config, env, yscale='linear', trial_lines: Optional[bool] = True, num_trials: Optional[int] = None):
     
     """Plot the agent's learning progress for parameters (A, B, D) over time.
@@ -987,6 +1027,7 @@ trial_lines: Optional[bool] = True):
     ax.set_yscale(yscale)
     ax.legend()
 
+@register_analysis("Rollout prints")
 def print_initial_state(info, trial_idx=None):
     """Print the initial state of the environment."""
     #TODO: note this works only for batch_size==1
@@ -996,12 +1037,12 @@ def print_initial_state(info, trial_idx=None):
     if is_multi and trial_idx is None: 
         raise ValueError("trial_idx must be specified for printing initial state in a multi-trial rollout.")
     elif is_multi:
-        print(f"Initial state at trial {trial_idx}: {initial_state(info, trial_idx)}")
+        print(f"Initial state at trial {trial_idx}: {_initial_state(info, trial_idx)}")
         return
 
-    print(f"Initial state: {initial_state(info, trial_idx)}")
+    print(f"Initial state: {_initial_state(info, trial_idx)}")
 
-def initial_state(info, trial_idx=None):
+def _initial_state(info, trial_idx=None):
     """Get the initial state of the environment."""
     # Check if multi-trial
     is_multi, num_trials = is_multi_trial(info)
@@ -1015,6 +1056,7 @@ def initial_state(info, trial_idx=None):
         return [int(info['env'].state[f][0][0]) for f in range(len(info['env'].state))]
 
 
+@register_analysis("Rollout plots")
 def plot_rollout_preferences(prefs: Dict,
 dict_key: str, # "cumulative_preferences" or "combined_preferences"
 batch_idx: Optional[int] = 0,
