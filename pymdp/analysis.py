@@ -249,6 +249,16 @@ def plot_model_comparison(pe_analyses,
 
 @register_analysis("Rollout prints")
 def print_experiment_setup(info):
+    """Print a summary of the experiment configuration including trial structure, factors, and dimensions.
+    
+    Displays information about the number of trials, timesteps, state factors, observation modalities,
+    and control factors in the experiment. Useful for verifying experiment setup before analysis.
+    
+    Parameters
+    ----------
+    info : dict
+        Rollout information dictionary containing experiment data
+    """
     
     multi_trials, num_trials = is_multi_trial(info)
     info = get_info_trial(info, 0, verbose=False)
