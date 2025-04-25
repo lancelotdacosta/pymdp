@@ -19,24 +19,24 @@ from pymdp.envs.rollout import is_multi_trial, get_info_trial
 from pymdp.utils import flatten_multi_trial_tensor_list, flatten_multi_trial_tensor, add_trial_boundary_lines
 from warnings import warn
 
-def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
-    if plot: plot_preferences(agent, env)
-    if render: render_rollout(env, info)
-    if plot: plot_beliefs(info, env)
-    if print: print_rollout(info, env)
-    # List of further possible analysis functions 
-    # print_experiment_setup(info)
-    # print_rollout(info)
-    # print_parameter_learning(info, learning_config, verbose=False)
-    # plot_parameter_learning(info, learning_config, env)
-    # pe_analysis = compute_prediction_errors(info)
-    # plot_prediction_errors(pe_analysis, yscale='log', smoothing=None, num_trials=num_trials)
-    # plot_preferences(agent, env)
-    # plot_model_comparison
-    # print_initial_state(info)
-    # # initial_state
-    # render_rollout(env, info, fps=10)
-    # plot_beliefs(info, env)
+# def analyze_rollout(info, agent, env, render=True, plot=True, print=True):
+#     if plot: plot_preferences(agent, env)
+#     if render: render_rollout(env, info)
+#     if plot: plot_beliefs(info, env)
+#     if print: print_rollout(info, env)
+#     # List of further possible analysis functions 
+#     # print_experiment_setup(info)
+#     # print_rollout(info)
+#     # print_parameter_learning(info, learning_config, verbose=False)
+#     # plot_parameter_learning(info, learning_config, env)
+#     # pe_analysis = compute_prediction_errors(info)
+#     # plot_prediction_errors(pe_analysis, yscale='log', smoothing=None, num_trials=num_trials)
+#     # plot_preferences(agent, env)
+#     # plot_model_comparison
+#     # print_initial_state(info)
+#     # # initial_state
+#     # render_rollout(env, info, fps=10)
+#     # plot_beliefs(info, env)
 
 def plot_prediction_errors(pe_analysis: Dict, 
     title: Optional[str] = None, 
@@ -83,7 +83,7 @@ def plot_prediction_errors(pe_analysis: Dict,
     plt.plot(pe_data["complexity"], label='Complexity', alpha=0.7)
     plt.plot(pe_data["neg_accuracy"], label='Negative accuracy', alpha=0.7)
     plt.plot(pe_data["pred_error"], label='Prediction error', alpha=1.0)
-    plt.plot(pe_data["pe_accumulated"], label='Accumulated prediction errors')
+    # plt.plot(pe_data["pe_accumulated"], label='Accumulated prediction errors')
     plt.legend()
     plt.xlabel('Timestep')
     plt.ylabel('nats')
