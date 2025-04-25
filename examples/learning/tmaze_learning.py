@@ -44,7 +44,7 @@ env = make(
 )
 
 # %% ### 2a. Parameter (A) Learning Demo
-# NOT YET WORKING FINE!!!
+
 # Here we demonstrate how the agent can learn the observation (A) tensor through experience.
 
 # Set up random key
@@ -97,6 +97,45 @@ agent, model, key = Agent.from_env(
     learning_config=learning_config,
     key=key,
     model_params={"T": 10},
+    agent_params={"action_selection": "stochastic", "policy_len": 4},
+    uniform_D=False
+)
+
+# Run simulation with multiple trials
+
+num_trials = 2000 # Number of trials to run
+_, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
+
+#print last trial of rollout
+print_initial_state(combined_info, trial_idx= num_trials - 1)
+print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+#print and plot parameter learning
+plot_parameter_learning(combined_info, learning_config, env)
+print_parameter_learning(combined_info, learning_config, env)
+#compute and plot prediction errors
+pe_analysis = compute_prediction_errors(combined_info)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials)
+#compute and plot preferences for multiple trials
+preferences= compute_preferences(combined_info)
+plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
+
+
+#%% ### 2c. Parameter (A&B) Learning Demo
+# NOT YET WORKING FINE!!!
+# Here we demonstrate how the agent can learn the transition and likelihood (A&B) tensors through experience.
+
+# Set up random key
+key = jr.PRNGKey(0)
+
+# Enable A, B parameter learning
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
+
+# Create agent directly from environment with environment config C matrices
+agent, model, key = Agent.from_env(
+    env=env,
+    learning_config=learning_config,
+    key=key,
+    model_params={"T": 100},
     agent_params={"action_selection": "stochastic", "policy_len": 4},
     uniform_D=False
 )
