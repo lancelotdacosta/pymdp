@@ -1020,7 +1020,8 @@ dict_key: str, # "cumulative_preferences" or "combined_preferences"
 batch_idx: Optional[int] = 0,
 title: Optional[str] = None, 
 figsize: Tuple[int, int] = (10, 5), 
-trial_lines: Optional[bool] = True):
+trial_lines: Optional[bool] = True,
+zoom: Optional[bool] = True):
     
     # get number of trials
     if prefs[dict_key].ndim == 2: 
@@ -1032,17 +1033,29 @@ trial_lines: Optional[bool] = True):
 
     plt.figure(figsize=figsize)
 
-    # Flatten preference data for plotting (time axis)
-    prefs_to_plot = flatten_multi_trial_tensor(prefs[dict_key][..., batch_idx], is_multi)
-    total_timesteps = prefs_to_plot.shape[0]
+    if zoom:
+        # Flatten preference data for plotting (time axis)
+        prefs_to_plot = flatten_multi_trial_tensor(prefs[dict_key][..., batch_idx], is_multi)
+        total_timesteps = prefs_to_plot.shape[0]
 
-    # Add vertical lines at the beginning of each trial if there are trials
-    if trial_lines and num_trials is not None and num_trials > 1:
-        add_trial_boundary_lines(plt.gca(), total_timesteps, num_trials)
+        # Add vertical lines at the beginning of each trial if there are trials
+        if trial_lines and num_trials is not None and num_trials > 1:
+            add_trial_boundary_lines(plt.gca(), total_timesteps, num_trials)
 
-    # Plot preferences as a bar plot
-    plt.bar(range(total_timesteps), prefs_to_plot, width=0.8)
-    plt.xlabel('Timestep')
+        # Plot preferences as a bar plot
+        plt.bar(range(total_timesteps), prefs_to_plot)
+        plt.xlabel('Timestep')
+
+    else: # plot last timestep from each trial
+
+        prefs_to_plot = prefs[dict_key][...,-1, batch_idx]
+        
+        if is_multi:
+            plt.bar(range(num_trials), prefs_to_plot)
+        else:
+            plt.bar(range(1), prefs_to_plot)
+        plt.xlabel('Trial')
+        
     plt.ylabel('nats')
 
     if title is not None:
