@@ -115,6 +115,9 @@ print_parameter_learning(combined_info, learning_config, env)
 #compute and plot prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
 plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials)
+#compute and plot preferences for multiple trials
+preferences= compute_preferences(combined_info)
+plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 #%% ================FURTHER POSSIBLE ANALYSIS================
 print_experiment_setup(combined_info)
