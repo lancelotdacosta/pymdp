@@ -15,7 +15,7 @@ from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_roll
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors, compute_preferences
-from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_agent_preferences, analyze_rollout, print_parameter_learning, plot_rollout_preferences
+from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_agent_preferences, print_parameter_learning, plot_rollout_preferences
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning, print_experiment_setup
 
 # if __name__ == "__main__":
