@@ -50,6 +50,16 @@ def list_analysis_functions(category: Optional[str] = None) -> None:
     list_analysis_functions()                # show everything
     list_analysis_functions("Rollout prints")
     """
+    def get_description(func):
+        """Extract the first non-empty, non-metadata line from docstring"""
+        if not func.__doc__:
+            return ""
+        lines = [line.strip() for line in func.__doc__.split('\n')]
+        for line in lines:
+            if line and not line.startswith(':') and not line.startswith('Parameters') and not line.startswith('Returns'):
+                return line
+        return ""
+
     if category:
         funcs = analysis_registry.get(category, [])
         if not funcs:
@@ -57,12 +67,12 @@ def list_analysis_functions(category: Optional[str] = None) -> None:
             return
         print(f"\n=== {category} ===")
         for f in funcs:
-            print(f"- {f.__name__}: {f.__doc__.split('\n')[0] if f.__doc__ else ''}")
+            print(f"- {f.__name__}: {get_description(f)}")
     else:
         for cat, funcs in analysis_registry.items():
             print(f"\n=== {cat} ===")
             for f in funcs:
-                print(f"- {f.__name__}: {f.__doc__.split('\n')[0] if f.__doc__ else ''}")
+                print(f"- {f.__name__}: {get_description(f)}")
 
 # -----------------------------------------------------------------------------
 # Analysis functions
