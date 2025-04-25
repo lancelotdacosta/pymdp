@@ -1022,6 +1022,40 @@ title: Optional[str] = None,
 figsize: Tuple[int, int] = (10, 5), 
 trial_lines: Optional[bool] = True,
 zoom: Optional[bool] = True):
+    """
+    Plot preference data returned by compute_preferences.
+    
+    This function visualizes agent preferences data in two different modes:
+    1. zoom=True (default): Shows preference values across all timesteps and trials,
+       flattening multi-trial data into a single timeline with trial boundary markers.
+    2. zoom=False: Shows only the last timestep preference value from each trial,
+       useful for tracking how final preferences evolve over many trials.
+    
+    Parameters
+    ----------
+    prefs : Dict
+        Dictionary returned by compute_preferences containing preference data
+    dict_key : str
+        Key specifying which preference data to plot:
+        - "combined_preferences": Sum of preferences across modalities
+        - "cumulative_preferences": Cumulative sum of combined preferences
+    batch_idx : int, optional
+        Batch index to plot, by default 0
+    title : str, optional
+        Plot title, by default None
+    figsize : tuple(int, int), optional
+        Figure size as (width, height), by default (10, 5)
+    trial_lines : bool, optional
+        Whether to show vertical lines at trial boundaries when zoom=True, by default True
+    zoom : bool, optional
+        Visualization mode - True to show all timesteps, False to show only final timestep 
+        of each trial, by default True
+        
+    Note
+    ----
+    This function handles both single-trial and multi-trial data formats. For multi-trial
+    data, the preference arrays will have a leading trial dimension added by lax.scan.
+    """
     
     # get number of trials
     if prefs[dict_key].ndim == 2: 
@@ -1055,6 +1089,8 @@ zoom: Optional[bool] = True):
         else:
             plt.bar(range(1), prefs_to_plot)
         plt.xlabel('Trial')
+    
+    plt.ylim(bottom=prefs_to_plot.min(),top=prefs_to_plot.max())
         
     plt.ylabel('nats')
 
