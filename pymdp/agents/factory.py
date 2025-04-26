@@ -7,6 +7,33 @@ from pymdp.envs.tmaze import TMaze
 import jax.numpy as jnp
 
 
+class RandomAgent(Agent):
+
+    def __init__(self, n_policies: int) -> None:  # TODO handle multiple actions with list
+        """
+        Create an agent taking random actions.
+        :param n_policies: the number of policies in the environment
+        """
+        # TODO We should have an agent interface, not all agent must have A and B matrices
+        super().__init__(
+            A=[jnp.zeros((1, 1), dtype=jnp.float32)],  # Dummy matrices no belief updates for random agent
+            B=[jnp.zeros((1, 1), dtype=jnp.float32)],  # Dummy matrices no belief updates for random agent
+        )
+        self.n_policies = n_policies
+
+    def infer_states(self, obs, empirical_prior):
+        pass
+
+    def infer_policies(self, qs):
+        pass
+
+    def sample_action(self, q_pi):
+        pass  # TODO
+
+    def infer_parameters(self, qs, obs, actions):
+        pass
+
+
 class AgentType(IntEnum):
     """
     The list of supported agents.
@@ -15,6 +42,7 @@ class AgentType(IntEnum):
     T_MAZE_POMDP_LEARNING_A = 1  # A POMDP agent equipped with Dirichlet over A for the T_MAZE environment.
     T_MAZE_POMDP_LEARNING_B = 2  # A POMDP agent equipped with Dirichlet over B for the T_MAZE environment.
     T_MAZE_POMDP_LEARNING_A_B = 3  # A POMDP agent equipped with Dirichlet over A and B for the T_MAZE environment.
+    RANDOM = 4  # An agent taking random actions in the environment, you need to specify n_actions as parameters.
 
 
 def make(agent_type : AgentType, **kwargs : Any) -> Agent:
@@ -28,7 +56,8 @@ def make(agent_type : AgentType, **kwargs : Any) -> Agent:
         AgentType.T_MAZE_ORACLE_POMDP: create_t_maze_pomdp,
         AgentType.T_MAZE_POMDP_LEARNING_A: partial(create_t_maze_pomdp, learn_a=True),
         AgentType.T_MAZE_POMDP_LEARNING_B: partial(create_t_maze_pomdp, learn_b=True),
-        AgentType.T_MAZE_POMDP_LEARNING_A_B: partial(create_t_maze_pomdp, learn_a=True, learn_b=True)
+        AgentType.T_MAZE_POMDP_LEARNING_A_B: partial(create_t_maze_pomdp, learn_a=True, learn_b=True),
+        AgentType.RANDOM: create_random_agent,
     }
     return agents_fc[agent_type](**kwargs)
 
@@ -86,3 +115,13 @@ def create_t_maze_pomdp(
         learn_B=learn_b,
         apply_batch = False
     )
+
+
+def create_random_agent(n_actions: int, **kwargs: Any) -> Agent:
+    """
+    Create an agent taking random actions.
+    :param n_actions: the number of actions in the environment
+    :param kwargs: keyword arguments (unused)
+    :return: the created agent
+    """
+    return RandomAgent(n_actions)

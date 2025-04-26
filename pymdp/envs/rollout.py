@@ -116,6 +116,7 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
         }
 
         return carry, info
+    # TODO [remove] end of step_fc
 
     # initialise first observation from environment
     keys = jr.split(rng_key, batch_size + 1)

@@ -2,7 +2,6 @@ from enum import IntEnum
 from typing import Dict, List
 
 from jax import numpy as jnp
-from jax import random as jr
 from PIL import Image, ImageDraw, ImageFont
 from pymdp import maths
 from pymdp.agent import Agent
@@ -126,7 +125,12 @@ def run_episode(
     frames = []
 
     # Reset the environment.
-    obs, _ = env.reset()
+    from jax import random as jr
+    key = jr.PRNGKey(0)  # Random key for the aif loop
+    batch_size = 1
+    keys = jr.split(key, batch_size + 1)
+    obs, _ = env.reset(keys[1:])
+    print("OK!")
     frames.append(env.render(mode="rgb_array"))
 
     # Initialize the empirical prior using the agent initial prior over state.
@@ -139,7 +143,11 @@ def run_episode(
         qs = agent.infer_states(obs, empirical_prior=qs)
 
         # Infer the posterior over policies.
-        q_pi, _ = agent.infer_policies(qs)
+        q_pi, a = agent.infer_policies(qs)
+        print(type(q_pi))
+        print(q_pi.shape)
+        print(type(a))
+        print(a.shape)
 
         # Chose the next action to perform in the environment.
         actions = agent.sample_action(q_pi)

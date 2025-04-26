@@ -2,6 +2,7 @@ from enum import IntEnum
 from typing import List
 
 from pymdp.envs import Env
+from pymdp.envs.simplest import SimplestEnv
 from pymdp.envs.tmaze import TMaze
 
 
@@ -10,6 +11,7 @@ class EnvType(IntEnum):
     The list of supported environments.
     """
     T_MAZE = 0
+    SIMPLEST = 1
 
 
 def make(env_type : EnvType, **kwargs : List[int]) -> Env:
@@ -32,6 +34,7 @@ def make(env_type : EnvType, **kwargs : List[int]) -> Env:
         # LOCATION_MODALITY_ID = 0  => Agent observes its locations (center, left?, right?, bottom/cue).
         # REWARD_MODALITY_ID = 1 => Agent observes rewards (NO_REWARD = 0, REWARD_IDX = 1, LOSS_IDX = 2).
         # CUE_MODALITY_ID = 2 => Agent observes cues (reward is in left arm, reward is in right arm), uniform if not in cue location.
-        EnvType.T_MAZE: TMaze
+        EnvType.T_MAZE: TMaze,
+        EnvType.SIMPLEST: SimplestEnv,
     }
     return envs_fc[env_type](**kwargs)
