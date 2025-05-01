@@ -85,8 +85,8 @@ plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=n
 preferences= compute_preferences(combined_info)
 plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
-#%% ### 2b. Parameter (B) Learning Demo
-#
+#%% ### 2B. Parameter (B) Learning Demo
+# NOT YET WORKING FINE!!!
 # Here we demonstrate how the agent can learn the transition (B) tensor through experience.
 
 # Set up random key
@@ -127,7 +127,7 @@ preferences= compute_preferences(combined_info)
 plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 
-#%% ### 2c. Parameter (A&B) Learning Demo
+#%% ### 2C. Parameter (A&B) Learning Demo
 # NOT YET WORKING FINE!!!
 # Here we demonstrate how the agent can learn the transition and likelihood (A&B) tensors through experience.
 
