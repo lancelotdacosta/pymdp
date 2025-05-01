@@ -109,6 +109,11 @@ agent, model, key = Agent.from_env(
     uniform_D=False
 )
 
+# key, rollout_key = jr.split(key)
+# _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+# print_rollout(info, batch_idx=0)
+# print_parameter_learning(info, learning_config, env)
+
 # Run simulation with multiple trials
 num_trials = 2000 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
