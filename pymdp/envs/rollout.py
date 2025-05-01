@@ -5,6 +5,7 @@ import jax.tree_util as jtu
 import jax.lax
 from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list
 import warnings
+import equinox as eqx
 
 from pymdp.agent import Agent
 from pymdp.envs.env import Env
@@ -133,8 +134,9 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
             empirical_prior=empirical_prior, # This is agent.D in first step
         )
         
-        # Learning parameters: A and/or B and/or D
-        agent = _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0)
+        # --- Online learning update (A and/or B and/or D) ---
+        if agent.learning_mode == "online":
+            agent = _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0)
 
         # carrying the next timestep's action, observation, beliefs, empirical prior, environment state, and random key
         carry = {
@@ -175,6 +177,21 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
 
     # combine initial info with trajectory info
     info = jtu.tree_map(_concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
+
+    # ------------------------------------------------------------------
+    # Offline learning update (single batch update after rollout)
+    # ------------------------------------------------------------------
+    if agent.learning_mode == "offline":
+        # Perform a one-shot parameter update after the full trajectory.
+        # In addition to the final updated agent, we also build a *history*
+        # agent whose parameter tensors have a leading time dimension so that
+        # they remain compatible with analysis utilities that expect that
+        # shape (consistent with the online-learning case).
+        agent_updated, agent_history = _offline_parameter_learning(agent, info)
+
+        # Store objects in the appropriate output containers
+        last["agent"] = agent_updated      # final agent after learning
+        info["agent"] = agent_history      # time-stacked parameters for analysis
 
     return last, info, env
 
@@ -226,6 +243,73 @@ def _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0):
         )
 
     return agent
+
+
+def _offline_parameter_learning(agent: Agent, info: Dict):
+    """Update Dirichlet parameters once at the end of a rollout using the full
+    history contained in *info*.
+
+    The function reuses the existing ``_update_agent_parameters`` helper for each
+    timestep, but **does not** touch the agent during the actual rollout. It is
+    called only when ``agent.learning_mode == 'offline'``.
+    """
+    # Extract tensors (each includes t=0)
+    actions = info["action"]  # shape (T+1, batch, control_factors)
+    observations = info["observation"]  # list[modalities] each (T+1, batch, ...)
+    qs_list = info["qs"]  # list[factors] each (T+1, batch, ...)
+
+    # Initial posterior (t=0) used for D-learning
+    qs_0 = [q[0] for q in qs_list]
+
+    num_steps = actions.shape[0]  # includes t = 0
+
+    # ------------------------------------------------------------------
+    # 1) Run the batched parameter-learning update to get the FINAL agent
+    # ------------------------------------------------------------------
+    agent_final = agent
+    for t in range(1, num_steps):
+        qs_prev = [q[t - 1] for q in qs_list]
+        qs_curr = [q[t] for q in qs_list]
+        obs_t = [o[t] for o in observations]
+        act_t = actions[t]
+
+        agent_final = _update_agent_parameters(
+            agent_final,
+            qs_curr,
+            qs_prev,
+            obs_t,
+            act_t,
+            qs_0,
+        )
+
+    # ------------------------------------------------------------------
+    # 2) Build a history version of the agent where the learnt parameter
+    #    tensors have a leading *time* dimension.  For timesteps 0..T-1 we
+    #    keep the PRE-learning parameters, and for timestep T we use the
+    #    POST-learning parameters.  This mirrors what happens under online
+    #    learning and allows downstream analysis utilities to work unchanged.
+    # ------------------------------------------------------------------
+
+    def _stack_param(param_init, param_final):
+        """Return a tensor with leading time dim (num_steps, ...)."""
+        if param_init is None:
+            return None
+        init_stack = jnp.broadcast_to(param_init, (num_steps - 1,) + param_init.shape)
+        return jnp.concatenate([init_stack, jnp.expand_dims(param_final, 0)], axis=0)
+
+    # Build stacked versions for A, B, D (lists of arrays)
+    A_hist = [_stack_param(p_init, p_final) for p_init, p_final in zip(agent.A, agent_final.A)]
+    B_hist = [_stack_param(p_init, p_final) for p_init, p_final in zip(agent.B, agent_final.B)]
+    D_hist = [_stack_param(p_init, p_final) for p_init, p_final in zip(agent.D, agent_final.D)]
+
+    # Create an "agent history" object by replacing the parameter fields
+    agent_history = eqx.tree_at(
+        lambda x: (x.A, x.B, x.D),
+        agent_final,
+        (A_hist, B_hist, D_hist),
+    )
+
+    return agent_final, agent_history
 
 
 def multi_trial_rollout(agent: Agent, env: Env, num_timesteps: int, num_trials: int, rng_key: jr.PRNGKey):

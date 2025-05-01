@@ -93,6 +93,8 @@ class Agent(Module):
     sampling_mode: str = field(static=True)
     # fpi, vmp, mmp, ovf
     inference_algo: str = field(static=True)
+    # add learning mode flag (online/offline)
+    learning_mode: str = field(static=True)
 
     learn_A: bool = field(static=True)
     learn_B: bool = field(static=True)
@@ -139,6 +141,7 @@ class Agent(Module):
         learn_C=False,  # Whether to learn/update the C matrix (preferences)
         learn_D=False,  # Whether to learn/update the D matrix (initial state prior)
         learn_E=False,  # Whether to learn/update the E matrix (policy prior)
+        learning_mode = "online",  # 'online' (update parameters at each timestep of rollout) or 'offline' (update once at end of each trial)
     ):
         if B_action_dependencies is not None:
             assert num_controls is not None, "Please specify num_controls for complex action dependencies"
@@ -212,6 +215,9 @@ class Agent(Module):
         self.learn_C = learn_C
         self.learn_D = learn_D
         self.learn_E = learn_E
+
+        # add learning mode flag (online/offline)
+        self.learning_mode = learning_mode
 
         # construct control factor indices
         if control_fac_idx == None:
