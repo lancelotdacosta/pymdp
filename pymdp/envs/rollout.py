@@ -266,21 +266,19 @@ def _offline_parameter_learning(agent: Agent, info: Dict):
     # ------------------------------------------------------------------
     # 1) Run the batched parameter-learning update to get the FINAL agent
     # ------------------------------------------------------------------
-    agent_final = agent
-    for t in range(1, num_steps):
-        qs_prev = [q[t - 1] for q in qs_list]
-        qs_curr = [q[t] for q in qs_list]
-        obs_t = [o[t] for o in observations]
-        act_t = actions[t]
 
-        agent_final = _update_agent_parameters(
-            agent_final,
-            qs_curr,
-            qs_prev,
-            obs_t,
-            act_t,
-            qs_0,
+    def step_fn(carry_agent, t):
+        qs_prev = [q[t-1] for q in qs_list]
+        qs_curr = [q[t]   for q in qs_list]
+        obs_t   = [o[t]   for o in observations]
+        act_t   = actions[t]
+
+        carry_agent = _update_agent_parameters(
+            carry_agent, qs_curr, qs_prev, obs_t, act_t, qs_0
         )
+        return carry_agent, None
+
+    agent_final, _ = jax.lax.scan(step_fn, agent, jnp.arange(1, num_steps))
 
     # ------------------------------------------------------------------
     # 2) Build a history version of the agent where the learnt parameter
