@@ -276,36 +276,21 @@ def _offline_parameter_learning(agent: Agent, info: Dict):
         carry_agent = _update_agent_parameters(
             carry_agent, qs_curr, qs_prev, obs_t, act_t, qs_0
         )
-        return carry_agent, None
+        return carry_agent, carry_agent  # second output gathers full agent per step
 
-    agent_final, _ = jax.lax.scan(step_fn, agent, jnp.arange(1, num_steps))
+    # Run scan and collect per-timestep agents (shape: (num_steps-1, ...))
+    agent_final, agents_hist = jax.lax.scan(step_fn, agent, jnp.arange(1, num_steps))
 
-    # ------------------------------------------------------------------
-    # 2) Build a history version of the agent where the learnt parameter
-    #    tensors have a leading *time* dimension.  For timesteps 0..T-1 we
-    #    keep the PRE-learning parameters, and for timestep T we use the
-    #    POST-learning parameters.  This mirrors what happens under online
-    #    learning and allows downstream analysis utilities to work unchanged.
-    # ------------------------------------------------------------------
+    # Prepend the *pre-learning* agent (t=0) to obtain a length-num_steps history
+    def prepend(init_leaf, hist_leaf):
+        # Only stack along time for array leaves produced by scan
+        if isinstance(hist_leaf, jnp.ndarray):
+            return jnp.concatenate([jnp.expand_dims(init_leaf, 0), hist_leaf], axis=0)
+        else:
+            # Non-array leaves (e.g. strings, bools) – keep init version; broadcast not needed
+            return init_leaf
 
-    def _stack_param(param_init, param_final):
-        """Return a tensor with leading time dim (num_steps, ...)."""
-        if param_init is None:
-            return None
-        init_stack = jnp.broadcast_to(param_init, (num_steps - 1,) + param_init.shape)
-        return jnp.concatenate([init_stack, jnp.expand_dims(param_final, 0)], axis=0)
-
-    # Build stacked versions for A, B, D (lists of arrays)
-    A_hist = [_stack_param(p_init, p_final) for p_init, p_final in zip(agent.A, agent_final.A)]
-    B_hist = [_stack_param(p_init, p_final) for p_init, p_final in zip(agent.B, agent_final.B)]
-    D_hist = [_stack_param(p_init, p_final) for p_init, p_final in zip(agent.D, agent_final.D)]
-
-    # Create an "agent history" object by replacing the parameter fields
-    agent_history = eqx.tree_at(
-        lambda x: (x.A, x.B, x.D),
-        agent_final,
-        (A_hist, B_hist, D_hist),
-    )
+    agent_history = jtu.tree_map(prepend, agent, agents_hist)
 
     return agent_final, agent_history
 
