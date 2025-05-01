@@ -59,7 +59,11 @@ agent, model, key = Agent.from_env(
     learning_config=learning_config,
     key=key,
     model_params={"T": 10},
-    agent_params={"action_selection": "stochastic", "policy_len": 4},
+    agent_params={"action_selection": "stochastic", 
+    "policy_len": 4, 
+    "use_param_info_gain": True,
+    "use_states_info_gain": True,
+    "use_utility": False},
     uniform_D=False
 )
 
@@ -97,7 +101,11 @@ agent, model, key = Agent.from_env(
     learning_config=learning_config,
     key=key,
     model_params={"T": 10},
-    agent_params={"action_selection": "stochastic", "policy_len": 4},
+    agent_params={"action_selection": "stochastic", 
+    "policy_len": 4,
+    "use_param_info_gain": True,
+    "use_states_info_gain": True,
+    "use_utility": False},
     uniform_D=False
 )
 
@@ -125,7 +133,7 @@ plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, tit
 # Here we demonstrate how the agent can learn the transition and likelihood (A&B) tensors through experience.
 
 # Set up random key
-key = jr.PRNGKey(0)
+key = jr.PRNGKey(key_idx)
 
 # Enable A, B parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
@@ -135,8 +143,12 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 100},
-    agent_params={"action_selection": "stochastic", "policy_len": 4},
+    model_params={"T": 10},
+    agent_params={"action_selection": "stochastic", 
+    "policy_len": 4,
+    "use_param_info_gain": True,
+    "use_states_info_gain": True,
+    "use_utility": False},
     uniform_D=False
 )
 
