@@ -1025,7 +1025,7 @@ trial_lines: Optional[bool] = True):
     
     # Get timesteps
     n_timesteps = agent_tensor[0].shape[0]
-    timesteps = range(n_timesteps)
+    timesteps = np.arange(n_timesteps)
 
     # Add dashed grey vertical line at the start of each trial
     if trial_lines and num_trials is not None and num_trials > 1:
@@ -1033,21 +1033,29 @@ trial_lines: Optional[bool] = True):
     
     # Calculate distances over time (L-infinity and L2 / Frobenius)
     for i, array_hist in enumerate(agent_tensor):
-        dist_linf = [float(jnp.max(jnp.abs(array - env_tensor[i]))) for array in array_hist]
-        # Flatten arrays to compute Euclidean/Frobenius norm (by flatenning arrays into vectors and computing their Euclidean distance)
-        dist_l2 = [float(jnp.linalg.norm((array - env_tensor[i]).reshape(-1))) for array in array_hist]
+        # Stack the environment tensor along time dimension 
+        env_tensor_stacked = jnp.broadcast_to(env_tensor[i], array_hist.shape)
+        
+        # Compute L-infinity distance (maximum absolute difference) at each time in a single vectorized operation
+        dist_linf = jnp.max(jnp.abs(array_hist - env_tensor_stacked), axis=tuple(range(1, array_hist.ndim)))
+        
+        # Compute L2/Frobenius norm (Euclidean distance) at each time in a single vectorized operation
+        # First reshape the difference to (n_timesteps, -1) to flatten all dimensions except time
+        difference = array_hist - env_tensor_stacked
+        reshaped_diff = difference.reshape(difference.shape[0], -1) #reshape into (timesteps,difference_at_each_timestep)
+        dist_l2 = jnp.linalg.norm(reshaped_diff, axis=1) #compute per-timestep L2 norm of difference_at_each_timestep
 
         # Plot with label from environment if available (continuous = Linf)
         label_base = labels[i] if i < len(labels) else f"Factor/Modality {i}"
         # Solid line for Linf
-        line_linf, = ax.plot(timesteps, dist_linf, label=f"{label_base} (L∞)", linewidth=2)
+        line_linf, = ax.plot(timesteps, np.asarray(dist_linf), label=f"{label_base} (L∞)", linewidth=2)
         # Dashed line for L2, re-use same colour
-        ax.plot(timesteps, dist_l2, label=f"{label_base} (L2)", linestyle='--', linewidth=2, color=line_linf.get_color())
+        ax.plot(timesteps, np.asarray(dist_l2), label=f"{label_base} (L2)", linestyle='--', linewidth=2, color=line_linf.get_color())
 
     # Configure the plot
     ax.set_xlabel('Timestep')
     ax.set_ylabel(ylabel)
-    ax.set_ylim(bottom=0)
+    ax.set_ylim(bottom=0, top=1)
     ax.set_title(title)
     ax.set_yscale(yscale)
     ax.legend()
