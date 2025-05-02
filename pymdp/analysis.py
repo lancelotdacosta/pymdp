@@ -1031,16 +1031,19 @@ trial_lines: Optional[bool] = True):
     if trial_lines and num_trials is not None and num_trials > 1:
         add_trial_boundary_lines(ax, n_timesteps, num_trials)
     
-    # Plot distance for each matrix
+    # Calculate distances over time (L-infinity and L2 / Frobenius)
     for i, array_hist in enumerate(agent_tensor):
-        # i loop over factors/modalities and array_hist is the history of the agent's parameters for that factor/modality
-        # Calculate distances over time
-        distances = [float(jnp.max(jnp.abs(array - env_tensor[i]))) for array in array_hist]
+        dist_linf = [float(jnp.max(jnp.abs(array - env_tensor[i]))) for array in array_hist]
+        # Flatten arrays to compute Euclidean/Frobenius norm (by flatenning arrays into vectors and computing their Euclidean distance)
+        dist_l2 = [float(jnp.linalg.norm((array - env_tensor[i]).reshape(-1))) for array in array_hist]
 
-        # Plot with label from environment if available
-        label = labels[i] if i < len(labels) else f"Factor/Modality {i}"
-        ax.plot(timesteps, distances, label=label, linewidth=2)
-    
+        # Plot with label from environment if available (continuous = Linf)
+        label_base = labels[i] if i < len(labels) else f"Factor/Modality {i}"
+        # Solid line for Linf
+        line_linf, = ax.plot(timesteps, dist_linf, label=f"{label_base} (L∞)", linewidth=2)
+        # Dashed line for L2, re-use same colour
+        ax.plot(timesteps, dist_l2, label=f"{label_base} (L2)", linestyle='--', linewidth=2, color=line_linf.get_color())
+
     # Configure the plot
     ax.set_xlabel('Timestep')
     ax.set_ylabel(ylabel)
