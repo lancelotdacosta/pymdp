@@ -154,7 +154,8 @@ agent, model, key = Agent.from_env(
     "policy_len": 4,
     "use_param_info_gain": True,
     "use_states_info_gain": True,
-    "use_utility": False},
+    "use_utility": False,
+    "learning_mode": "offline"},
     uniform_D=False
 )
 
