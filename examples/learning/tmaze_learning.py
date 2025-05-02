@@ -87,7 +87,7 @@ preferences= compute_preferences(combined_info)
 plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 #%% ### 2B. Parameter (B) Learning Demo
-# NOT YET WORKING FINE!!!
+#
 # Here we demonstrate how the agent can learn the transition (B) tensor through experience.
 
 # Set up random key
@@ -101,7 +101,7 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 10},
+    model_params={"T": 100},
     agent_params={"action_selection": "stochastic", 
     "policy_len": 4,
     "use_param_info_gain": True,
@@ -125,7 +125,7 @@ _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.stru
 # print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
 #print and plot parameter learning
 plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
-# print_parameter_learning(combined_info, learning_config, env)
+print_parameter_learning(combined_info, learning_config, env)
 #compute and plot prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
 plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials)
@@ -149,7 +149,7 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 10},
+    model_params={"T": 100},
     agent_params={"action_selection": "stochastic", 
     "policy_len": 4,
     "use_param_info_gain": True,
