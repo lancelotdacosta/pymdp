@@ -279,7 +279,8 @@ def _offline_parameter_learning(agent: Agent, info: Dict):
         return carry_agent, carry_agent  # second output gathers full agent per step
 
     # Run scan and collect per-timestep agents (shape: (num_steps-1, ...))
-    agent_final, agents_hist = jax.lax.scan(step_fn, agent, jnp.arange(1, num_steps))
+    agent_final, agents_hist = jax.lax.scan(step_fn, agent, jnp.arange(1, num_steps)) #Learn by absorbing all data throughout the trial. 
+    # agent_final, agents_hist = jax.lax.scan(step_fn, agent, jnp.arange(num_steps-1, num_steps)) #Learn by absorbing only the last time step (This might help in the absence of smoothing, because beliefs are more refined at the last time step). 
 
     # Prepend the *pre-learning* agent (t=0) to obtain a length-num_steps history
     def prepend(init_leaf, hist_leaf):
