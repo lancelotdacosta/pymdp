@@ -43,7 +43,7 @@ env = make(
     dependent_outcomes=dependent_outcomes
 )
 
-# %% ### 2a. Parameter (A) Learning Demo
+#%% ### 2a. Parameter (A) Learning Demo
 
 # Here we demonstrate how the agent can learn the observation (A) tensor through experience.
 
