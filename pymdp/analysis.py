@@ -956,7 +956,7 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear', trial_l
             A_flat, env.params["A"],
             list(env.labels['observation_modalities'].keys()),
             'A Matrix Learning (Observations)',
-            'Linf distance to true A',
+            'Distance to true A',
             yscale=yscale,
             num_trials=num_trials,
             trial_lines=trial_lines
@@ -969,7 +969,7 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear', trial_l
             B_flat, env.params["B"],
             list(env.labels['state_factors'].keys()),
             'B Matrix Learning (Transitions)',
-            'Linf distance to true B',
+            'Distance to true B',
             yscale=yscale,
             num_trials=num_trials,
             trial_lines=trial_lines
@@ -982,7 +982,7 @@ def plot_parameter_learning(info, learning_config, env, yscale='linear', trial_l
             D_flat, env.params["D"],
             list(env.labels['state_factors'].keys()),
             'D Matrix Learning (Initial States)',
-            'Linf distance to true D',
+            'Distance to true D',
             yscale=yscale,
             num_trials=num_trials,
             trial_lines=trial_lines
