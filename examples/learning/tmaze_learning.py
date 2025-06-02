@@ -1,7 +1,7 @@
-# This is a demo of learning onthe TMaze environment
+# This is a demo of learning on the TMaze environment
 # The code should be as modular as possible so that it is straightforward to change the environment
 #
-# Authors: Lancelot da Costa
+# Authors: Lancelot Da Costa
 
 
 # %% Importing necessary libraries
@@ -58,7 +58,7 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 10},
+    model_params={"T": 100},
     agent_params={"action_selection": "stochastic", 
     "policy_len": 4, 
     "use_param_info_gain": True,
