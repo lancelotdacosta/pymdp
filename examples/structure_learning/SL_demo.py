@@ -12,7 +12,7 @@ from pymdp.envs.env_factory import make, EnvType
 from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
-from pymdp.maths import compute_prediction_errors
+from pymdp.maths import compute_prediction_errors, compute_preferences
 from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_agent_preferences, print_parameter_learning, plot_rollout_preferences
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning
 import matplotlib.pyplot as plt
@@ -55,83 +55,46 @@ _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.stru
 # # Analyze rollout: print and visualize results
 # [... can be added]
 
-# %% ### 2. Parameter (B) Learning Demo
+# %% ### 2. Parameter (A and B) Learning Demo
 #
-# Here we demonstrate how the agent can learn the transition (B) tensor through experience.
+# Here we demonstrate how the agent can learn the likelihood (A) and transition (B) tensors through experience.
 
 # Set up random key
-key = jr.PRNGKey(key_idx)
+key = jr.PRNGKey(1)
 
 # Enable A, B parameter learning
-learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
 
 # Create agent directly from environment with environment config C matrices
 agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 2},
-    agent_params={"action_selection": "stochastic"},
+    model_params={"T": 100},
+    agent_params={"action_selection": "stochastic",
+    "use_param_info_gain": True,
+    "use_states_info_gain": True,
+    "learning_mode": "online"},
     #uniform_D=True
 )
 
-key = jr.PRNGKey(0)
 # Run simulation with multiple trials
-# Checked that this works! :)
-num_trials = 5  # Number of trials to run
-all_info = []
-for trial in range(num_trials):
-    print(f"\n--- Trial {trial+1}/{num_trials} ---")
-    key, rollout_key = jr.split(key)
-    last, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
-    print_initial_state(info)
-    all_info.append(info)
-    agent = last["agent"] # save agent for next trial. Don't need to do this for the environment since this is reset in the rollout function anyway.
 
-#%%
-# Run simulation with multiple trials
-# num_trials = 5  # Number of trials to run
+num_trials = 1 # Number of trials to run
+_, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
-key = jr.PRNGKey(0)
-# Use the multi_trial_rollout function for efficient multi-trial learning
-key, rollout_key = jr.split(key)
-last, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=rollout_key)
-
-
-#%%
-# plot_parameter_learning(combined_info, learning_config, env)
-print_parameter_learning(combined_info, learning_config, env, verbose=False)
-
-#%%
-# print_rollout(all_info[0], env), print_rollout(all_info[1], env)
-print_parameter_learning(all_info[0], learning_config, env, verbose=False)
-print_parameter_learning(all_info[1], learning_config, env, verbose=False)
-
-#%%
-# Analysis after all trials are done
-pe_analysis = compute_prediction_errors(info)  # Analyze the final trial
-
-# # Analyze and visualize results
-# plot_prediction_errors(pe_analysis, yscale='linear', smoothing=1000)
-
-plot_parameter_learning(info, learning_config, env)
-#agent seems to be learning B matrix right under top left reward but not under top right reward. Need to investigate this
-print_parameter_learning(info, learning_config, env, verbose=True)
-
-#%%
-plot_preferences(agent, env)
-render_rollout(env, info, fps=10)
-plot_beliefs(info, env)
-print_rollout(info, env)
-
-#%% For just A learning complexity is infinite
-
-prior_t = [p[1] for p in info["empirical_prior"]]  # Current prior (list of arrays)
-qs_t = [q[1] for q in info["qs"]]
-action_t = info["action"][1,]
-
-
-#======END OF TESTING HERE======
+#print last trial of rollout
+# print_initial_state(combined_info, trial_idx= num_trials - 1)
+# print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+# #print and plot parameter learning
+plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
+# print_parameter_learning(combined_info, learning_config, env)
+#compute and plot prediction errors
+pe_analysis = compute_prediction_errors(combined_info)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials,trial_lines=False)
+#compute and plot preferences for multiple trials
+preferences= compute_preferences(combined_info)
+plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 #%% ### 3. Initial State Distribution (D) Learning Demo
 #
