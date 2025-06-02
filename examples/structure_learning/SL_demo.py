@@ -33,6 +33,8 @@ env = make(
 
 #%% ### 1. Basic Demo. 
 
+#Demo of active Inference with the perfect model. 
+
 # Set up random key
 key = jr.PRNGKey(key_idx)
 
@@ -48,12 +50,23 @@ agent, model, key = Agent.from_env(
     agent_params={"action_selection": "stochastic"}
 )
 
-# Run simulation
+### Run simulation
 num_trials = 1 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
-# # Analyze rollout: print and visualize results
-# [... can be added]
+### Analysis of simulation results
+#print last trial of rollout
+print_initial_state(combined_info, trial_idx= num_trials - 1)
+print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+# print and plot parameter learning
+# plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
+print_parameter_learning(combined_info, learning_config, env)
+#compute and plot prediction errors
+pe_analysis = compute_prediction_errors(combined_info)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials,trial_lines=False)
+#compute and plot preferences for multiple trials
+preferences= compute_preferences(combined_info)
+plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 # %% ### 2. Parameter (A and B) Learning Demo
 #
@@ -78,27 +91,29 @@ agent, model, key = Agent.from_env(
     #uniform_D=True
 )
 
-# Run simulation with multiple trials
-
+### Run simulation
 num_trials = 1 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
+### Analysis of simulation results
 #print last trial of rollout
-# print_initial_state(combined_info, trial_idx= num_trials - 1)
-# print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
-# #print and plot parameter learning
+print_initial_state(combined_info, trial_idx= num_trials - 1)
+print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+# print and plot parameter learning
 plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
-# print_parameter_learning(combined_info, learning_config, env)
+print_parameter_learning(combined_info, learning_config, env)
 #compute and plot prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
-plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials,trial_lines=False)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials,trial_lines=False)
 #compute and plot preferences for multiple trials
 preferences= compute_preferences(combined_info)
 plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 #%% ### 3. Initial State Distribution (D) Learning Demo
 #
-# Enable D learning only
+# Here we demonstrate learning of the initial state distribution (D). Note that D learning
+# is limited by the fact that only the initial state belief (qs_0) is used to update D,
+# and there is no retrospective updating of this belief for now (i.e. no smoothing).
 
 # Set up random key
 key = jr.PRNGKey(key_idx)
@@ -111,18 +126,27 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 100},
+    model_params={"T": 10},
     agent_params={"action_selection": "stochastic"}
 )
 
-# Run simulation and collect results
-key, rollout_key = jr.split(key)
-_, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+### Run simulation
+num_trials = 1 # Number of trials to run
+_, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
-# # Analyze and visualize results
-# analyze_rollout(info, agent, env, render=True, plot=True, print=True)
-# print_parameter_learning(info, learning_config, env, verbose=False)
-# plot_parameter_learning(info, learning_config, env)
+### Analysis of simulation results
+#print last trial of rollout
+print_initial_state(combined_info, trial_idx= num_trials - 1)
+print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+# print and plot parameter learning
+plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
+print_parameter_learning(combined_info, learning_config, env)
+#compute and plot prediction errors
+pe_analysis = compute_prediction_errors(combined_info)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials,trial_lines=False)
+#compute and plot preferences for multiple trials
+preferences= compute_preferences(combined_info)
+plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 #%% ### 4. Joint A, B, D Parameter Learning Demo
 #
