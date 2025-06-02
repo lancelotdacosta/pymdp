@@ -153,7 +153,7 @@ plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, tit
 # Finally, we demonstrate learning of all parameters (A, B, D) simultaneously.
 
 # Set up random key
-key = jr.PRNGKey(key_idx)
+key = jr.PRNGKey(1)
 
 # Enable all parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
@@ -163,20 +163,30 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 1000},
-    agent_params=env.get_default_agent_params()
+    model_params={"T": 400},
+    agent_params={"action_selection": "stochastic",
+    "use_param_info_gain": True,
+    "use_states_info_gain": True,
+    "learning_mode": "online"}
 )
 
-# Run simulation and collect results
-key, rollout_key = jr.split(key)
-_, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+### Run simulation
+num_trials = 1 # Number of trials to run
+_, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
-# Analyze and visualize results
-# analyze_rollout(info, agent, env, render=True, plot=True, print=True)
-# print_parameter_learning(info, learning_config, env, verbose=False)
-# plot_parameter_learning(info, learning_config, env)
-pe_analysis = compute_prediction_errors(info)
-plot_prediction_errors(pe_analysis)
+### Analysis of simulation results
+#print last trial of rollout
+print_initial_state(combined_info, trial_idx= num_trials - 1)
+print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+# print and plot parameter learning
+plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
+print_parameter_learning(combined_info, learning_config, env)
+#compute and plot prediction errors
+pe_analysis = compute_prediction_errors(combined_info)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials,trial_lines=False)
+#compute and plot preferences for multiple trials
+preferences= compute_preferences(combined_info)
+plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 # %% ### 5. Model Comparison: Well-Specified vs Misspecified Model
 #
