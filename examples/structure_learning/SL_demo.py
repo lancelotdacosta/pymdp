@@ -9,15 +9,11 @@ import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
 from pymdp.envs.env_factory import make, EnvType
-from pymdp.envs.simplest import SimplestEnv, plot_A_learning
-from pymdp.envs.simplest import print_rollout as legacy_print_rollout
-from pymdp.envs.simplest import plot_beliefs as legacy_plot_beliefs
-from pymdp.envs.simplest import print_parameter_learning as legacy_print_parameter_learning
 from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors
-from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_preferences, analyze_rollout, print_parameter_learning
+from pymdp.analysis import print_rollout, print_initial_state, render_rollout, plot_beliefs, plot_agent_preferences, print_parameter_learning, plot_rollout_preferences
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning
 import matplotlib.pyplot as plt
 
@@ -35,7 +31,7 @@ env = make(
     batch_size=batch_size
 )
 
-#%% ### 1. Basic Demo
+#%% ### 1. Basic Demo. 
 
 # Set up random key
 key = jr.PRNGKey(key_idx)
@@ -53,13 +49,13 @@ agent, model, key = Agent.from_env(
 )
 
 # Run simulation
-key, rollout_key = jr.split(key)
-_, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+num_trials = 1 # Number of trials to run
+_, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
 # # Analyze rollout: print and visualize results
-# analyze_rollout(info, agent, env, render=True, plot=True, print=True)
+# [... can be added]
 
-# %% ### 2b. Parameter (B) Learning Demo
+# %% ### 2. Parameter (B) Learning Demo
 #
 # Here we demonstrate how the agent can learn the transition (B) tensor through experience.
 
