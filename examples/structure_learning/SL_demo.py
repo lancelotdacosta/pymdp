@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
 from pymdp.envs.env_factory import make, EnvType
-from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout
+from pymdp.envs.rollout import rollout, counterfactual_rollout, multi_trial_rollout, get_info_trial
 from pymdp.agent import Agent
 from pymdp.models.pomdp import POMDPModel, POMDPStructure
 from pymdp.maths import compute_prediction_errors, compute_preferences
@@ -34,7 +34,7 @@ env = make(
 workspace_agent_params = env.get_default_agent_params()
 workspace_agent_params.update({
     "action_selection": "stochastic",
-    "use_param_info_gain": False,
+    "use_param_info_gain": True,
     "use_states_info_gain": True,
     "learning_mode": "online"
 })
@@ -66,6 +66,7 @@ _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.stru
 #print last trial of rollout
 print_initial_state(combined_info, trial_idx= num_trials - 1)
 print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+render_rollout(env, get_info_trial(combined_info, trial_idx=0, verbose=False), fps=2)
 # print and plot parameter learning
 # plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
 print_parameter_learning(combined_info, learning_config, env)
