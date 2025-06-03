@@ -3,6 +3,7 @@ from typing import Dict, Any
 from pymdp.envs import Env
 from pymdp.envs.tmaze import TMaze
 from pymdp.envs.simplest import SimplestEnv
+from pymdp.envs.gridworld import GridWorldEnv
 
 '''Environment factory'''
 
@@ -13,6 +14,7 @@ class EnvType(IntEnum):
     """
     SIMPLEST = 0
     T_MAZE = 1
+    GRIDWORLD = 2
 
 
 def make(env_type : EnvType, **kwargs : Dict[str, Any]) -> Env:
@@ -44,6 +46,15 @@ def make(env_type : EnvType, **kwargs : Dict[str, Any]) -> Env:
         # LOCATION_MODALITY_ID = 0  => Agent observes its locations (center, left?, right?, bottom/cue).
         # REWARD_MODALITY_ID = 1 => Agent observes rewards (NO_REWARD = 0, REWARD_IDX = 1, LOSS_IDX = 2).
         # CUE_MODALITY_ID = 2 => Agent observes cues (reward is in left arm, reward is in right arm), uniform if not in cue location.
-        EnvType.T_MAZE: TMaze
+        EnvType.T_MAZE: TMaze,
+        
+        # [GridWorld Environment]
+        # ==> States:
+        # LOCATION_FACTOR_ID = 0 -> Describes the agent location in a grid (rows × cols states).
+        # ==> Actions.
+        # There are five possible actions (up=0, left=1, right=2, down=3, stay=4) which deterministically move the agent.
+        # ==> Observations:
+        # LOCATION_MODALITY_ID = 0 -> Agent directly observes its location (fully observed grid world)
+        EnvType.GRIDWORLD: GridWorldEnv
     }
     return envs_fc[env_type](**kwargs)
