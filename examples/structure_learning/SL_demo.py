@@ -201,11 +201,10 @@ plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, tit
 # 2. Compare prediction errors between well-specified and misspecified models
 # 3. Demonstrate Bayesian model comparison in active inference
 
-# Reinitialize random key for fair comparison
-key = jr.PRNGKey(key_idx)
+# Learning config
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
-# Create both models with same initialization conditions
+# Create both models with same initialization seed
 true_structure = env.get_structure().modify(T=model.structure.T)
 misspecified_structure = true_structure.modify(num_states=3)
 
@@ -213,13 +212,12 @@ init_key = jr.PRNGKey(key_idx)  # Same seed for both models
 well_specified_model, _ = POMDPModel.from_structure(true_structure, learning_config, "random", 1.0, init_key)
 misspecified_model, _ = POMDPModel.from_structure(misspecified_structure, learning_config, "random", 1.0, init_key)
 
-# Create agents and run side-by-side rollouts
+# Create agents and run side-by-side rollouts with same seed
 agents = [
     Agent.from_model(model=well_specified_model, C=env.get_default_C(), **workspace_agent_params),
     Agent.from_model(model=misspecified_model, C=env.get_default_C(), **workspace_agent_params)
 ]
 
-key = jr.PRNGKey(key_idx)
 pe_analyses = []
 keys = [jr.PRNGKey(key_idx), jr.PRNGKey(key_idx)]
 models = [well_specified_model, misspecified_model]
