@@ -29,7 +29,7 @@ from pymdp.maths import compute_prediction_errors
 from pymdp.analysis import render_rollout, plot_prediction_errors, plot_model_comparison
 
 # if __name__ == "__main__":
-key_idx = 0 # Initialize master random key index at the start
+key_idx = 1 # Initialize master random key index at the start
 
 #%% Initialise environment
 batch_size = 1
@@ -222,58 +222,41 @@ if learning_config.learn_A:
 # 3. Demonstrate Bayesian model comparison in active inference
 
 # Reinitialize random key for fair comparison
-key = jr.PRNGKey(key_idx)
-
-# Create misspecified model with more states than the environment
-true_structure = env.get_structure()
-misspecified_num_states = 3  # Environment has 2 states
-misspecified_structure = true_structure.modify(
-    num_states=misspecified_num_states,
-    T=model.structure.T
-)
-
-# Enable all parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
-# Initialize misspecified model and agent
-misspecified_model, key = POMDPModel.from_structure(
-    structure=misspecified_structure,
-    learning=learning_config,
-    init="random",
-    scale=1.0,
-    key=key
-)
+# Create both models with same initialization conditions
+true_structure = env.get_structure().modify(T=100)
+misspecified_structure = true_structure.modify(num_states=3)
 
-agent = Agent.from_model(
-    model=misspecified_model,
-    C=C,
-    apply_batch=False,
-    action_selection="stochastic"
-)
+init_key = jr.PRNGKey(key_idx)  # Same seed for both models
+well_specified_model, _ = POMDPModel.from_structure(true_structure, learning_config, "random", 1.0, init_key)
+misspecified_model, _ = POMDPModel.from_structure(misspecified_structure, learning_config, "random", 1.0, init_key)
 
-# Run simulation with misspecified model
-key, rollout_key = jr.split(key)
-final_state, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, rng_key=rollout_key)
+# Create agents and run rollouts
+agents = [
+    Agent.from_model(model=well_specified_model, C=C, apply_batch=False, action_selection="stochastic"),
+    Agent.from_model(model=misspecified_model, C=C, apply_batch=False, action_selection="stochastic")
+]
 
-# Analyze results
-print("\nRollout with misspecified model:")
-# print_rollout(info) #TODO: adapt to misspecified structure: num_states =! 2
+key = jr.PRNGKey(key_idx)
+pe_analyses = []
+for agent in agents:
+    key, rollout_key = jr.split(key)
+    _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+    pe_analyses.append(compute_prediction_errors(info))
 
-print_parameter_learning(info, learning_config)
+#Optional, print parameter learning
+# print_parameter_learning(info, learning_config)
 
-# Compute and plot prediction errors
-pe_analysis_misspecified = compute_prediction_errors(info)
-plot_prediction_errors(pe_analysis_misspecified)
-
-#Compare well-specified vs misspecified model metrics
-plot_model_comparison((pe_analysis, pe_analysis_misspecified), 
-                     labels=('Well-specified', 'Misspecified'))
+# Compare models
+plot_model_comparison(pe_analyses, labels=('Well-specified (2 states)', 'Misspecified (3 states)'))
 
 # Note: This demo shows how we can perform Bayesian model comparison for one-layer POMDPs
 # in environments where:
 # 1. We can learn effectively without retrospective inference (no smoothing required)
 # 2. Learning can be performed at every timestep
 # 3. Standard fixed-point iteration is sufficient for inference
+print("\nModel comparison complete. Well-specified model should generally show lower prediction errors.")
 
 # %% ### 6. Counterfactual Experiment
 #
