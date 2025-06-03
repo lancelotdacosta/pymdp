@@ -18,7 +18,7 @@ from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_p
 import matplotlib.pyplot as plt
 
 # if __name__ == "__main__":
-key_idx = 0 # Initialize master random key index at the start
+key_idx = 1 # Initialize master random key index at the start
 
 #%% Initialise environment
 
@@ -30,6 +30,14 @@ env = make(
     EnvType.SIMPLEST, 
     batch_size=batch_size
 )
+
+workspace_agent_params = env.get_default_agent_params()
+workspace_agent_params.update({
+    "action_selection": "stochastic",
+    "use_param_info_gain": False,
+    "use_states_info_gain": True,
+    "learning_mode": "online"
+})
 
 #%% ### 1. Basic Demo. 
 
@@ -47,7 +55,7 @@ agent, model, key = Agent.from_env(
     learning_config=learning_config,
     key=key,
     model_params={"T": 10},
-    agent_params={"action_selection": "stochastic"}
+    agent_params=workspace_agent_params
 )
 
 ### Run simulation
@@ -84,10 +92,7 @@ agent, model, key = Agent.from_env(
     learning_config=learning_config,
     key=key,
     model_params={"T": 100},
-    agent_params={"action_selection": "stochastic",
-    "use_param_info_gain": True,
-    "use_states_info_gain": True,
-    "learning_mode": "online"},
+    agent_params=workspace_agent_params,
     #uniform_D=True
 )
 
@@ -127,7 +132,7 @@ agent, model, key = Agent.from_env(
     learning_config=learning_config,
     key=key,
     model_params={"T": 10},
-    agent_params={"action_selection": "stochastic"}
+    agent_params=workspace_agent_params
 )
 
 ### Run simulation
@@ -163,11 +168,8 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 400},
-    agent_params={"action_selection": "stochastic",
-    "use_param_info_gain": True,
-    "use_states_info_gain": True,
-    "learning_mode": "online"}
+    model_params={"T": 100},
+    agent_params=workspace_agent_params
 )
 
 ### Run simulation
