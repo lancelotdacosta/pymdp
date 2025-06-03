@@ -1,4 +1,4 @@
-# This is a demo of structure learning on the TMaze environment
+# This is a demo of structure learning on the a modular environment
 # The code should be as modular as possible so that it is straightforward to change the environment
 # The demo goes in steps: structure learning is only toward the end
 
