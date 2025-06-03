@@ -193,7 +193,8 @@ plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, tit
 # %% ### 5. Model Comparison: Well-Specified vs Misspecified Model
 #
 # Finally, we compare learning performance between well-specified and misspecified models.
-# A misspecified model has a different structure than the environment
+# A misspecified model has a different structure than the environment - in this case,
+# we use more latent states than actually exist (eg. 3 vs 2).
 #
 # This allows us to:
 # 1. Study how agents learn with incorrect assumptions about their environment
@@ -202,89 +203,36 @@ plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, tit
 
 # Reinitialize random key for fair comparison
 key = jr.PRNGKey(key_idx)
-
-# Create misspecified model with more states than the environment
-true_structure = env.get_structure()
-
-misspecified_num_states = [5, 2]
-misspecified_structure = true_structure.modify(
-    num_states=misspecified_num_states,
-    T=model.structure.T
-)
-
-# Enable all parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 
-# Initialize misspecified model and agent
-misspecified_model, key = POMDPModel.from_structure(
-    structure=misspecified_structure,
-    learning=learning_config,
-    key=key
-)
+# Create both models with same initialization conditions
+true_structure = env.get_structure().modify(T=model.structure.T)
+misspecified_structure = true_structure.modify(num_states=3)
 
-agent = Agent.from_model(
-    model=misspecified_model,
-    C=env.get_default_C(), #works for misspecified model as it is a preference over observations, not states
-    **env.get_default_agent_params()
-)
+init_key = jr.PRNGKey(key_idx)  # Same seed for both models
+well_specified_model, _ = POMDPModel.from_structure(true_structure, learning_config, "random", 1.0, init_key)
+misspecified_model, _ = POMDPModel.from_structure(misspecified_structure, learning_config, "random", 1.0, init_key)
 
-# Run simulation with misspecified model
-key, rollout_key = jr.split(key)
-_, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, rng_key=rollout_key)
+# Create agents and run side-by-side rollouts
+agents = [
+    Agent.from_model(model=well_specified_model, C=env.get_default_C(), **workspace_agent_params),
+    Agent.from_model(model=misspecified_model, C=env.get_default_C(), **workspace_agent_params)
+]
 
-# Analyze and visualize results
-# plot_preferences(agent, env)
-# render_rollout(env, info)
-# plot_beliefs(info, env) #BUG
-# print_rollout(info, env) #BUG
-# print_parameter_learning(info, learning_config, env, verbose=False)
-# plot_parameter_learning(info, learning_config, env) #BUG: but this makes no sense to plot as we cannot compare it to the well-specified model
-
-# pe_analysis_misspecified = compute_prediction_errors(info)
-# plot_prediction_errors(pe_analysis_misspecified)
-
-# plot_model_comparison((pe_analysis, pe_analysis_misspecified), 
-#                      labels=('Well-specified', 'Misspecified'))
-# %% TEST: Bayesian model comparison with different models
-
-# Create misspecified model with more states than the environment
-true_structure = env.get_structure()
-
-pe_analysis_misspecified = []
-
-labels = list(range(1,8))
-
-for num_states in labels:
-    print(f"Testing model with {num_states} location states")
-    misspecified_num_states = [num_states, 2]
-    misspecified_structure = true_structure.modify(
-        num_states=misspecified_num_states,
-        T=model.structure.T
-    )
-
-    # Enable all parameter learning
-    learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
-
-    # Initialize misspecified model and agent
-    key = jr.PRNGKey(key_idx)
-    misspecified_model, key = POMDPModel.from_structure(
-        structure=misspecified_structure,
-        learning=learning_config,
-        key=key
-    )
-
-    agent = Agent.from_model(
-        model=misspecified_model,
-        C=env.get_default_C(), #works for misspecified model as it is a preference over observations, not states
-        **env.get_default_agent_params()
-    )
-
-    key = jr.PRNGKey(key_idx)
-    # Run simulation with misspecified model
+key = jr.PRNGKey(key_idx)
+pe_analyses = []
+keys = [jr.PRNGKey(key_idx), jr.PRNGKey(key_idx)]
+models = [well_specified_model, misspecified_model]
+for agent, model, key in zip(agents, models, keys):
     key, rollout_key = jr.split(key)
-    _, info, _ = rollout(agent, env, num_timesteps=misspecified_model.structure.T, rng_key=rollout_key)
+    _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+    pe_analyses.append(compute_prediction_errors(info))
 
-    pe_analysis_misspecified.append(compute_prediction_errors(info))
+# Store the last rollout info for next section (misspecified model)
+misspecified_rollout_info = info
 
-plot_model_comparison(pe_analysis_misspecified,labels=labels, yscale='log', smoothing=10)
+# Compare models
+plot_model_comparison(pe_analyses, labels=('Well-specified (2 states)', 'Misspecified (3 states)'))
+
+print("\nModel comparison complete. Well-specified model should generally show lower prediction errors.")
 # %%
