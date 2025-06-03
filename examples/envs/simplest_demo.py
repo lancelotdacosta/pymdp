@@ -228,22 +228,27 @@ learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 true_structure = env.get_structure().modify(T=100)
 misspecified_structure = true_structure.modify(num_states=3)
 
-init_key = jr.PRNGKey(key_idx)  # Same seed for both models
-well_specified_model, _ = POMDPModel.from_structure(true_structure, learning_config, "random", 1.0, init_key)
-misspecified_model, _ = POMDPModel.from_structure(misspecified_structure, learning_config, "random", 1.0, init_key)
+key_well_specified = jr.PRNGKey(key_idx)  # Same seed for both models
+well_specified_model, _ = POMDPModel.from_structure(true_structure, learning_config, "random", 1.0, key_well_specified)
+key_misspecified = jr.PRNGKey(key_idx)
+misspecified_model, _ = POMDPModel.from_structure(misspecified_structure, learning_config, "random", 1.0, key_misspecified)
 
-# Create agents and run rollouts
+# Create agents and run side by side rollouts with same seed
 agents = [
     Agent.from_model(model=well_specified_model, C=C, apply_batch=False, action_selection="stochastic"),
     Agent.from_model(model=misspecified_model, C=C, apply_batch=False, action_selection="stochastic")
 ]
 
-key = jr.PRNGKey(key_idx)
 pe_analyses = []
-for agent in agents:
+keys = [jr.PRNGKey(key_idx), jr.PRNGKey(key_idx)]
+models = [well_specified_model, misspecified_model]
+for agent, model, key in zip(agents, models, keys):
     key, rollout_key = jr.split(key)
     _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
     pe_analyses.append(compute_prediction_errors(info))
+
+# Store the last rollout info for next section (misspecified model)
+misspecified_rollout_info = info
 
 #Optional, print parameter learning
 # print_parameter_learning(info, learning_config)
@@ -262,15 +267,24 @@ print("\nModel comparison complete. Well-specified model should generally show l
 #
 # This demonstrates how to perform a counterfactual rollout with a different model structure,
 # allowing us to compare which model better explains the observed data.
+#
+# A counterfactual rollout differs from a regular rollout in that:
+# - The observations and actions are FIXED (taken from a previous rollout)
+# - The agent doesn't choose actions or generate new observations
+# - The agent only performs inference (belief updating) given the fixed observations
+# - This lets us ask: "How well would this model have explained the same data?"
+#
+# In this experiment, we take the observation-action sequence from the misspecified model's
+# rollout and replay it through the well-specified model to see which model better explains
+# the data (lower prediction error = better explanation).
 
 # Extract observation and action sequences from the misspecified model rollout
-obs_sequence = info['observation']  # Field used in compute_prediction_errors
-action_sequence = info['action']
+obs_sequence = misspecified_rollout_info['observation']
+action_sequence = misspecified_rollout_info['action']
 
-# Create a new agent with the true structure (2 states) for counterfactual analysis
-true_model = model  # We already have the true model from the first experiment
+# Create an agent with the well-specified structure (2 states) for counterfactual analysis
 counterfactual_agent = Agent.from_model(
-    model=true_model,
+    model=well_specified_model,
     C=C,
     policy_len=1,
     inference_algo="fpi",
@@ -278,14 +292,12 @@ counterfactual_agent = Agent.from_model(
     action_selection="stochastic"
 )
 
-# Perform the counterfactual rollout
+# Perform the counterfactual rollout: replay the misspecified model's obs-action sequence
+# through the well-specified model. The agent will only perform inference (no action selection).
 _, info_counterfactual = counterfactual_rollout(
     counterfactual_agent,
     obs_sequence,
     action_sequence)
-
-# Print counterfactual rollout
-# print_rollout(info_counterfactual) #TODO: add a counterfactual option that does not print policies as this currently does not work.
 
 # Compute prediction errors for the counterfactual
 pe_analysis_counterfactual = compute_prediction_errors(info_counterfactual)
@@ -293,13 +305,9 @@ pe_analysis_counterfactual = compute_prediction_errors(info_counterfactual)
 # Plot prediction errors for the counterfactual
 plot_prediction_errors(pe_analysis_counterfactual, title="Counterfactual Model (True 2-state Structure)")
 
-# Compare the misspecified model vs counterfactual model
-# plot_model_comparison((pe_analysis_counterfactual, pe_analysis_misspecified),
-#                      labels=('Counterfactual (2 states)','Misspecified (3 states)'))
-
-# Compare the rollout with true model vs rollout with misspecified model vs counterfactual rollout with true model
-plot_model_comparison((pe_analysis,pe_analysis_misspecified,pe_analysis_counterfactual),
-                     labels=('Well-specified','Misspecified','Counterfactual'), alpha=0.7, lw=1)
+# Compare all three: well-specified rollout vs misspecified rollout vs counterfactual rollout
+plot_model_comparison([pe_analyses[0], pe_analyses[1], pe_analysis_counterfactual],
+                     labels=('Well-specified', 'Misspecified', 'Counterfactual'), alpha=0.7, lw=1)
 
 print("Counterfactual analysis complete. Compare the plots to see which model better explains the data.")
 # %%
