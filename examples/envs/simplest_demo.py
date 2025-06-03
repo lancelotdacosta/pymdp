@@ -228,10 +228,9 @@ learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
 true_structure = env.get_structure().modify(T=100)
 misspecified_structure = true_structure.modify(num_states=3)
 
-key_well_specified = jr.PRNGKey(key_idx)  # Same seed for both models
-well_specified_model, _ = POMDPModel.from_structure(true_structure, learning_config, "random", 1.0, key_well_specified)
-key_misspecified = jr.PRNGKey(key_idx)
-misspecified_model, _ = POMDPModel.from_structure(misspecified_structure, learning_config, "random", 1.0, key_misspecified)
+init_key = jr.PRNGKey(key_idx)  # Same seed for both models
+well_specified_model, _ = POMDPModel.from_structure(true_structure, learning_config, "random", 1.0, init_key)
+misspecified_model, _ = POMDPModel.from_structure(misspecified_structure, learning_config, "random", 1.0, init_key)
 
 # Create agents and run side by side rollouts with same seed
 agents = [
