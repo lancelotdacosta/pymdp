@@ -233,4 +233,51 @@ misspecified_rollout_info = info
 plot_model_comparison(pe_analyses, labels=('Well-specified (2 states)', 'Misspecified (3 states)'))
 
 print("\nModel comparison complete. Well-specified model should generally show lower prediction errors.")
+
+# %% ### 6. Counterfactual Experiment
+#
+# This demonstrates how to perform a counterfactual rollout with a different model structure,
+# allowing us to compare which model better explains the observed data.
+#
+# A counterfactual rollout differs from a regular rollout in that:
+# - The observations and actions are FIXED (taken from a previous rollout)
+# - The agent doesn't choose actions or generate new observations
+# - The agent only performs inference (belief updating) given the fixed observations
+# - This lets us ask: "How well would this model have explained the same data?"
+#
+# In this experiment, we take the observation-action sequence from the misspecified model's
+# rollout and replay it through the well-specified model to see which model better explains
+# the data (lower prediction error = better explanation).
+
+# Extract observation and action sequences from the misspecified model rollout
+obs_sequence = misspecified_rollout_info['observation']
+action_sequence = misspecified_rollout_info['action']
+
+# Create an agent with the well-specified structure for counterfactual analysis
+counterfactual_agent = Agent.from_model(
+    model=well_specified_model,
+    C=env.get_default_C(),
+    **workspace_agent_params
+)
+
+# Perform the counterfactual rollout: replay the misspecified model's obs-action sequence
+# through the well-specified model. The agent will only perform inference (no action selection).
+_, info_counterfactual = counterfactual_rollout(
+    counterfactual_agent,
+    obs_sequence,
+    action_sequence)
+
+# Compute prediction errors for the counterfactual
+pe_analysis_counterfactual = compute_prediction_errors(info_counterfactual)
+
+# Plot prediction errors for the counterfactual
+plot_prediction_errors(pe_analysis_counterfactual, title="Counterfactual Model (True Structure)")
+
+# Compare all three: well-specified rollout vs misspecified rollout vs counterfactual rollout
+plot_model_comparison([pe_analyses[0], pe_analyses[1], pe_analysis_counterfactual],
+                     labels=('Well-specified', 'Misspecified', 'Counterfactual'), alpha=0.7, lw=1)
+
+print("Counterfactual analysis complete. Compare the plots to see which model better explains the data.")
+
 # %%
+
