@@ -80,7 +80,7 @@ print_initial_state(info, trial_idx=0)
 print_rollout(info, batch_idx=0, trials=0)
 
 # Render the rollout to visualize agent behavior
-render_rollout(env, info,fps=2)
+render_rollout(env, info, fps=2)
 
 pe_analysis = compute_prediction_errors(info)
 plot_prediction_errors(
