@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from functools import partial
 from typing import Optional, Tuple, List, Union, Dict, Any
 from jax import tree_util, nn, jit, vmap, lax
-from jax.scipy.special import xlogy, digamma
+from jax.scipy.special import xlogy, digamma, gammaln
 from opt_einsum import contract
 from multimethod import multimethod
 from jaxtyping import ArrayLike
@@ -20,6 +20,53 @@ MINVAL = jnp.finfo(float).eps
 USE_KL_INFO_GAIN = True  # ⇦ CHANGE THIS LINE TO ``True`` FOR THE FIX
 
 # -----------------------------------------------------------------------------
+
+def spm_betaln(z: jnp.ndarray) -> jnp.ndarray:
+    """Log multivariate beta function with zero exclusion (MATLAB-equivalent).
+    
+    MATLAB References:
+    - spm_betaln.m in SPM12: https://github.com/spm/spm12/blob/main/spm_betaln.m
+    - Key line: `z = z(find(z));` removes zeros before computation
+    - Local copy: test/matlab_crossval/generation/bmr_matlab_test_a.m (line 76)
+    """
+    # MATLAB equivalent: sum over non-zero elements only
+    mask = z > 0
+    safe_z = jnp.where(mask, z, 1.0)  # Replace zeros with 1 (gammaln(1)=0)
+    
+    # Sum of gammaln only where mask is True
+    numerator = jnp.sum(jnp.where(mask, gammaln(safe_z), 0.0), axis=0)
+    
+    # Sum of z only where mask is True  
+    sum_nonzero = jnp.sum(jnp.where(mask, z, 0.0), axis=0)
+    
+    # Denominator: gammaln of sum (handle edge case of all zeros)
+    denominator = jnp.where(sum_nonzero > 0, gammaln(sum_nonzero), 0.0)
+    
+    return jnp.where(sum_nonzero > 0, numerator - denominator, 0.0)
+
+
+def dirichlet_log_evidence(q_dir: jnp.ndarray, 
+                          p_dir: jnp.ndarray, 
+                          r_dir: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Bayesian model reduction for Dirichlet hyperparameters.
+    
+    Zero priors in r_dir stay zero in posterior (hard constraints).
+    
+    MATLAB References:
+    - spm_MDP_log_evidence.m in SPM12: https://github.com/spm/spm12/blob/main/toolbox/DEM/spm_MDP_log_evidence.m
+    - Local copy: test/matlab_crossval/generation/bmr_matlab_test_a.m (lines 22-50)
+    - Uses spm_betaln.m which excludes zeros via `z = z(find(z));`
+    """
+    q_dir, p_dir, r_dir = jnp.broadcast_arrays(q_dir, p_dir, r_dir)
+    
+    # Zero priors stay zero, non-zero priors get updated with data
+    data_counts = q_dir - p_dir
+    s_dir = jnp.where(r_dir > 0, r_dir + data_counts, 0.0)
+    
+    F = (spm_betaln(q_dir) + spm_betaln(r_dir) - 
+         spm_betaln(p_dir) - spm_betaln(s_dir))
+    
+    return F, s_dir
 
 def stable_xlogx(x):
     return xlogy(x, jnp.clip(x, MINVAL))
