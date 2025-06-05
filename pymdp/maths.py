@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from functools import partial
 from typing import Optional, Tuple, List, Union, Dict, Any
 from jax import tree_util, nn, jit, vmap, lax
-from jax.scipy.special import xlogy
+from jax.scipy.special import xlogy, digamma
 from opt_einsum import contract
 from multimethod import multimethod
 from jaxtyping import ArrayLike
@@ -12,6 +12,14 @@ from jax.experimental.sparse._base import JAXSparse
 from pymdp.utils import flatten_multi_trial_tensor_list
 
 MINVAL = jnp.finfo(float).eps
+
+# --- Toggle for information-gain formulation ---------------------------------
+# Set to ``True`` to use KL-based information-gain weights instead of the legacy
+# spm_wnorm heuristic.  Changing this single line lets you switch behaviour
+# globally without touching the rest of the code-base.
+USE_KL_INFO_GAIN = True  # ⇦ CHANGE THIS LINE TO ``True`` FOR THE FIX
+
+# -----------------------------------------------------------------------------
 
 def stable_xlogx(x):
     return xlogy(x, jnp.clip(x, MINVAL))
@@ -398,11 +406,32 @@ def multidimensional_outer(arrs):
     return x
 
 
+def _kl_wnorm(A):
+    """KL-based weight matrix used for parameter information gain.
+
+    For each observation row *i* and parameter column *j* this returns the
+    contribution   Δ = ψ(Σα_j + 1) − ψ(α_{ij} + 1),  which equals the expected
+    information gain (in nats) of making a single additional observation *i*
+    given prior concentration vector α·j.  It has the same shape as *A* and can
+    therefore be dropped into the existing factor_dot/qo_m infrastructure.
+    """
+    A = jnp.clip(A, min=MINVAL)  # Add numerical stability
+    total = A.sum(axis=0, keepdims=True)
+    return digamma(total + 1.0) - digamma(A + 1.0)
+
+
 def spm_wnorm(A):
     """
-    Returns Expectation of logarithm of Dirichlet parameters over a set of
-    Categorical distributions, stored in the columns of A.
+    Returns the weight matrix used in PyMDP's parameter information-gain term.
+
+    Historically this was the heuristic ``1/Σα − 1/α``.  If the global flag
+    ``USE_KL_INFO_GAIN`` is set to *True* we instead return the analytic
+    Dirichlet-KL weight defined in ``_kl_wnorm`` while keeping the original
+    function signature so that the rest of the codebase remains unchanged.
     """
+    if USE_KL_INFO_GAIN:
+        return _kl_wnorm(A)
+
     norm = 1. / A.sum(axis=0)
     avg = 1. / (A + MINVAL)
     wA = norm - avg
