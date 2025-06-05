@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 # if __name__ == "__main__":
 key_idx = 0 # Initialize master random key index at the start
 
-#%% Initialise environment
+# Initialise environment
 
 # Set up batch size
 batch_size = 1
@@ -42,43 +42,43 @@ workspace_agent_params.update({
     "inference_algo": "fpi"
 })
 
-#%% ### 1. Basic Demo. 
+# ### 1. Basic Demo. 
 
-#Demo of active Inference with the perfect model. 
+# #Demo of active Inference with the perfect model. 
 
-# Set up random key
-key = jr.PRNGKey(key_idx)
+# # Set up random key
+# key = jr.PRNGKey(key_idx)
 
-# Initialize agent's learning config
-learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
+# # Initialize agent's learning config
+# learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
 
-# Create agent directly from environment with environment config C matrices
-agent, model, key = Agent.from_env(
-    env=env,
-    learning_config=learning_config,
-    key=key,
-    model_params={"T": 10},
-    agent_params=workspace_agent_params
-)
+# # Create agent directly from environment with environment config C matrices
+# agent, model, key = Agent.from_env(
+#     env=env,
+#     learning_config=learning_config,
+#     key=key,
+#     model_params={"T": 10},
+#     agent_params=workspace_agent_params
+# )
 
-### Run simulation
-num_trials = 1 # Number of trials to run
-_, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
+# ### Run simulation
+# num_trials = 1 # Number of trials to run
+# _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
-### Analysis of simulation results
-#print last trial of rollout
-print_initial_state(combined_info, trial_idx= num_trials - 1)
-print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
-render_rollout(env, get_info_trial(combined_info, trial_idx=0, verbose=False), fps=2)
-# print and plot parameter learning
-# plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
-print_parameter_learning(combined_info, learning_config, env)
-#compute and plot prediction errors
-pe_analysis = compute_prediction_errors(combined_info)
-plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials,trial_lines=False)
-#compute and plot preferences for multiple trials
-preferences= compute_preferences(combined_info)
-plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
+# ### Analysis of simulation results
+# #print last trial of rollout
+# print_initial_state(combined_info, trial_idx= num_trials - 1)
+# print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+# render_rollout(env, get_info_trial(combined_info, trial_idx=0, verbose=False), fps=2)
+# # print and plot parameter learning
+# # plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
+# print_parameter_learning(combined_info, learning_config, env)
+# #compute and plot prediction errors
+# pe_analysis = compute_prediction_errors(combined_info)
+# plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials,trial_lines=False)
+# #compute and plot preferences for multiple trials
+# preferences= compute_preferences(combined_info)
+# plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
 # %% ### 2. Parameter (A and B) Learning Demo
 #
@@ -95,26 +95,28 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 100},
+    model_params={"T": 1000},
     agent_params=workspace_agent_params,
     #uniform_D=True
 )
 
 ### Run simulation
-num_trials = 1 # Number of trials to run
+num_trials = 10 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
 ### Analysis of simulation results
-#print last trial of rollout
-print_initial_state(combined_info, trial_idx= num_trials - 1)
-print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
-# render_rollout(env, get_info_trial(combined_info, trial_idx=0, verbose=False), fps=2)
-# print and plot parameter learning
-plot_parameter_learning(combined_info, learning_config, env, trial_lines=False)
+# #print last trial of rollout
+# print_initial_state(combined_info, trial_idx= num_trials - 1)
+# print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
+render_rollout(env, get_info_trial(combined_info, trial_idx=0, verbose=False), fps=1)
+# # print and plot parameter learning
+plot_parameter_learning(combined_info, learning_config, env, trial_lines=True)
 print_parameter_learning(combined_info, learning_config, env)
-#compute and plot prediction errors
+# #compute and plot prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
-plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials,trial_lines=False)
-#compute and plot preferences for multiple trials
-preferences= compute_preferences(combined_info)
-plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=20, num_trials=num_trials,trial_lines=True)
+# #compute and plot preferences for multiple trials
+# preferences= compute_preferences(combined_info)
+# plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
+
+#%%
