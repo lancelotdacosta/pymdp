@@ -64,7 +64,7 @@ def dirichlet_log_evidence(q_dir: jnp.ndarray,
     s_dir = jnp.where(r_dir > 0, r_dir + data_counts, 0.0) #s_dir is the reduced posterior. 
     
     log_evidence_change = (spm_betaln(q_dir) + spm_betaln(r_dir) - 
-         spm_betaln(p_dir) - spm_betaln(s_dir)) #Log evidence from full model minus log evidence of reduced model. #If it's negative, we should accept the reduced model. 
+         spm_betaln(p_dir) - spm_betaln(s_dir)) #log evidence(full) − log evidence(reduced). #If it's negative, we should accept the reduced model. 
     
     return log_evidence_change, s_dir
 
