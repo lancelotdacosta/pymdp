@@ -48,7 +48,7 @@ def spm_betaln(z: jnp.ndarray) -> jnp.ndarray:
 def dirichlet_log_evidence(q_dir: jnp.ndarray, 
                           p_dir: jnp.ndarray, 
                           r_dir: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    """Bayesian model reduction for Dirichlet hyperparameters.
+    """Bayesian model reduction for Dirichlet hyperparameters. E.g. Eq. 4 in Supervised Structure Learning by Friston et al. 2024. 
     
     Zero priors in r_dir stay zero in posterior (hard constraints).
     
@@ -60,13 +60,13 @@ def dirichlet_log_evidence(q_dir: jnp.ndarray,
     q_dir, p_dir, r_dir = jnp.broadcast_arrays(q_dir, p_dir, r_dir)
     
     # Zero priors stay zero, non-zero priors get updated with data
-    data_counts = q_dir - p_dir
-    s_dir = jnp.where(r_dir > 0, r_dir + data_counts, 0.0)
+    data_counts = q_dir - p_dir #q_dir is the posterior, p_dir is the prior, r_dir is the reduced prior. 
+    s_dir = jnp.where(r_dir > 0, r_dir + data_counts, 0.0) #s_dir is the reduced posterior. 
     
-    F = (spm_betaln(q_dir) + spm_betaln(r_dir) - 
-         spm_betaln(p_dir) - spm_betaln(s_dir))
+    log_evidence_change = (spm_betaln(q_dir) + spm_betaln(r_dir) - 
+         spm_betaln(p_dir) - spm_betaln(s_dir)) #Log evidence from full model minus log evidence of reduced model. #If it's negative, we should accept the reduced model. 
     
-    return F, s_dir
+    return log_evidence_change, s_dir
 
 def stable_xlogx(x):
     return xlogy(x, jnp.clip(x, MINVAL))
