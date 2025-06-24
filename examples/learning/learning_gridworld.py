@@ -2,6 +2,8 @@
 # The code should be as modular as possible so that it is straightforward to change the environment
 # The demo goes in steps: structure learning is only toward the end
 
+#Author: Lancelot Da Costa
+
 # %% Importing necessary libraries
 get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
@@ -29,7 +31,7 @@ batch_size = 1
 env = make(
     EnvType.GRIDWORLD, 
     batch_size=batch_size,
-    rows=2,
+    rows=1,
     cols=2
 )
 
@@ -38,7 +40,7 @@ workspace_agent_params.update({
     "action_selection": "stochastic",
     "use_param_info_gain": True,
     "use_states_info_gain": True,
-    "learning_mode": "offline",
+    "learning_mode": "online",
     "inference_algo": "fpi"
 })
 
@@ -95,28 +97,63 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 1000},
+    model_params={"T": 200},
     agent_params=workspace_agent_params,
     #uniform_D=True
 )
 
 ### Run simulation
-num_trials = 10 # Number of trials to run
+num_trials = 1 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
 ### Analysis of simulation results
 # #print last trial of rollout
 # print_initial_state(combined_info, trial_idx= num_trials - 1)
 # print_rollout(combined_info, batch_idx=0, trials=num_trials - 1)
-render_rollout(env, get_info_trial(combined_info, trial_idx=0, verbose=False), fps=1)
+# render_rollout(env, get_info_trial(combined_info, trial_idx=0, verbose=False), fps=1)
 # # print and plot parameter learning
 plot_parameter_learning(combined_info, learning_config, env, trial_lines=True)
 print_parameter_learning(combined_info, learning_config, env)
 # #compute and plot prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
-plot_prediction_errors(pe_analysis, yscale='linear', smoothing=20, num_trials=num_trials,trial_lines=True)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=10, num_trials=num_trials,trial_lines=True)
 # #compute and plot preferences for multiple trials
 # preferences= compute_preferences(combined_info)
 # plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
 
-#%%
+#%% ### 3. Test BMR Structure Learning
+#
+from pymdp.maths import dirichlet_log_evidence
+
+# Get original priors
+# Indexing: 0th modality, 0th trial, 0th timestep, 0th batch.
+orig_pA = combined_info['agent'].pA[0][0,0,0]
+orig_pB = combined_info['agent'].pB[0][0,0,0]
+
+# Extract learned posteriors from combined_info 
+# Indexing: 0th modality, last trial, last timestep, 0th batch. 
+learned_pA = combined_info['agent'].pA[0][-1,-1,0]
+learned_pB = combined_info['agent'].pB[0][-1,-1,0]
+
+# Print learned posteriors
+# print(orig_pA)
+# print(learned_pA)
+# print(orig_pB)
+# print(learned_pB)
+
+#Set zero on diagonal. Evidence should be worse. 
+reduced_pA = orig_pA.copy()
+reduced_pA = reduced_pA.at[0,0].set(0) #Set one element to zero. 
+reduced_pA = reduced_pA.at[1,0].set(0) #Set one element to zero. 
+log_ev, _ = dirichlet_log_evidence(learned_pA, orig_pA, reduced_pA)
+print(log_ev)
+
+#Set zero off diagonal. Evidence should improve. 
+reduced_pA = orig_pA.copy()
+reduced_pA = reduced_pA.at[0,1].set(10) #Set one element to zero. 
+log_ev, _ = dirichlet_log_evidence(learned_pA, orig_pA, reduced_pA)
+print(log_ev)
+
+
+
+#%% 
