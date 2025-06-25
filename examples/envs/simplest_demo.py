@@ -17,197 +17,296 @@
 #
 # First, import `pymdp` and the modules we'll need.
 
-# In[1]:
-
-# importing necessary libraries
+# %% Importing necessary libraries
 import jax.numpy as jnp
 from jax import random as jr
-from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, render_rollout
-from pymdp.envs import rollout
+from pymdp.learning import LearningConfig
+from pymdp.envs.simplest import SimplestEnv, print_rollout, plot_beliefs, plot_A_learning, print_parameter_learning
+from pymdp.envs.rollout import rollout, counterfactual_rollout
 from pymdp.agent import Agent
-from pymdp.priors import dirichlet_prior
-
+from pymdp.models.pomdp import POMDPModel, POMDPStructure
+from pymdp.maths import compute_prediction_errors
+from pymdp.analysis import render_rollout, plot_prediction_errors, plot_model_comparison
 
 # if __name__ == "__main__":
+key_idx = 1 # Initialize master random key index at the start
 
-# ### 1. Initialize environment and get its parameters
-#
-# First, we'll create an instance of the simplest environment and get its observation (A) and transition (B) tensors.
-
-# In[2]:
+#%% Initialise environment
 batch_size = 1
-
-# Initialize environment
 env = SimplestEnv(batch_size=batch_size)
 
-# Get A and B tensors from environment
-A = [jnp.array(a, dtype=jnp.float32) for a in env.params["A"]]
-A_dependencies = env.dependencies["A"]
-
-B = [jnp.array(b, dtype=jnp.float32) for b in env.params["B"]]
-B_dependencies = env.dependencies["B"]
-
-# ### 2. Set up the agent's generative model
+# %% ### 1. Basic Demo
 #
-# Now we'll create the agent's model of the world. In this case, since the environment is fully observed and deterministic,
-# we use the same A and B tensors as the environment.
+# This demo shows how to use the simplest environment with an active inference agent.
+# The environment consists of two states (left and right) and two actions (stay and move).
+# The agent can observe which state it is in perfectly.
+#
+# First, we'll create an instance of the simplest environment
 
-# In[3]:
+# Set up random key
+key = jr.PRNGKey(key_idx)
 
-# Initialize agent's generative model
-# In this case, we use the same A and B tensors as the environment since it's fully observed and deterministic
-A_gm = [a.copy() for a in A]
-B_gm = [b.copy() for b in B]
+# Initialize agent's learning config
+learning_config = LearningConfig(learn_A=False, learn_B=False, learn_D=False)
+
+# Initialise POMDP model from environment and learning config
+model, key = POMDPModel.from_env(
+    env=env,
+    learning=learning_config,
+    key=key,
+    T=100               #can play with this
+)
+
+# Update initial beliefs (D): Equal probability for all states
+model = model.set_uniform_D()
 
 # Set up preference (C) matrix
-# The agent prefers to be in the right state (state 1)
-num_obs = [a.shape[0] for a in A]
-# C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # Prefer right state
-C = [jnp.zeros((batch_size, 2), dtype=jnp.float32)]  # All states equally preferred
-#TODO: when C is set to uniform, the agent stays in the left state (when action_selection param is deterministic). Why is this?
+# C = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 1].set(1.0)]  # The agent prefers to be in the right state (state 1)
+C = [jnp.zeros((batch_size, model.structure.num_obs[0]), dtype=jnp.float32)]  # All states equally preferred
 
-# Set up initial beliefs (D)
-# Start with certainty about being in the left state (matching the environment's initial state)
-num_states = [b.shape[0] for b in B]
-# D = [jnp.zeros((batch_size, 2), dtype=jnp.float32).at[:, 0].set(1.0)]  # Certain about starting in left state
-D = [jnp.ones((batch_size, 2), dtype=jnp.float32) * 0.5]  # Equal probability for left and right states
-
-
-# ### 3. Initialize the agent and run simulation
-#
-# Finally, we'll create the agent with our model parameters and run it in the environment.
-
-# In[4]:
-
-# Initialize the agent
-agent = Agent(
-    A=A_gm,
-    B=B_gm,
+# Initialize the agent based on model and other parameters
+agent = Agent.from_model(
+    model=model,
     C=C,
-    D=D,
     policy_len=1,            # Plan one step ahead
-    A_dependencies=A_dependencies,
-    B_dependencies=B_dependencies,
     inference_algo="fpi",
     apply_batch=False,
-    learn_A=False,
-    learn_B=False
+    action_selection="stochastic"
 )
 
 # Run simulation
-key = jr.PRNGKey(0)  # Random key for the aif loop
-T = 3  # Number of timesteps to rollout
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+key, rollout_key = jr.split(key)
+final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-# In[5]:
 # Print rollout and visualize results
 plot_beliefs(info, agent)
 render_rollout(env, info)  # Optionally: render_rollout(env, info, save_gif=True, filename="figures/simplest.gif")
 print_rollout(info)
 
-# In[6]:
-
-# ### 5. Parameter Learning Demo
+# %% ### 2. Parameter (A, B) Learning Demo
 #
-# Now we'll demonstrate how the agent can learn the observation (A) and transition (B) matrices.
-# We'll start by setting up priors over A and B that match the true parameters.
+# Here we demonstrate how the agent can learn the observation (A) and transition (B) tensors through experience.
 
-# Let's start by defining what parameters we want to learn
-learn_A = True  # Enable learning of observation model
-learn_B = True  # Enable learning of transition model
+# Enable A, B parameter learning
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
 
-# Set up random priors over A and B
-pA, A_gm = dirichlet_prior(env.params["A"], init="random", scale=1.0, learning_enabled=learn_A, key=key)
-pB, B_gm = dirichlet_prior(env.params["B"], init="random", scale=1.0, learning_enabled=learn_B, key=key)
+# Initialize POMDP model with learning config
+model, key = POMDPModel.from_env(
+    env=env,
+    learning=learning_config,
+    key=key,
+    T=100               #can play with this
+)
 
+# Set uniform initial beliefs
+model = model.set_uniform_D()
 
-# In[6]:
-# Initialize agent with parameter learning enabled
-agent = Agent(A=A_gm,
-             B=B_gm,
-             C=C,
-             D=D,
-             pA=pA,  # Prior over A
-             pB=pB,  # Prior over B
-             A_dependencies=A_dependencies,
-             B_dependencies=B_dependencies,
-             learn_A=learn_A,  # Enable learning of observation model
-             learn_B=learn_B,  # Enable learning of transition model
-             apply_batch=False,
-             action_selection="stochastic")
-
-# Run simulation with parameter learning
-key = jr.PRNGKey(0)
-T = 50  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
-
-# In[7]:
-# Print rollout
-print("\nRollout with parameter learning:")
-print_rollout(info)
-
-# Print and visualize A learning
-if learn_A:
-    plot_A_learning(agent, info, env)
-    print('\n Final matrix A:\n',jnp.array(info["agent"].A[0])[-1,0,:]) #-1 for last timestep, 0 for first factor
-
-# Print and visualize B learning
-if learn_B:
-    actions = ['Left', 'Right']
-    for a in range(2): 
-        print('\n Final matrix B under action', actions[a], ':\n',jnp.array(info["agent"].B[0])[-1,0,:,:,a]) 
-        # plot_B_learning(agent, info, env)
-
-# Results:
-# Joint A, B learning works under random initialization, not under strictly uniform initialization (as expected). Later could try noisy uniform initialization
-
-# In[ ]:
-# ## Testing D Learning
-# Now let's test learning of the initial state distribution (D) while keeping A and B fixed
-
-# Create environment
-
-# Let's start by defining what parameters we want to learn
-learn_D = True   # Enable learning of initial state distribution
-
-# Set up random priors over D
-
-pD, D_gm = dirichlet_prior(D, init="like", scale=1.0, learning_enabled=learn_D, key=key)
-D_gm = D 
-#TODO: there is a mistake in the way dirichlet prior normalises pD to obtain D_gm
-
-# %%
-# Create agent
-agent = Agent(
-    A=env.params["A"],  # Use true A
-    B=env.params["B"],  # Use true B
+# Initialize agent with parameter learning
+agent = Agent.from_model(
+    model=model,
     C=C,
-    D=D_gm,
-    pD=pD,
-    learn_A=False,
-    learn_B=False,
-    learn_D=learn_D,
-    A_dependencies=A_dependencies,
-    B_dependencies=B_dependencies,
     apply_batch=False,
     action_selection="stochastic"
 )
 
-# Run simulation with parameter learning
-key = jr.PRNGKey(0)
-T = 10  # More timesteps to allow for learning
-final_state, info, _ = rollout(agent, env, num_timesteps=T, rng_key=key)
+# Run simulation and collect results
+key, rollout_key = jr.split(key)
+final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
 
-# Rollout with D learning
+# Analyze and visualize results
+print("\nRollout with A, B learning:")
+print_rollout(info)
+print_parameter_learning(info, learning_config)
+if learning_config.learn_A:
+    plot_A_learning(agent, info, env)
+
+# Note: Joint A, B learning works well with random initialization, but not with strictly uniform initialization
+# This is expected as uniform initialization provides no initial structure to learn from. Later could try noisy uniform initialization
+
+# In[9]:
+
+
+# %% ### 3. Initial State Distribution (D) Learning Demo
+#
+# Here we demonstrate learning of the initial state distribution (D). Note that D learning
+# is limited by the fact that only the initial state belief (qs_0) is used to update D,
+# and there is no retrospective updating of this belief for now (i.e. no smoothing).
+
+# Enable D learning only
+learning_config = LearningConfig(learn_D=True, learn_A=False, learn_B=False)
+
+# Initialize POMDP model with D learning
+model, key = POMDPModel.from_env(
+    env=env,
+    learning=learning_config,
+    key=key,
+    T=5               #can play with this
+)
+
+# Initialize agent with D learning
+agent = Agent.from_model(
+    model=model,
+    C=C,
+    apply_batch=False,
+    action_selection="stochastic"
+)
+
+# Run simulation and collect results
+key, rollout_key = jr.split(key)
+final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+
+# Analyze and visualize results
 print("\nRollout with D learning:")
 print_rollout(info)
 
-# Print and visualize D learning
-if learn_D:
-    print('\n Initial D matrix:\n', jnp.array(info["agent"].D[0])[0])  # True initial state distribution
-    print('\n Final learned D matrix:\n', jnp.array(info["agent"].D[0])[-1])  # Learned initial state distribution
+if learning_config.learn_D:
+    print('\nParameter D learning:')
+    for t in range(model.structure.T+1):
+        print(f't={t}, qD=', info["agent"].pD[0][t], 'D=', info["agent"].D[0][t])
 
-# Results:
-# Let's see how well the agent learns the true initial state distribution
 
+# %% ### 4. Joint A, B, D Parameter Learning Demo
+#
+# Finally, we demonstrate learning of all parameters (A, B, D) simultaneously.
+# This combines the previous learning scenarios into a full model learning task.
+
+# Reinitialize random key
+key = jr.PRNGKey(key_idx)
+
+# Enable all parameter learning
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
+
+# Initialize POMDP model with all learning enabled
+model, key = POMDPModel.from_env(
+    env=env,
+    learning=learning_config,
+    key=key,
+    T=100               #can play with this
+)
+
+# Initialize agent with all parameter learning
+agent = Agent.from_model(
+    model=model,
+    C=C,
+    apply_batch=False,
+    action_selection="stochastic"
+)
+
+# Run simulation and collect results
+key, rollout_key = jr.split(key)
+final_state, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+
+# Analyze and visualize results
+pe_analysis = compute_prediction_errors(info)
+plot_prediction_errors(pe_analysis)
+
+print("\nRollout with all parameter learning:")
+print_rollout(info)
+print_parameter_learning(info, learning_config)
+
+if learning_config.learn_A:
+    plot_A_learning(agent, info, env)
+
+# Note: Joint learning works well for A, B, and D, but D learning remains limited by the
+# lack of retrospective updating (i.e. smoothing) of initial state beliefs
+
+# %% ### 5. Model Comparison: Well-Specified vs Misspecified Model
+#
+# Finally, we compare learning performance between well-specified and misspecified models.
+# A misspecified model has a different structure than the environment - in this case,
+# we use more latent states than actually exist (eg. 3 vs 2).
+#
+# This allows us to:
+# 1. Study how agents learn with incorrect assumptions about their environment
+# 2. Compare prediction errors between well-specified and misspecified models
+# 3. Demonstrate Bayesian model comparison in active inference
+
+# Reinitialize random key for fair comparison
+learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=True)
+
+# Create both models with same initialization conditions
+true_structure = env.get_structure().modify(T=100)
+misspecified_structure = true_structure.modify(num_states=3)
+
+init_key = jr.PRNGKey(key_idx)  # Same seed for both models
+well_specified_model, _ = POMDPModel.from_structure(true_structure, learning_config, "random", 1.0, init_key)
+misspecified_model, _ = POMDPModel.from_structure(misspecified_structure, learning_config, "random", 1.0, init_key)
+
+# Create agents and run side by side rollouts with same seed
+agents = [
+    Agent.from_model(model=well_specified_model, C=C, apply_batch=False, action_selection="stochastic"),
+    Agent.from_model(model=misspecified_model, C=C, apply_batch=False, action_selection="stochastic")
+]
+
+pe_analyses = []
+keys = [jr.PRNGKey(key_idx), jr.PRNGKey(key_idx)]
+models = [well_specified_model, misspecified_model]
+for agent, model, key in zip(agents, models, keys):
+    key, rollout_key = jr.split(key)
+    _, info, _ = rollout(agent, env, num_timesteps=model.structure.T, rng_key=rollout_key)
+    pe_analyses.append(compute_prediction_errors(info))
+
+# Store the last rollout info for next section (misspecified model)
+misspecified_rollout_info = info
+
+#Optional, print parameter learning
+# print_parameter_learning(info, learning_config)
+
+# Compare models
+plot_model_comparison(pe_analyses, labels=('Well-specified (2 states)', 'Misspecified (3 states)'))
+
+# Note: This demo shows how we can perform Bayesian model comparison for one-layer POMDPs
+# in environments where:
+# 1. We can learn effectively without retrospective inference (no smoothing required)
+# 2. Learning can be performed at every timestep
+# 3. Standard fixed-point iteration is sufficient for inference
+print("\nModel comparison complete. Well-specified model should generally show lower prediction errors.")
+
+# %% ### 6. Counterfactual Experiment
+#
+# This demonstrates how to perform a counterfactual rollout with a different model structure,
+# allowing us to compare which model better explains the observed data.
+#
+# A counterfactual rollout differs from a regular rollout in that:
+# - The observations and actions are FIXED (taken from a previous rollout)
+# - The agent doesn't choose actions or generate new observations
+# - The agent only performs inference (belief updating) given the fixed observations
+# - This lets us ask: "How well would this model have explained the same data?"
+#
+# In this experiment, we take the observation-action sequence from the misspecified model's
+# rollout and replay it through the well-specified model to see which model better explains
+# the data (lower prediction error = better explanation).
+
+# Extract observation and action sequences from the misspecified model rollout
+obs_sequence = misspecified_rollout_info['observation']
+action_sequence = misspecified_rollout_info['action']
+
+# Create an agent with the well-specified structure (2 states) for counterfactual analysis
+counterfactual_agent = Agent.from_model(
+    model=well_specified_model,
+    C=C,
+    policy_len=1,
+    inference_algo="fpi",
+    apply_batch=False,
+    action_selection="stochastic"
+)
+
+# Perform the counterfactual rollout: replay the misspecified model's obs-action sequence
+# through the well-specified model. The agent will only perform inference (no action selection).
+_, info_counterfactual = counterfactual_rollout(
+    counterfactual_agent,
+    obs_sequence,
+    action_sequence)
+
+# Compute prediction errors for the counterfactual
+pe_analysis_counterfactual = compute_prediction_errors(info_counterfactual)
+
+# Plot prediction errors for the counterfactual
+plot_prediction_errors(pe_analysis_counterfactual, title="Counterfactual Model (True 2-state Structure)")
+
+# Compare all three: well-specified rollout vs misspecified rollout vs counterfactual rollout
+plot_model_comparison([pe_analyses[0], pe_analyses[1], pe_analysis_counterfactual],
+                     labels=('Well-specified', 'Misspecified', 'Counterfactual'), alpha=0.7, lw=1)
+
+print("Counterfactual analysis complete. Compare the plots to see which model better explains the data.")
 # %%

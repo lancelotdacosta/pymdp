@@ -10,6 +10,7 @@ import scipy.ndimage as ndimage
 from pymdp.utils import fig2img
 from equinox import field
 from .env import Env
+from .pomdp_env import POMDPEnv
 
 
 # load assets
@@ -22,11 +23,11 @@ cheese_img = plt.imread(os.path.join(assets_dir, "cheese.png"))
 shock_img = plt.imread(os.path.join(assets_dir, "shock.png"))
 
 
-class TMaze(Env):
+class TMaze(POMDPEnv):
     """
     Implementation of the 3-arm T-Maze environment.
     A T-shaped maze where an agent must navigate to find a reward, with:
-    - 4 locations: centre, left arm, right arm, and cue position (bottom arm) 
+    - 5 locations: centre, top left arm, top right arm, bottom arm (cue position), and top position
     - 2 reward conditions: reward in left or right arm
     - Cues that indicate which arm contains the reward
     """
@@ -57,7 +58,7 @@ class TMaze(Env):
         # Generate and broadcast observation likelihood(A), transition (B), and initial state (D) tensors to the batch size
         A, A_dependencies = self.generate_A()
         A = [jnp.broadcast_to(a, (batch_size,) + a.shape) for a in A]
-        B, B_dependencies = self.generate_B()
+        B, B_dependencies, B_action_dependencies = self.generate_B()
         B = [jnp.broadcast_to(b, (batch_size,) + b.shape) for b in B]
         D = self.generate_D()
         D = [jnp.broadcast_to(d, (batch_size,) + d.shape) for d in D]
@@ -71,9 +72,42 @@ class TMaze(Env):
         dependencies = { # specifying which matrix is dependent on which state factors allows you to not have to specify all combinations of state factors in the matrix
             "A": A_dependencies, 
             "B": B_dependencies,
+            "B_action": B_action_dependencies,
+        }
+        
+        # Pass parameters to parent class without labels (will use our overridden _initialize_default_labels method)
+        super().__init__(params=params, dependencies=dependencies)
+
+    def _initialize_default_labels(self):
+        """Override the default labels method to provide specific labels for TMaze.
+        
+        Returns
+        -------
+        Dict
+            Dictionary containing human-readable labels for this environment
+        """
+        return {
+            "state_factors": {
+                "Location": ["Center", "Top Left", "Top Right", "Bottom", "Top"],
+                "Reward Condition": ["Top Left", "Top Right"]
+            },
+            "observation_modalities": {
+                "Location": ["Center", "Top Left", "Top Right", "Bottom", "Top"],
+                "Reward": ["Neutral", "Reward", "Punishment"],
+                "Cue": ["None", "Left", "Right"]
+            },
+            #- Actions correspond directly to target locations:
+            #   - Action 0: Try to go to Center
+            #   - Action 1: Try to go to Top Left
+            #   - Action 2: Try to go to Top Right
+            #   - Action 3: Try to go to Bottom
+            #   - Action 4: Try to go to Top
+            "control_factors": {
+                "Go": ["to Center", "to Top Left", "to Top Right", "to Bottom", "to Top"],
+                "Dummy": ["Dummy"]
+            }
         }
 
-        super().__init__(params, dependencies)
 
     def generate_A(self) -> Tuple[List[jnp.ndarray], List[List[int]]]:
         """
@@ -95,7 +129,6 @@ class TMaze(Env):
 
         A_dependencies = [[0], [0, 1], [0, 1]]
 
-        
         for loc in range(5): # for each location: [centre, left, right, cue, middle]
             for reward_condition in range(2): # for each reward condition: [left, right]
                 if loc == 0: # when at starting location (centre), there is no reward and no cue
@@ -146,6 +179,12 @@ class TMaze(Env):
         Returns two transition matrices:
         B[0]: Location transitions (5x5x5)
             - Agent can move between adjacent locations in the T-maze
+            - Actions correspond directly to target locations:
+              - Action 0: Try to go to Center
+              - Action 1: Try to go to Top Left
+              - Action 2: Try to go to Top Right
+              - Action 3: Try to go to Bottom
+              - Action 4: Try to go to Top
         B[1]: Reward condition transitions (2x2x1)
             - Reward location stays fixed
         """
@@ -183,9 +222,16 @@ class TMaze(Env):
         B_reward = jnp.eye(2).reshape(2, 2, 1)
         B.append(B_reward)
 
+        # B_dependencies: specifying which state factors each transition matrix depends on
         B_dependencies = [[0], [1]]
+        
+        # B_action_dependencies: specifying which control factors affect each state factor
+        # - State factor 0 (Location) is affected by control factor 0 ("Go")
+        # - State factor 1 (Reward Condition) is affected by control factor 1 ("Dummy")
+        B_action_dependencies = [[0], [1]]
+        #TODO: we could get rid of dummy control factor: replace B_action_dependencies = [[0], []], B_reward = jnp.eye(2).reshape(2, 2) and remove dummy control labels
 
-        return B, B_dependencies
+        return B, B_dependencies, B_action_dependencies
 
     def generate_D(self):
         """
@@ -216,6 +262,7 @@ class TMaze(Env):
         return D
 
     def render(self, mode="human", observations=None):
+        
         if observations is not None:
             current_obs = observations
             batch_size = observations[0].shape[0]
@@ -223,8 +270,7 @@ class TMaze(Env):
             current_obs = self.current_obs
             batch_size = self.params["A"][0].shape[0]
 
-        plt.clf()  # Clear the current figure
-        
+        plt.clf()  # Clear the current figure  
 
         # create n x n subplots for the batch_size
         n = math.ceil(math.sqrt(batch_size))
@@ -380,3 +426,45 @@ class TMaze(Env):
             img = fig2img(fig)
             plt.close(fig) 
             return img
+
+    def get_default_model_params(self):
+        """Get default model parameters for TMaze environment.
+        
+        Returns
+        -------
+        dict
+            Dictionary of default model parameters
+        """
+        return super().get_default_model_params()
+        
+    def get_default_C(self):
+        """Get default preference matrices C for TMaze environment.
+        
+        Returns
+        -------
+        list
+            List of C matrices for each observation modality
+        """
+        # First get default C matrices from parent implementation (all zeros)
+        C = super().get_default_C()
+        
+        # Set preferences for reward/punishment in the reward modality (index 1)
+        C[1] = C[1].at[:,1].set(2.0)    # prefer reward
+        C[1] = C[1].at[:,2].set(-3.0)   # avoid punishment
+        return C
+        
+    def get_default_agent_params(self):
+        """Get default agent parameters for TMaze environment.
+        
+        Returns
+        -------
+        dict
+            Dictionary of default agent parameters
+        """
+        # Get default parameters from parent
+        params = super().get_default_agent_params()
+        
+        # Modify policy_len for TMaze (plan two steps ahead)
+        params["policy_len"] = 2
+        
+        return params

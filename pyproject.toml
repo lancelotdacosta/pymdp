@@ -56,6 +56,7 @@ packages = [
     'pymdp.legacy',
     'pymdp.legacy.algos',
     'pymdp.legacy.envs',
+    'pymdp.models',
 ]
 
 [tool.setuptools.package-data]

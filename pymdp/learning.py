@@ -2,10 +2,108 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=no-member
 
+import equinox as eqx
 from pymdp.maths import multidimensional_outer, dirichlet_expected_value
 from jax.tree_util import tree_map
 from jaxtyping import Array
 from jax import vmap, nn
+from typing import Dict, Optional
+
+
+class LearningConfig(eqx.Module):
+    """
+    Configuration for parameter learning in active inference agents.
+    
+    Attributes
+    ----------
+    learn_A : bool
+        Whether to learn the observation model (A matrix)
+    learn_B : bool
+        Whether to learn the transition model (B matrix)
+    learn_D : bool
+        Whether to learn the initial state prior (D matrix)
+    #TODO: consider adding C learning
+    """
+    learn_A: bool
+    learn_B: bool
+    learn_D: bool
+
+    def __init__(
+        self,
+        learn_A: bool = True,
+        learn_B: bool = True,
+        learn_D: bool = True,
+    ):
+        """Initialize learning configuration with all parameters learned by default"""
+        self.learn_A = learn_A
+        self.learn_B = learn_B
+        self.learn_D = learn_D
+
+    @classmethod
+    def default(cls) -> "LearningConfig":
+        """Default configuration with all parameters learned"""
+        return cls()
+
+    @classmethod
+    def no_learning(cls) -> "LearningConfig":
+        """Configuration with all learning disabled"""
+        return cls(
+            learn_A=False,
+            learn_B=False,
+            learn_D=False,
+        )
+
+    @classmethod
+    def from_parameters(cls, pA=None, pB=None, pD=None) -> "LearningConfig":
+        """Infer learning configuration from which parameters have priors.
+        
+        Parameters
+        ----------
+        pA : array-like, optional
+            Prior parameters for A matrix, by default None
+        pB : array-like, optional
+            Prior parameters for B matrix, by default None
+        pD : array-like, optional
+            Prior parameters for D matrix, by default None
+            
+        Returns
+        -------
+        LearningConfig
+            Configuration with learning enabled for parameters that have priors
+        """
+        return cls(
+            learn_A=pA is not None,
+            learn_B=pB is not None,
+            learn_D=pD is not None
+        )
+
+    def to_dict(self) -> Dict:
+        """Convert configuration to dictionary"""
+        return {
+            "learn_A": self.learn_A,
+            "learn_B": self.learn_B,
+            "learn_D": self.learn_D,
+        }
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict) -> "LearningConfig":
+        """Create configuration from dictionary"""
+        return cls(**config_dict)
+
+    def __repr__(self) -> str:
+        """String representation showing active learning parameters"""
+        learning = []
+        if self.learn_A:
+            learning.append("A")
+        if self.learn_B:
+            learning.append("B")
+        if self.learn_D:
+            learning.append("D")
+        
+        if not learning:
+            return "LearningConfig(no_learning)"
+        return f"LearningConfig(learning={', '.join(learning)})"
+
 
 def update_obs_likelihood_dirichlet_m(pA_m, obs_m, qs, dependencies_m, lr=1.0):
     """JAX version of ``pymdp.learning.update_obs_likelihood_dirichlet_m``"""
@@ -126,9 +224,10 @@ def update_state_prior_dirichlet_f(pD_f, qs_f, lr=1.0):
     # Only update where prior probability > 0
     mask = (pD_f > 0).astype(pD_f.dtype)
     
-    # qs_f has shape [batch, time, states], take initial timestep to use for D learning
+    # For D learning, we only use beliefs at timestep 1 (beliefs about initial state)
+    # qs_f has shape [batch, time, states]
     if len(qs_f.shape) > len(pD_f.shape):
-        qs_f = qs_f[..., 0, :]
+        qs_f = qs_f[..., 0, :]  # Use timestep 1 beliefs about initial state
     
     dfdd = qs_f * mask
     qD_f = pD_f + lr * dfdd

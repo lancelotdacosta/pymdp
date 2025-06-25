@@ -3,20 +3,22 @@
 
 """ Agent Class implementation in Jax
 
-__author__: Conor Heins, Dimitrije Markovic, Alexander Tschantz, Daphne Demekas, Brennan Klein
+__author__: Conor Heins, Dimitrije Markovic, Alexander Tschantz, Daphne Demekas, Brennan Klein, Lancelot Da Costa
 
 """
 import math as pymath
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import nn, vmap, random
-from pymdp import inference, control, learning, utils, maths
+from jax import nn, vmap
+from pymdp import inference, control, learning, utils
 from pymdp.distribution import Distribution, get_dependencies
+from pymdp.models.pomdp import POMDPModel
 from equinox import Module, field, tree_at
-
 from typing import List, Optional, Union
 from jaxtyping import Array
 from functools import partial
+from .priors import default_A_dependencies, default_B_dependencies, default_B_action_dependencies
+from .learning import LearningConfig 
 
 class Agent(Module):
     """
@@ -69,9 +71,8 @@ class Agent(Module):
     num_modalities: int = field(static=True)
     num_states: List[int] = field(static=True)
     num_factors: int = field(static=True)
-    num_controls: List[int] = field(static=True)
-    # Used to store original action dimensions in case there are multiple action dependencies per state
-    num_controls_multi: List[int] = field(static=True)
+    num_controls: List[int] = field(static=True)  # List of number of actions available for each control factor
+    num_controls_multi: List[int] = field(static=True)  # Used to store original action dimensions in case there are multiple action dependencies per state
     control_fac_idx: Optional[List[int]] = field(static=True)
     # depth of planning during roll-outs (i.e. number of timesteps to look ahead when computing expected free energy of policies)
     policy_len: int = field(static=True)
@@ -92,6 +93,8 @@ class Agent(Module):
     sampling_mode: str = field(static=True)
     # fpi, vmp, mmp, ovf
     inference_algo: str = field(static=True)
+    # add learning mode flag (online/offline)
+    learning_mode: str = field(static=True)
 
     learn_A: bool = field(static=True)
     learn_B: bool = field(static=True)
@@ -114,8 +117,7 @@ class Agent(Module):
         A_dependencies=None,  # Specifies dependencies between hidden state factors in observation model
         B_dependencies=None,  # Specifies dependencies between hidden state factors in transition model
         B_action_dependencies=None,  # Specifies dependencies between actions and state transitions
-        #D_dependencies=None,  # TODO: should this be implemented? A: probably not
-        num_controls=None,  # Number of control states (actions) available for each factor
+        num_controls=None,  # List specifying number of actions available for each control factor
         control_fac_idx=None,  # Indices of controllable state factors
         policy_len=1,  # Length of policies (number of time steps in the future)
         policies=None,  # Custom policy specifications (if None, constructs all policies)
@@ -139,6 +141,7 @@ class Agent(Module):
         learn_C=False,  # Whether to learn/update the C matrix (preferences)
         learn_D=False,  # Whether to learn/update the D matrix (initial state prior)
         learn_E=False,  # Whether to learn/update the E matrix (policy prior)
+        learning_mode = "online",  # 'online' (update parameters at each timestep of rollout) or 'offline' (update once at end of each trial)
     ):
         if B_action_dependencies is not None:
             assert num_controls is not None, "Please specify num_controls for complex action dependencies"
@@ -212,6 +215,9 @@ class Agent(Module):
         self.learn_C = learn_C
         self.learn_D = learn_D
         self.learn_E = learn_E
+
+        # add learning mode flag (online/offline)
+        self.learning_mode = learning_mode
 
         # construct control factor indices
         if control_fac_idx == None:
@@ -306,7 +312,7 @@ class Agent(Module):
         size = pymath.prod(self.num_controls)
         return jnp.unique(self.policies[:, 0], axis=0, size=size, fill_value=-1)
 
-    def infer_parameters(self, beliefs_A, outcomes, actions, beliefs_B=None, lr_pA=1., lr_pB=1., lr_pD=1., **kwargs):
+    def infer_parameters(self, beliefs_A, outcomes, actions, beliefs_B=None, beliefs_D=None, lr_pA=1., lr_pB=1., lr_pD=1., **kwargs):
         agent = self
         beliefs_B = beliefs_A if beliefs_B is None else beliefs_B
         if self.inference_algo == 'ovf':
@@ -368,10 +374,12 @@ class Agent(Module):
             )
             
             lr = jnp.broadcast_to(lr_pD, (self.batch_size,))
+            # Use the fixed initial belief if provided, otherwise use the marginal beliefs at current timestep
+            d_input = beliefs_D if beliefs_D is not None else marginal_beliefs
             qD, E_qD = vmap(update_D)(
                 self.pD,
                 self.D,
-                marginal_beliefs,  # Using initial beliefs from sequence
+                d_input,  # Using fixed initial belief for D learning
                 lr=lr
             )
             
@@ -581,20 +589,20 @@ class Agent(Module):
         elif isinstance(A[0], Distribution) and isinstance(B[0], Distribution):
             A_dependencies, _ = get_dependencies(A, B)
         else:
-            A_dependencies = [list(range(self.num_factors)) for _ in range(self.num_modalities)]
+            A_dependencies = default_A_dependencies(self.num_modalities, self.num_factors)
 
         if B_dependencies is not None:
             B_dependencies = B_dependencies
         elif isinstance(A[0], Distribution) and isinstance(B[0], Distribution):
             _, B_dependencies = get_dependencies(A, B)
         else:
-            B_dependencies = [[f] for f in range(self.num_factors)]
+            B_dependencies = default_B_dependencies(self.num_factors)
 
         """TODO: check B action shape"""
         if B_action_dependencies is not None:
             B_action_dependencies = B_action_dependencies
         else:
-            B_action_dependencies = [[f] for f in range(self.num_factors)]
+            B_action_dependencies = default_B_action_dependencies(self.num_factors)
         return A_dependencies, B_dependencies, B_action_dependencies
 
     def _flatten_B_action_dims(self, B, pB, B_action_dependencies):
@@ -694,3 +702,131 @@ class Agent(Module):
             assert (
                 self.num_controls[factor_idx] > 1
             ), "Control factor (and B matrix) dimensions are not consistent with user-given control_fac_idx"
+
+    @classmethod
+    def from_model(cls, model: "POMDPModel", **kwargs) -> "Agent":
+        """Create an agent from a POMDPModel.
+        
+        Parameters
+        ----------
+        model : POMDPModel
+            Model containing generative model parameters and priors
+        **kwargs : dict
+            Additional arguments to pass to Agent constructor
+        
+        Returns
+        -------
+        Agent
+            Agent initialized with model parameters
+        """
+        # Get model parameters using to_dict
+        model_dict = model.to_dict()
+        
+        # Extract parameters needed for agent
+        agent_params = {
+            "A": model_dict["A"],
+            "B": model_dict["B"],
+            "D": model_dict["D"],
+            "pA": model_dict["pA"],
+            "pB": model_dict["pB"],
+            "pD": model_dict["pD"],
+            "A_dependencies": model_dict["structure"].A_dependencies,
+            "B_dependencies": model_dict["structure"].B_dependencies,
+            "B_action_dependencies": model_dict["structure"].B_action_dependencies,
+            "num_controls": model_dict["structure"].num_actions,  # Pass the list of action counts directly
+            "learn_A": model_dict["learning"].learn_A,
+            "learn_B": model_dict["learning"].learn_B,
+            "learn_D": model_dict["learning"].learn_D
+        }
+        
+        # Check for redundant parameters
+        redundant_params = set(agent_params.keys()) & set(kwargs.keys())
+        if redundant_params:
+            raise ValueError(
+                f"The following parameters are already specified by the model and cannot be overridden: {redundant_params}. "
+                "If you need different values, create a new model or modify the existing one."
+            )
+        
+        # Add any additional parameters
+        agent_params.update(kwargs)
+        
+        return cls(**agent_params)
+        
+    @classmethod
+    def from_env(cls, env, key=None, learning_config=None, uniform_D=False, 
+                model_params=None, agent_params=None, C=None):
+        """Create an agent directly from an environment using environment-specific defaults.
+        
+        Parameters
+        ----------
+        env : POMDPEnv
+            The environment to create an agent for
+        key : jax.random.PRNGKey, optional
+            Random key (generated if None)
+        learning_config : LearningConfig, optional
+            Configuration for parameter learning (default: no learning)
+        uniform_D : bool, optional
+            Whether to set uniform initial beliefs (default: False).
+            When True, the agent's initial state distribution D will be set to uniform
+            regardless of the environment's actual initial state distribution.
+            When False, the agent's D matches the environment's D, meaning the agent's
+            prior beliefs align with the environment's actual initialization pattern.
+            
+            For example, in SimplestEnv:
+            - uniform_D=False: Agent expects to start in the left state (D=[1.0, 0.0])
+            - uniform_D=True: Agent has equal expectations about starting states (D=[0.5, 0.5])
+        model_params : dict, optional
+            Override default model parameters
+        agent_params : dict, optional
+            Override default agent parameters
+        C : list of arrays, optional
+            Custom preference matrices (default: uses environment defaults)
+            
+        Returns
+        -------
+        agent : Agent
+            The created agent
+        model : POMDPModel
+            The underlying model
+        key : jax.random.PRNGKey
+            The updated random key
+        """
+        
+        # Set default learning config if not provided
+        if learning_config is None:
+            learning_config = LearningConfig()
+        
+        # Get default model parameters and update with overrides
+        default_model_params = env.get_default_model_params()
+        if model_params:
+            default_model_params.update(model_params)
+        
+        # Create model from environment
+        model, key = POMDPModel.from_env(
+            env=env,
+            learning=learning_config,
+            key=key,
+            **default_model_params
+        )
+        
+        # Handle uniform D setting if requested
+        if uniform_D:
+            model = model.set_uniform_D()
+        
+        # Get default C from environment or use provided C
+        if C is None:
+            C = env.get_default_C()
+        
+        # Get default agent parameters and update with overrides
+        default_agent_params = env.get_default_agent_params()
+        if agent_params:
+            default_agent_params.update(agent_params)
+        
+        # Create agent with all parameters
+        agent = cls.from_model(
+            model=model,
+            C=C,
+            **default_agent_params
+        )
+        
+        return agent, model, key

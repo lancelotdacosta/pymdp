@@ -135,3 +135,144 @@ def fig2img(fig):
     im = data.reshape((int(h), int(w), -1))
     plt.close(fig)
     return im[:, :, :3]
+
+
+def flatten_multi_trial_tensor(tensor, multi_trials=True):
+    """
+    Helper function to flatten multi-trial tensor data into a single time series.
+    
+    For multi-trial data, tensors have shape [num_trials, timesteps_per_trial, ...].
+    This function reshapes the tensor to [num_trials*timesteps_per_trial, ...],
+    effectively treating the entire multi-trial history as one continuous timeline.
+    
+    Parameters
+    ----------
+    tensor : ndarray or jax.Array
+        Multi-dimensional array with shape [trials, timesteps, ...] 
+        
+    Returns
+    -------
+    ndarray or jax.Array
+        Flattened array with shape [trials*timesteps, ...]
+    """
+    if multi_trials:
+        return tensor.reshape(tensor.shape[0] * tensor.shape[1], *tensor.shape[2:])
+    else:
+        return tensor
+
+def flatten_multi_trial_tensor_list(tensor_list, multi_trials=True):
+    """
+    Helper function to flatten multi-trial tensor data into a single time series.
+    
+    For multi-trial data, tensors have shape [num_trials, timesteps_per_trial, ...].
+    This function reshapes the tensor to [num_trials*timesteps_per_trial, ...],
+    effectively treating the entire multi-trial history as one continuous timeline.
+    
+    Parameters
+    ----------
+    tensor_list : list of ndarray or jax.Array
+        List of multi-dimensional arrays with shape [trials, timesteps, ...] 
+        
+    Returns
+    -------
+    list of ndarray or jax.Array
+        Flattened array with shape [trials*timesteps, ...]
+    """
+    if multi_trials:
+        return [flatten_multi_trial_tensor(tensor, multi_trials) for tensor in tensor_list]
+    else:
+        return tensor_list
+
+
+def are_equal_dicts_jnp_arrays(dict1, dict2, verbose=True, atol=0, rtol=0):
+    """
+    Compares two dictionaries of jnp arrays for equality.
+    
+    This function checks if two dictionaries have the same keys, and for each key,
+    checks if the corresponding arrays have the same shape and content.
+    
+    Parameters
+    ----------
+    dict1 : dict
+        First dictionary to compare. Values should be jnp arrays.
+    dict2 : dict
+        Second dictionary to compare. Values should be jnp arrays.
+    verbose : bool, optional
+        Whether to print detailed error messages. Default is True.
+    tol : float, optional
+        Tolerance for floating point comparison. Default is 0.
+    Returns
+    -------
+    bool
+        True if dictionaries have identical keys and array values, False otherwise.
+    
+    Examples
+    --------
+    >>> d1 = {'a': jnp.array([1, 2, 3]), 'b': jnp.array([4, 5])}
+    >>> d2 = {'a': jnp.array([1, 2, 3]), 'b': jnp.array([4, 5])}
+    >>> are_equal_dicts_jnp_arrays(d1, d2)
+    True
+    
+    >>> d3 = {'a': jnp.array([1, 2, 4]), 'b': jnp.array([4, 5])}
+    >>> are_equal_dicts_jnp_arrays(d1, d3)
+    Contents for key 'a' don't match
+    False
+    """
+    # Check if they have the same keys
+    if dict1.keys() != dict2.keys():
+        if verbose:
+            missing_in_1 = set(dict2.keys()) - set(dict1.keys())
+            missing_in_2 = set(dict1.keys()) - set(dict2.keys())
+            print(f"Keys don't match: missing in dict1 {missing_in_1}, missing in dict2 {missing_in_2}")
+        return False
+    
+    # Compare each key-value pair individually
+    for key in dict1:
+        val1, val2 = dict1[key], dict2[key]
+
+        if not isinstance(val1, jnp.ndarray) or not isinstance(val2, jnp.ndarray):
+            print(f"Key '{key}' has non-jnp array values: {type(val1)} and {type(val2)}")
+        else:
+            # Check shapes
+            if val1.shape != val2.shape:
+                if verbose:
+                    print(f"Shapes for key '{key}' don't match: {val1.shape} vs {val2.shape}")
+                return False
+        
+            # Check contents
+            if not jnp.allclose(val1, val2, atol=atol, rtol=rtol):
+                if verbose:
+                    print(f"Contents for key '{key}' don't match")
+                return False
+
+    
+    return True
+
+def add_trial_boundary_lines(ax, n_timesteps, num_trials, color='gray', linestyle=':', alpha=0.3):
+    """
+    Add vertical lines at the boundaries between trials on a matplotlib axis.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes object to add vertical lines to
+    n_timesteps : int
+        Total number of timesteps across all trials
+    num_trials : int or None
+        Number of trials. If None, no lines are added.
+    trial_lines : bool, optional
+        Whether to add trial boundary lines, by default True
+    color : str, optional
+        Color of the boundary lines, by default 'gray'
+    linestyle : str, optional
+        Line style of the boundary lines, by default ':'
+    alpha : float, optional
+        Transparency of the boundary lines, by default 0.1
+    """
+    # Calculate timesteps per trial by dividing total timesteps by number of trials
+    timesteps_per_trial = n_timesteps // num_trials
+    
+    # Add vertical lines at the beginning of each trial
+    for trial in range(num_trials):
+        trial_start = trial * timesteps_per_trial
+        ax.axvline(x=trial_start, color=color, linestyle=linestyle, alpha=alpha)
