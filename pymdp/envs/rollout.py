@@ -3,9 +3,10 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
 import jax.lax
+
+from pymdp.envs import TMaze
 from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list
 import warnings
-import equinox as eqx
 
 from pymdp.agent import Agent
 from pymdp.envs.env import Env
@@ -169,15 +170,15 @@ def rollout(agent: Agent, env: Env, num_timesteps: int, rng_key: jr.PRNGKey, pol
     initial_info = {
         "action": jnp.expand_dims(action_0, 0),
         "observation": [jnp.expand_dims(o, 0) for o in observation_0],  
-        "qs": jtu.tree_map(lambda x: jnp.transpose(x, (1, 0) + tuple(range(2, x.ndim))), qs_0), 
-        "qpi": jnp.expand_dims(qpi_0, 0),  
+        "qs": qs_0,
+        "qpi": jnp.expand_dims(qpi_0, 0),
         "env": env,
         "agent": agent,
         "empirical_prior": p0  # Initial prior is just D
     }
 
     # combine initial info with trajectory info
-    info = jtu.tree_map(_concat_or_pass, initial_info, info) #TODO: there is a bug for batch_size > 1
+    info = jtu.tree_map(_concat_or_pass, initial_info, info)
 
     # ------------------------------------------------------------------
     # Offline learning update (single batch update after rollout)
@@ -609,7 +610,7 @@ def counterfactual_rollout(agent, obs_sequence, action_sequence):
         action_t = action_sequence[t]
 
         # update empirical prior about next state
-        empirical_prior, _ = agent.update_empirical_prior(action_t, qs_prev) # return empirical_prior. The empirical prior is D for mmp, vmp and it is the last posterior times transition matrix given the last action for fpi, ovf.  
+        empirical_prior, _ = agent.update_empirical_prior(action_t, qs_prev) # return empirical_prior. The empirical prior is D for mmp, vmp and it is the last posterior times transition matrix given the last action for fpi, ovf.
 
         # get new observation
         observation_t = [o[t] for o in obs_sequence]

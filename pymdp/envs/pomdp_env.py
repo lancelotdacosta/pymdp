@@ -8,11 +8,9 @@ Provides structure extraction and common POMDP functionality.
 __author__: Lancelot Da Costa
 """
 
-from typing import Dict, List, Tuple, Optional, Any, Union
+from typing import List, Tuple
 import jax.numpy as jnp
-import jax
 from .env import Env
-from ..distribution import Distribution
 from ..models.pomdp import POMDPStructure
 from ..priors import (
     default_A_dependencies,

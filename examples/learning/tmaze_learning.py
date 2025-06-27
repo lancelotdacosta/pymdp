@@ -50,7 +50,7 @@ env = make(
 # Set up random key
 key = jr.PRNGKey(key_idx)
 
-# Enable A, B parameter learning
+# Enable A parameter learning
 learning_config = LearningConfig(learn_A=True, learn_B=False, learn_D=False)
 
 # Create agent directly from environment with environment config C matrices

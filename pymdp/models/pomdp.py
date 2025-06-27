@@ -93,7 +93,7 @@ class POMDPStructure(eqx.Module):
             If None, assumes each factor depends only on itself.
         B_action_dependencies : List[List[int]], optional
             For each state factor, list of control factor indices that influence its transitions.
-            If None, assumes each factor's transitions depend onlyon the corresponding control factor.
+            If None, assumes each factor's transitions depend only on the corresponding control factor.
         """
         # Convert single integers to lists if needed
         self.num_obs = [num_obs] if isinstance(num_obs, int) else num_obs
@@ -148,10 +148,10 @@ class POMDPStructure(eqx.Module):
         
         for deps in self.A_dependencies:
             assert all(0 <= i < self.num_factors for i in deps), "A_dependencies indices must be valid state factor indices"
-            
+
         for deps in self.B_dependencies:
             assert all(0 <= i < self.num_factors for i in deps), "B_dependencies indices must be valid state factor indices"
-            
+
         for deps in self.B_action_dependencies:
             assert all(0 <= i < self.num_factors for i in deps), "B_action_dependencies indices must be valid control factor indices"
 
@@ -306,14 +306,13 @@ class POMDPStructure(eqx.Module):
         structure = [
             f"obs: {self.num_obs}",
             f"states: {self.num_states}",
-            f"actions: {self.num_actions}"
+            f"actions: {self.num_actions}",
+            f"batches: {self.num_batches}",
+            f"T: {self.T}",
+            f"A_deps: {self.A_dependencies}",
+            f"B_deps: {self.B_dependencies}",
+            f"B_action_deps: {self.B_action_dependencies}",
         ]
-        structure.append(f"batches: {self.num_batches}")
-        structure.append(f"T: {self.T}")
-        structure.append(f"A_deps: {self.A_dependencies}")
-        structure.append(f"B_deps: {self.B_dependencies}")
-        structure.append(f"B_action_deps: {self.B_action_dependencies}")
-        
         return f"POMDPStructure({', '.join(structure)})"
 
 
@@ -444,7 +443,7 @@ class POMDPModel(eqx.Module):
         scale: float = 1.0,
         key: Optional[jax.random.PRNGKey] = None,
         T: int = 100
-    ) -> "POMDPModel":
+    ) -> Tuple["POMDPModel", jax.random.PRNGKey]:
         """Create a POMDP model from an environment.
 
         Parameters
@@ -538,7 +537,7 @@ class POMDPModel(eqx.Module):
         init: str = "random",
         scale: float = 1.0,
         key: Optional[jax.random.PRNGKey] = None
-    ) -> Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray]]:
+    ) -> Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], jax.random.PRNGKey]:
         """Initialize parameters and priors based on learning configuration.
         
         Parameters

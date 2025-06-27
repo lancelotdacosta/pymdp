@@ -290,6 +290,7 @@ class Agent(Module):
         self.inductive_threshold = jnp.broadcast_to(inductive_threshold, (self.batch_size,))
         self.inductive_epsilon = jnp.broadcast_to(inductive_epsilon, (self.batch_size,))
 
+        # TODO the following lines are setting the value of I which is never used.
         if self.use_inductive and H is not None:
             I = vmap(
                 partial(
