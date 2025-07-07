@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple, Literal
+from typing import List, Union, Tuple, Literal, Optional
 import jax.numpy as jnp
 import jax.random as jr
 import warnings
@@ -16,7 +16,7 @@ def dirichlet_prior(template: List[jnp.ndarray],
                    init: Literal["uniform", "like", "random"] = "uniform",
                    scale: float = 1.0,
                    learning_enabled: bool = True,
-                   key: jr.PRNGKey = None) -> Tuple[Union[List[jnp.ndarray], None], List[jnp.ndarray]]:
+                   key: jr.PRNGKey = None) -> Tuple[Optional[List[jnp.ndarray]], List[jnp.ndarray], jr.PRNGKey]:
     """Initialize Dirichlet parameters using template shapes and return expectations.
 
     Args:
@@ -33,6 +33,7 @@ def dirichlet_prior(template: List[jnp.ndarray],
         Tuple containing:
         - Parameters if learning_enabled else None
         - Expected values of Dirichlet distribution if learning_enabled else template
+        - Jax new pseudo random key
     """
     if not learning_enabled:
         return None, template, key #TODO: make sure template is a list of categorical distributions, by checking non-positive normalised entries
@@ -43,7 +44,9 @@ def dirichlet_prior(template: List[jnp.ndarray],
         concentration = _dirichlet_like(template, scale)
     elif init == "random":
         concentration, key = _dirichlet_random(template, scale, key)
-    
+    else:
+        raise RuntimeError(f"Unsupported dirichlet initialisation method: '{init}'")
+
     return concentration, [dirichlet_expectation(arr) for arr in concentration], key
 
 

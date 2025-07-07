@@ -8,7 +8,7 @@ __author__: Lancelot Da Costa
 """
 
 import equinox as eqx
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Literal
 import jax.numpy as jnp
 import jax
 from ..learning import LearningConfig
@@ -534,7 +534,7 @@ class POMDPModel(eqx.Module):
         B_base: List[jnp.ndarray],
         D_base: List[jnp.ndarray],
         learning: LearningConfig,
-        init: str = "random",
+        init: Literal["uniform", "like", "random"] = "random",
         scale: float = 1.0,
         key: Optional[jax.random.PRNGKey] = None
     ) -> Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], jax.random.PRNGKey]:
