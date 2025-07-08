@@ -1,7 +1,6 @@
-from typing import List, Union, Tuple, Literal, Optional
+from typing import List, Tuple, Literal, Optional
 import jax.numpy as jnp
 import jax.random as jr
-import warnings
 from .utils import list_array_scaled
 from .maths import dirichlet_expectation
 
@@ -45,7 +44,9 @@ def dirichlet_prior(template: List[jnp.ndarray],
     elif init == "random":
         concentration, key = _dirichlet_random(template, scale, key)
     else:
-        raise RuntimeError(f"Unsupported dirichlet initialisation method: '{init}'")
+        msg = f"Unsupported dirichlet initialisation method: '{init}'." \
+              "Should be: 'uniform', 'like', or 'random'."
+        raise RuntimeError(msg)
 
     return concentration, [dirichlet_expectation(arr) for arr in concentration], key
 
@@ -89,7 +90,11 @@ def _dirichlet_like(template: List[jnp.ndarray], scale: float = 1.0) -> List[jnp
     return [scale * jnp.array(arr) for arr in template]
 
 
-def _dirichlet_random(template: List[jnp.ndarray], scale: float = 1.0, key: jr.PRNGKey = None) -> List[jnp.ndarray]:
+def _dirichlet_random(
+    template: List[jnp.ndarray],
+    scale: float = 1.0,
+    key: jr.PRNGKey = None
+) -> Tuple[List[jnp.ndarray], jr.PRNGKey]:
     """Initialize random Dirichlet parameters using iid uniform distributions on interval [0, scale].
 
     Args:

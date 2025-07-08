@@ -439,7 +439,7 @@ class POMDPModel(eqx.Module):
         cls,
         env,
         learning: LearningConfig = None,
-        init: str = "random",
+        init: Literal["uniform", "like", "random"] = "random",
         scale: float = 1.0,
         key: Optional[jax.random.PRNGKey] = None,
         T: int = 100
@@ -600,6 +600,7 @@ class POMDPModel(eqx.Module):
         )
         
         # Create new model with updated D
+        # TODO[why not] self.D = new_D?
         model_dict = self.to_dict()
         model_dict["D"] = new_D
         

@@ -20,7 +20,7 @@ def all_marginal_log_likelihood(qs, log_likelihoods, all_factor_lists):
     
     num_factors = len(qs)
 
-    # insted of a double loop we could have a list defining m to f mapping
+    # instead of a double loop we could have a list defining m to f mapping
     # which could be resolved with a single tree_map cast
     qL_all = [jnp.zeros(1)] * num_factors
     for m, factor_list_m in enumerate(all_factor_lists):
