@@ -32,7 +32,7 @@ env = make(
     EnvType.GRIDWORLD, 
     batch_size=batch_size,
     rows=1,
-    cols=2
+    cols=3
 )
 
 workspace_agent_params = env.get_default_agent_params()
@@ -97,7 +97,7 @@ agent, model, key = Agent.from_env(
     env=env,
     learning_config=learning_config,
     key=key,
-    model_params={"T": 200},
+    model_params={"T": 10000},
     agent_params=workspace_agent_params,
     #uniform_D=True
 )
@@ -116,7 +116,7 @@ plot_parameter_learning(combined_info, learning_config, env, trial_lines=True)
 print_parameter_learning(combined_info, learning_config, env)
 # #compute and plot prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
-plot_prediction_errors(pe_analysis, yscale='linear', smoothing=10, num_trials=num_trials,trial_lines=True)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials,trial_lines=True)
 # #compute and plot preferences for multiple trials
 # preferences= compute_preferences(combined_info)
 # plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
