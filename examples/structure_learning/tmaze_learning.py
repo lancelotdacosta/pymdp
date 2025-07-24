@@ -135,7 +135,6 @@ plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, tit
 
 
 #%% ### 2C. Parameter (A&B) Learning Demo
-# NOT YET WORKING FINE!!!
 # Here we demonstrate how the agent can learn the transition and likelihood (A&B) tensors through experience.
 
 # Set up random key
@@ -160,7 +159,7 @@ agent, model, key = Agent.from_env(
 )
 
 # Run simulation with multiple trials
-num_trials = 2000 # Number of trials to run
+num_trials = 100 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
 #print last trial of rollout
