@@ -87,7 +87,7 @@ if __name__ == "__main__":
     plt.plot([0, limit], [0, limit], "k--", lw=1)
     plt.xlabel("PyMDP  spm_wnorm  value")
     plt.ylabel("True  Dirichlet  KL")
-    plt.title("PyMDP info-gain vs. correct KL (one-hot observations)")
+    plt.title("Approximation vs. true KL (one-hot update)")
     plt.tight_layout()
     plt.show()
 
