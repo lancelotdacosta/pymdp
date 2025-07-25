@@ -14,11 +14,10 @@ from pymdp.utils import flatten_multi_trial_tensor_list
 MINVAL = jnp.finfo(float).eps
 
 # --- Toggle for information-gain formulation ---------------------------------
-# Set to ``True`` to use KL-based information-gain weights instead of the legacy
+# Set to ``True`` to use exact information-gain over parameters instead of the legacy
 # spm_wnorm heuristic.  Changing this single line lets you switch behaviour
 # globally without touching the rest of the code-base.
-USE_KL_INFO_GAIN = True  # ⇦ CHANGE THIS LINE TO ``True`` FOR THE FIX
-
+USE_EXACT_PARAM_INFO_GAIN = True  # ⇦ CHANGE THIS LINE TO ``True`` FOR THE FIX
 # -----------------------------------------------------------------------------
 
 def spm_betaln(z: jnp.ndarray) -> jnp.ndarray:
@@ -453,32 +452,38 @@ def multidimensional_outer(arrs):
     return x
 
 
-def _kl_wnorm(A):
-    """KL-based weight matrix used for parameter information gain.
-
-    For each observation row *i* and parameter column *j* this returns the
-    contribution   Δ = ψ(Σα_j + 1) − ψ(α_{ij} + 1),  which equals the expected
-    information gain (in nats) of making a single additional observation *i*
-    given prior concentration vector α·j.  It has the same shape as *A* and can
-    therefore be dropped into the existing factor_dot/qo_m infrastructure.
+def _exact_wnorm(A):
     """
-    A = jnp.clip(A, min=MINVAL)  # Add numerical stability
-    total = A.sum(axis=0, keepdims=True)
-    return digamma(total + 1.0) - digamma(A + 1.0)
+    Implements (-1) * eq. (D.15) in Da Costa et al. ‘Active inference on discrete state-spaces: A synthesis’, Journal of Mathematical Psychology, 2020.
 
+    Note: Like the legacy SPM implementation this function clips A for numerical stability. However note that if some values of Aare set to zero e.g. by Bayesian model reduction, these are non-zeroed in this calculation, and thus contribute a large amount to the information gain unless these are zeroed when multiplying by beliefs about states and expected observations. In principle, this should be the case.
+    """
+    # Clip once and reuse for numerical stability
+    safe_A = jnp.clip(A, MINVAL)
+    safe_sumA = jnp.clip(safe_A.sum(axis=0), MINVAL)
+
+    wA = (
+        jnp.log(safe_sumA) - jnp.log(safe_A)
+        + 1. / safe_A - 1. / safe_sumA
+        + digamma(safe_A) - digamma(safe_sumA)
+    )
+
+    return -wA # TODO: minus sign here gives negative info gain for backward compatibility with spm implementation. Later will need to remove minus sign here to get positive info gain and adjust function documentation accordingly.
 
 def spm_wnorm(A):
     """
     Returns the weight matrix used in PyMDP's parameter information-gain term.
 
-    Historically this was the heuristic ``1/Σα − 1/α``.  If the global flag
-    ``USE_KL_INFO_GAIN`` is set to *True* we instead return the analytic
-    Dirichlet-KL weight defined in ``_kl_wnorm`` while keeping the original
-    function signature so that the rest of the codebase remains unchanged.
+    Historically this was the heuristic ``1/Σα − 1/α``. If the global flag
+    ``USE_EXACT_PARAM_INFO_GAIN`` is set to *True* we instead return the exact value of
+    the weight matrix used in the info gain computation defined in ``_exact_wnorm`` 
+    while keeping the original function signature so that the rest of the codebase remains unchanged.
     """
-    if USE_KL_INFO_GAIN:
-        return _kl_wnorm(A)
+    if USE_EXACT_PARAM_INFO_GAIN:
+        return _exact_wnorm(A)
 
+    """spm legacy heuristic for computing information-gain over parameters:
+    Implements (-2) * second line of eq. (D.17) in Da Costa et al. ‘Active inference on discrete state-spaces: A synthesis’, Journal of Mathematical Psychology, 2020"""
     norm = 1. / A.sum(axis=0)
     avg = 1. / (A + MINVAL)
     wA = norm - avg
