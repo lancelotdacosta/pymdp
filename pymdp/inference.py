@@ -56,7 +56,7 @@ def update_posterior_states(
                 B_dependencies,
                 num_iter=num_iter,
             )
-        if method == "mmp":
+        elif method == "mmp":
             qs = run_mmp(
                 A,
                 B,
@@ -66,6 +66,8 @@ def update_posterior_states(
                 B_dependencies,
                 num_iter=num_iter,
             )
+        else:
+            raise NotImplementedError(f"Inference method: '{method}' is not implemented.")
 
     if qs_hist is not None:
         if method == "fpi" or method == "ovf":

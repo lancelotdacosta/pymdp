@@ -47,7 +47,7 @@ def make(env_type : EnvType, **kwargs : Dict[str, Any]) -> Env:
         # REWARD_MODALITY_ID = 1 => Agent observes rewards (NO_REWARD = 0, REWARD_IDX = 1, LOSS_IDX = 2).
         # CUE_MODALITY_ID = 2 => Agent observes cues (reward is in left arm, reward is in right arm), uniform if not in cue location.
         EnvType.T_MAZE: TMaze,
-        
+
         # [GridWorld Environment]
         # ==> States:
         # LOCATION_FACTOR_ID = 0 -> Describes the agent location in a grid (rows × cols states).

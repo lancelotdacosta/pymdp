@@ -5,8 +5,8 @@ from jax import jit, vmap, grad, lax, nn
 # from jax.config import config
 # config.update("jax_enable_x64", True)
 
-from pymdp.maths import compute_log_likelihood, compute_log_likelihood_per_modality, log_stable, MINVAL, factor_dot, factor_dot_flex
-from typing import Any, List
+from pymdp.maths import compute_log_likelihood, compute_log_likelihood_per_modality, log_stable, factor_dot, factor_dot_flex
+from typing import List
 
 def add(x, y):
     return x + y
@@ -20,7 +20,7 @@ def all_marginal_log_likelihood(qs, log_likelihoods, all_factor_lists):
     
     num_factors = len(qs)
 
-    # insted of a double loop we could have a list defining m to f mapping
+    # instead of a double loop we could have a list defining m to f mapping
     # which could be resolved with a single tree_map cast
     qL_all = [jnp.zeros(1)] * num_factors
     for m, factor_list_m in enumerate(all_factor_lists):

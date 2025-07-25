@@ -87,7 +87,7 @@ class Agent(Module):
     # flag for whether to use inductive inference ("intentional inference") when computing expected free energy
     use_inductive: bool = field(static=True)
     onehot_obs: bool = field(static=True)
-    # determinstic or stochastic action selection
+    # deterministic or stochastic action selection
     action_selection: str = field(static=True)
     # whether to sample from full posterior over policies ("full") or from marginal posterior over actions ("marginal")
     sampling_mode: str = field(static=True)
@@ -176,9 +176,7 @@ class Agent(Module):
         # flatten B action dims for multiple action dependencies
         self.action_maps = None
         self.num_controls_multi = num_controls
-        if (
-            B_action_dependencies is not None
-        ):  # note, this only works when B_action_dependencies is not the trivial case of [[0], [1], ...., [num_factors-1]]
+        if B_action_dependencies is not None:  # note, this only works when B_action_dependencies is not the trivial case of [[0], [1], ...., [num_factors-1]]
             policies_multi = control.construct_policies(
                 self.num_controls_multi,
                 self.num_controls_multi,
@@ -238,51 +236,26 @@ class Agent(Module):
         else:
             self.policies = policies
 
-        # setup pytree leaves A, B, C, D, E, pA, pB, H, I
-        if apply_batch:
-            A = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), A)
-            B = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), B)
-
-        if pA is not None and apply_batch:
-            pA = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), pA)
-
-        if pB is not None and apply_batch:
-            pB = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), pB)
-
-        if pD is not None and apply_batch:
-            pD = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), pD)
-
-        if C is None:
-            C = [jnp.ones((self.batch_size, self.num_obs[m])) / self.num_obs[m] for m in range(self.num_modalities)]
-        elif apply_batch:
-            C = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), C)
-
-        if D is None:
-            D = [jnp.ones((self.batch_size, self.num_states[f])) / self.num_states[f] for f in range(self.num_factors)]
-        elif apply_batch:
-            D = jtu.tree_map(lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape), D)
-
-        if E is None:
-            E = jnp.ones((self.batch_size, len(self.policies))) / len(self.policies)
-        elif apply_batch:
-            E = jnp.broadcast_to(E, (self.batch_size,) + E.shape)
-
-        if H is not None and apply_batch:
-            H = jtu.tree_map(
-                lambda x: jnp.broadcast_to(x, (self.batch_size,) + x.shape),
-                H,
-            )
-
-        self.A = A
-        self.B = B
-        self.C = C
-        self.D = D
-        self.E = E
-        self.H = H
+        # setup pytree leaves A, B, C, D, E, H, I, pA, pB, pD
+        self.A = self.safe_broadcast(A, self.batch_size, broadcast=apply_batch)
+        self.B = self.safe_broadcast(B, self.batch_size, broadcast=apply_batch)
+        self.H = self.safe_broadcast(H, self.batch_size, broadcast=apply_batch)
         self.I = I
-        self.pA = pA
-        self.pB = pB
-        self.pD = pD
+        self.pA = self.safe_broadcast(pA, self.batch_size, broadcast=apply_batch)
+        self.pB = self.safe_broadcast(pB, self.batch_size, broadcast=apply_batch)
+        self.pD = self.safe_broadcast(pD, self.batch_size, broadcast=apply_batch)
+
+        self.C = self.safe_broadcast(C, self.batch_size, broadcast=apply_batch)
+        if self.C is None:
+            self.C = [jnp.ones((self.batch_size, self.num_obs[m])) / self.num_obs[m] for m in range(self.num_modalities)]
+
+        self.D = self.safe_broadcast(D, self.batch_size, broadcast=apply_batch)
+        if self.D is None:
+            self.D = [jnp.ones((self.batch_size, self.num_states[f])) / self.num_states[f] for f in range(self.num_factors)]
+
+        self.E = self.safe_broadcast(E, self.batch_size, broadcast=apply_batch)
+        if self.E is None:
+            self.E = jnp.ones((self.batch_size, len(self.policies))) / len(self.policies)
 
         self.gamma = jnp.broadcast_to(gamma, (self.batch_size,))
         self.alpha = jnp.broadcast_to(alpha, (self.batch_size,))
@@ -290,22 +263,23 @@ class Agent(Module):
         self.inductive_threshold = jnp.broadcast_to(inductive_threshold, (self.batch_size,))
         self.inductive_epsilon = jnp.broadcast_to(inductive_epsilon, (self.batch_size,))
 
-        if self.use_inductive and H is not None:
-            I = vmap(
-                partial(
-                    control.generate_I_matrix,
-                    depth=self.inductive_depth,
-                )
-            )(H, B, self.inductive_threshold)
-        elif self.use_inductive and I is not None:
-            I = I
-        else:
-            I = jtu.tree_map(lambda x: jnp.expand_dims(jnp.zeros_like(x), 1), D)
-
         self.onehot_obs = onehot_obs
 
         # validate model
         self._validate()
+
+    @staticmethod
+    def safe_broadcast(array, broadcast_size, broadcast=True):
+        """
+        Broadcast an array along a new dimension, if requested.
+        @param array: the array to broadcast along the new dimension
+        @param broadcast_size: the size of the new dimension
+        @param broadcast: whether to perform the broadcast or not
+        @return the new array
+        """
+        if broadcast is True and array is not None:
+            array = jtu.tree_map(lambda x: jnp.broadcast_to(x, (broadcast_size,) + x.shape), array)
+        return array
 
     @property
     def unique_multiactions(self):
@@ -410,18 +384,20 @@ class Agent(Module):
             at timepoint ``t_idx``.
         """
 
-        # TODO: infer this from shapes
-        if not self.onehot_obs:
-            o_vec = [nn.one_hot(o, self.num_obs[m]) for m, o in enumerate(observations)]
-        else:
+        # Ensure observations are represented as one-hot vectors.
+        if self.onehot_obs is True:
             o_vec = observations
+        else:
+            o_vec = [nn.one_hot(o, self.num_obs[m]) for m, o in enumerate(observations)]
 
+        # Mask the observations and corresponding likelihood matrices, if needed.
         A = self.A
         if mask is not None:
             for i, m in enumerate(mask):
                 o_vec[i] = m * o_vec[i] + (1 - m) * jnp.ones_like(o_vec[i]) / self.num_obs[i]
                 A[i] = m * A[i] + (1 - m) * jnp.ones_like(A[i]) / self.num_obs[i]
 
+        # Infer the latent variables.
         infer_states = partial(
             inference.update_posterior_states,
             A_dependencies=self.A_dependencies,
@@ -598,7 +574,7 @@ class Agent(Module):
         else:
             B_dependencies = default_B_dependencies(self.num_factors)
 
-        """TODO: check B action shape"""
+        # TODO: check B action shape
         if B_action_dependencies is not None:
             B_action_dependencies = B_action_dependencies
         else:
@@ -654,22 +630,16 @@ class Agent(Module):
         return policies_flat
 
     def _get_default_params(self):
-        method = self.inference_algo
-        default_params = None
-        if method == "VANILLA":
-            default_params = {"num_iter": 8, "dF": 1.0, "dF_tol": 0.001}
-        elif method == "MMP":
-            raise NotImplementedError("MMP is not implemented")
-        elif method == "VMP":
-            raise NotImplementedError("VMP is not implemented")
-        elif method == "BP":
-            raise NotImplementedError("BP is not implemented")
-        elif method == "EP":
-            raise NotImplementedError("EP is not implemented")
-        elif method == "CV":
-            raise NotImplementedError("CV is not implemented")
+        # Return the parameters of the vanilla inference methods.
+        if self.inference_algo == "VANILLA":
+            return {"num_iter": 8, "dF": 1.0, "dF_tol": 0.001}
 
-        return default_params
+        # Raise an exception for inference methods that are not supported.
+        for m in ["MMP", "VMP", "BP", "EP", "CV"]:
+            if self.inference_algo == m:
+                raise NotImplementedError(f"{m} is not implemented")
+
+        return None
 
     def _validate(self):
         for m in range(self.num_modalities):
@@ -690,7 +660,7 @@ class Agent(Module):
             assert (
                 self.B[f].shape[2:-1] == factor_dims
             ), f"Please input a `B_dependencies` whose {f}-th indices pick out the hidden state factors that line up with the all-but-final lagging dimensions of B[{f}]..."
-            if self.pB != None:
+            if self.pB is not None:
                 assert (
                     self.pB[f].shape[2:-1] == factor_dims
                 ), f"Please input a `B_dependencies` whose {f}-th indices pick out the hidden state factors that line up with the all-but-final lagging dimensions of pB[{f}]..."
