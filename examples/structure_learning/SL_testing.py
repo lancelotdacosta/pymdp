@@ -8,24 +8,8 @@ from pymdp.envs.env_factory import make, EnvType
 from pymdp.agent import Agent
 from pymdp.maths import compute_prediction_errors, compute_preferences
 
-if __name__ == "__main__":
 
-    #    class A:
-    #
-    #        def __init__(self):
-    #            self.a = 1
-    #
-    #        def foo(self):
-    #            print(self.a)
-    #
-    #    class B(A):
-    #
-    #        def __init__(self):
-    #            super().__init__()
-    #            self.b = 2
-    #
-    #    b = B()
-    #    b.foo()
+if __name__ == "__main__":
 
     # Initialize jax random key.
     key = jr.PRNGKey(1)
@@ -34,12 +18,18 @@ if __name__ == "__main__":
     env = make(EnvType.SIMPLEST, batch_size=32)
 
     # Initialize agent.
-    learning_config = LearningConfig(learn_A=True, learn_B=True, learn_D=False)
+    learning_config = LearningConfig(learn_A=False, learn_B=True, learn_D=False)
 
     agent, model, key = Agent.from_env(
         env=env,
         learning_config=learning_config,
         key=key,
+        agent_params={
+            "inference_algo": "ovf",
+            # "inference_algo": "fpi",
+            # "inference_algo": "vmp",
+            # "inference_algo": "mmp",
+        },
         model_params={"T": 10}
     )
 

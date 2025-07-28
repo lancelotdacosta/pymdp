@@ -4,7 +4,6 @@ import jax.random as jr
 import jax.tree_util as jtu
 import jax.lax
 
-from pymdp.envs import TMaze
 from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list
 import warnings
 
@@ -239,7 +238,7 @@ def _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0):
         agent = agent.infer_parameters(
             qs, 
             observation_t, 
-            action_B if agent.learn_B else action_t,
+            action_B,
             beliefs_B=beliefs_B,
             beliefs_D=qs_0
         )

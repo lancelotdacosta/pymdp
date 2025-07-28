@@ -87,6 +87,7 @@ def update_posterior_states(
 
     return qs_hist
 
+
 def joint_dist_factor(b: ArrayLike, filtered_qs: list[Array], actions: Array):
     qs_last = filtered_qs[-1]
     qs_filter = filtered_qs[:-1]
@@ -104,7 +105,7 @@ def joint_dist_factor(b: ArrayLike, filtered_qs: list[Array], actions: Array):
         qs_smooth = qs_joint.sum(-2)
         if isinstance(qs_smooth, JAXSparse):
             qs_smooth = sparse.todense(qs_smooth)
-        
+
         # returns q(s_t), (q(s_t), q(s_t, s_t+1))
         return qs_smooth, (qs_smooth, qs_joint)
 
@@ -142,9 +143,9 @@ def smoothing_ovf(filtered_post, B, past_actions):
         past_actions (Array): Array of past actions with shape (batch_size, num_timesteps-1, num_factors)
         
     Returns:
-        tuple: A 2-tuple (marginals_and_joints) where:
-            - marginals_and_joints[0] (list): Smoothed marginal distributions q(s_t|o_{<=T}) for each factor
-            - marginals_and_joints[1] (list): Joint distributions q(s_t, s_{t+1}|o_{<=T}) for each factor
+        tuple: A 2-tuple (marginals, joints) where:
+            - marginals (list): Smoothed marginal distributions q(s_t|o_{<=T}) for each factor
+            - joints (list): Joint distributions q(s_t, s_{t+1}|o_{<=T}) for each factor
             
     Notes:
         - Used specifically in the OVF algorithm for more accurate parameter learning
@@ -155,12 +156,11 @@ def smoothing_ovf(filtered_post, B, past_actions):
     assert len(filtered_post) == len(B)
     nf = len(B)  # number of factors
 
-    joint = lambda b, qs, f: joint_dist_factor(b, qs, past_actions[..., f])
-
-    marginals_and_joints = ([], [])
+    marginals = []
+    joints = []
     for b, qs, f in zip(B, filtered_post, list(range(nf))):
-        marginals, joints = joint(b, qs, f)
-        marginals_and_joints[0].append(marginals)
-        marginals_and_joints[1].append(joints)
+        marginal, joint = joint_dist_factor(b, qs, past_actions[..., f])
+        marginals.append(marginal)
+        joints.append(joint)
 
-    return marginals_and_joints
+    return marginals, joints
