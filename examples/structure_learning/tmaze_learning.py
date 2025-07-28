@@ -22,7 +22,7 @@ from pymdp.analysis import print_rollout, print_initial_state, render_rollout, p
 from pymdp.analysis import plot_prediction_errors, plot_model_comparison, plot_parameter_learning, print_experiment_setup
 
 # if __name__ == "__main__":
-key_idx = 1 # Initialize master random key index at the start
+key_idx = 4 # Initialize master random key index at the start
 
 #%% Initialise environment
 
@@ -138,7 +138,6 @@ plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, tit
 
 
 #%% ### 2C. Parameter (A&B) Learning Demo
-# NOT YET WORKING FINE!!!
 # Here we demonstrate how the agent can learn the transition and likelihood (A&B) tensors through experience.
 
 # Set up random key
@@ -163,7 +162,7 @@ agent, model, key = Agent.from_env(
 )
 
 # Run simulation with multiple trials
-num_trials = 2000 # Number of trials to run
+num_trials = 100 # Number of trials to run
 _, key, combined_info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
 #print last trial of rollout
@@ -174,7 +173,7 @@ plot_parameter_learning(combined_info, learning_config, env)
 # print_parameter_learning(combined_info, learning_config, env)
 #compute and plot prediction errors
 pe_analysis = compute_prediction_errors(combined_info)
-plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials)
+plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials)
 #compute and plot preferences for multiple trials
 preferences= compute_preferences(combined_info)
 plot_rollout_preferences(preferences, "cumulative_preferences", batch_idx=0, title="Cumulative preferences", zoom=False)
