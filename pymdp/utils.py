@@ -37,38 +37,27 @@ def norm_dist(dist: Tensor) -> Tensor:
     return dist / dist.sum(0)
 
 
-
 def list_array_uniform(shape_list: ShapeList) -> Vector:
     """
     Creates a list of jax arrays representing uniform Categorical
     distributions with shapes given by shape_list[i]. The shapes (elements of shape_list)
     can either be tuples or lists.
     """
-    arr = []
-    for shape in shape_list:
-        arr.append(norm_dist(jnp.ones(shape)))
-    return arr
+    return [norm_dist(jnp.ones(shape)) for shape in shape_list]
 
 
 def list_array_zeros(shape_list: ShapeList) -> Vector:
     """
     Creates a list of 1-D jax arrays filled with zeros, with shapes given by shape_list[i]
     """
-    arr = []
-    for shape in shape_list:
-        arr.append(jnp.zeros(shape))
-    return arr
+    return [jnp.zeros(shape) for shape in shape_list]
 
 
 def list_array_scaled(shape_list: ShapeList, scale: float = 1.0) -> Vector:
     """
     Creates a list of 1-D jax arrays filled with scale, with shapes given by shape_list[i]
     """
-    arr = []
-    for shape in shape_list:
-        arr.append(scale * jnp.ones(shape))
-
-    return arr
+    return [scale * jnp.ones(shape) for shape in shape_list]
 
 
 def get_combination_index(x, dims):

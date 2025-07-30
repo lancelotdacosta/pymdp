@@ -387,7 +387,7 @@ class POMDPModel(eqx.Module):
         cls,
         structure: POMDPStructure,
         learning: LearningConfig = None,
-        init: str = "random",
+        init: Literal["uniform", "like", "random", "gaussian"] = "random",
         scale: float = 1.0,
         key: jax.random.PRNGKey = None,
     ):
@@ -439,7 +439,7 @@ class POMDPModel(eqx.Module):
         cls,
         env,
         learning: LearningConfig = None,
-        init: Literal["uniform", "like", "random"] = "random",
+        init: Literal["uniform", "like", "random", "gaussian"] = "random",
         scale: float = 1.0,
         key: Optional[jax.random.PRNGKey] = None,
         T: int = 100
@@ -534,7 +534,7 @@ class POMDPModel(eqx.Module):
         B_base: List[jnp.ndarray],
         D_base: List[jnp.ndarray],
         learning: LearningConfig,
-        init: Literal["uniform", "like", "random"] = "random",
+        init: Literal["uniform", "like", "random", "gaussian"] = "random",
         scale: float = 1.0,
         key: Optional[jax.random.PRNGKey] = None
     ) -> Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], jax.random.PRNGKey]:
