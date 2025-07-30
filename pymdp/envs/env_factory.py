@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import Dict, Any
+from typing import Any
 from pymdp.envs import Env
 from pymdp.envs.tmaze import TMaze
 from pymdp.envs.simplest import SimplestEnv
@@ -17,7 +17,7 @@ class EnvType(IntEnum):
     GRIDWORLD = 2
 
 
-def make(env_type : EnvType, **kwargs : Dict[str, Any]) -> Env:
+def make(env_type : EnvType, **kwargs : Any) -> Env:
     """
     Create the environment requested by the user.
     :param env_type: the type of environment to create
