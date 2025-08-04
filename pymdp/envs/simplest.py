@@ -1,5 +1,4 @@
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from pymdp.utils import fig2img
 from equinox import field
@@ -77,10 +76,8 @@ class SimplestEnv(POMDPEnv):
         Generate observation likelihood tensor.
         Maps true location to observed location with a simple identity mapping.
         """
-        A = []
-        # Simple identity mapping between states and observations
-        A.append(jnp.eye(2))  # 2x2 identity matrix for 2 locations
-        
+        A = [jnp.eye(2)] # Simple identity mapping between states and observations
+
         A_dependencies = [[0]]  # Only depends on location factor
         
         return A, A_dependencies
@@ -149,10 +146,7 @@ class SimplestEnv(POMDPEnv):
         modify this to return a uniform distribution: jnp.array([0.5, 0.5]), 
         or use model.set_uniform_D() for the agent's generative model.
         """
-        D = []
-        initial_location = jnp.array([1.0, 0.0])  # Start at location 0 (left)
-        D.append(initial_location)
-        
+        D = [jnp.array([1.0, 0.0])]  # Start at location 0 (left)
         return D
 
     def render(self, mode="human", observations=None):

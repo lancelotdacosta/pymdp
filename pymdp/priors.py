@@ -12,7 +12,7 @@ __author__: Lancelot Da Costa
 
 
 def dirichlet_prior(template: List[jnp.ndarray],
-                   init: Literal["uniform", "like", "random"] = "uniform",
+                   init: Literal["uniform", "like", "random", "gaussian"] = "uniform",
                    scale: float = 1.0,
                    learning_enabled: bool = True,
                    key: jr.PRNGKey = None) -> Tuple[Optional[List[jnp.ndarray]], List[jnp.ndarray], jr.PRNGKey]:
@@ -43,6 +43,8 @@ def dirichlet_prior(template: List[jnp.ndarray],
         concentration = _dirichlet_like(template, scale)
     elif init == "random":
         concentration, key = _dirichlet_random(template, scale, key)
+    elif init == "gaussian":
+        concentration, key = _dirichlet_gaussian(template, std=scale, key=key)
     else:
         msg = f"Unsupported dirichlet initialisation method: '{init}'." \
               "Should be: 'uniform', 'like', or 'random'."
@@ -91,9 +93,9 @@ def _dirichlet_like(template: List[jnp.ndarray], scale: float = 1.0) -> List[jnp
 
 
 def _dirichlet_random(
-    template: List[jnp.ndarray],
-    scale: float = 1.0,
-    key: jr.PRNGKey = None
+        template: List[jnp.ndarray],
+        scale: float = 1.0,
+        key: jr.PRNGKey = None
 ) -> Tuple[List[jnp.ndarray], jr.PRNGKey]:
     """Initialize random Dirichlet parameters using iid uniform distributions on interval [0, scale].
 
@@ -108,10 +110,42 @@ def _dirichlet_random(
     if key is None:
         raise ValueError("Random key must be provided")
 
-    shapes = [arr.shape for arr in template] # Get shapes from template
-    key, *subkeys = jr.split(key, len(shapes)+1) # Generate a random key for each shape
-    
+    shapes = [arr.shape for arr in template]  # Get shapes from template
+    key, *subkeys = jr.split(key, len(shapes) + 1)  # Generate a random key for each shape
+
     return [scale * jr.uniform(k, shape=shape) for k, shape in zip(subkeys, shapes)], key
+
+
+def _dirichlet_gaussian(
+        template: List[jnp.ndarray],
+        mean: float = 1/8,
+        std: float = 0.01,
+        key: jr.PRNGKey = None
+) -> Tuple[List[jnp.ndarray], jr.PRNGKey]:
+    """Initialize random Dirichlet parameters using iid Gaussian distributions with
+    a specified mean and standard deviation.
+
+    Args:
+        template: List of arrays used to determine shapes
+        mean: Mean of the Gaussian distribution (default=1/8)
+        std: Standard deviation of the Gaussian distribution (default=0.01)
+        key: JAX random key (required)
+
+    Returns:
+        List of scaled random parameters
+    """
+    if key is None:
+        raise ValueError("Random key must be provided")
+
+    shapes = [arr.shape for arr in template]  # Get shapes from template
+    key, *keys = jr.split(key, len(shapes) + 1)  # Generate a random key for each shape
+
+    arrays = []
+    for k, shape in zip(keys, shapes):
+        array = mean + std * jr.normal(k, shape=shape)
+        array = jnp.clip(array, min=0.01) # Avoid negative values.
+        arrays.append(array)
+    return arrays, key
 
 
 def check_consistency(param, prior, name):

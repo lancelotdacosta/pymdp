@@ -274,8 +274,7 @@ def compute_prediction_errors(info):
 
     #Flatten the rollout info if multi-trial
     is_multi, _ = is_multi_trial(info)
-    if is_multi: flat_info = flatten_multi_trial_info(info)
-    else: flat_info = info
+    flat_info = flatten_multi_trial_info(info) if is_multi else info
 
     # Get variables from rollout info
     observations = flat_info["observation"]  #list of arrays (one per modality) shape: (T+1, batch_size, obs_dim)

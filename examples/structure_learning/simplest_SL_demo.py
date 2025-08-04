@@ -3,8 +3,11 @@
 # The demo goes in steps: structure learning is only toward the end
 
 # %% Importing necessary libraries
-# TODO get_ipython().run_line_magic('load_ext', 'autoreload')
-# TODO get_ipython().run_line_magic('autoreload', '2')
+try:
+    get_ipython().run_line_magic('load_ext', 'autoreload')
+    get_ipython().run_line_magic('autoreload', '2')
+except Exception:
+    pass
 import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig

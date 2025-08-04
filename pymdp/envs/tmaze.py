@@ -9,7 +9,6 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import scipy.ndimage as ndimage
 from pymdp.utils import fig2img
 from equinox import field
-from .env import Env
 from .pomdp_env import POMDPEnv
 
 
@@ -47,7 +46,10 @@ class TMaze(POMDPEnv):
             punishment_probability: Probability of getting punishment in incorrect arm
             cue_validity: Probability of cue correctly indicating reward location
             reward_condition: If specified, fixes reward to left (0) or right (1) arm, otherwise reward is randomly assigned
-            dependent_outcomes: If True, punishment occurs as a function of reward probability (i.e., if reward probability is 0.8, then 20% punishment). If False, punishment occurs with set probability (i.e., 20% no outcome and punishment will only occur in the other (non-rewarding) arm)
+            dependent_outcomes: If True, punishment occurs as a function of reward probability
+                                (i.e., if reward probability is 0.8, then 20% punishment).
+                                If False, punishment occurs with set probability
+                                (i.e., 20% no outcome and punishment will only occur in the other (non-rewarding) arm)
         """
         self.reward_probability = reward_probability
         self.punishment_probability = punishment_probability

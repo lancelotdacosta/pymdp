@@ -5,8 +5,11 @@
 
 
 # %% Importing necessary libraries
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
+try:
+    get_ipython().run_line_magic('load_ext', 'autoreload')
+    get_ipython().run_line_magic('autoreload', '2')
+except Exception:
+    pass
 import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig

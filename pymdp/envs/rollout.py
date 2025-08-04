@@ -4,7 +4,6 @@ import jax.random as jr
 import jax.tree_util as jtu
 import jax.lax
 
-from pymdp.envs import TMaze
 from pymdp.utils import flatten_multi_trial_tensor, flatten_multi_trial_tensor_list
 import warnings
 

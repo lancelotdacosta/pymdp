@@ -6,7 +6,7 @@ from pymdp.envs.rollout import multi_trial_rollout
 from pymdp.learning import LearningConfig
 from pymdp.envs.env_factory import make, EnvType
 from pymdp.agent import Agent
-from pymdp.maths import compute_prediction_errors
+from pymdp.maths import compute_prediction_errors, compute_preferences
 
 
 if __name__ == "__main__":

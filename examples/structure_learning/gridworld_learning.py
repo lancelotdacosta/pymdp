@@ -5,8 +5,11 @@
 #Author: Lancelot Da Costa
 
 # %% Importing necessary libraries
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
+try:
+    get_ipython().run_line_magic('load_ext', 'autoreload')
+    get_ipython().run_line_magic('autoreload', '2')
+except Exception:
+    pass
 import jax.numpy as jnp
 from jax import random as jr
 from pymdp.learning import LearningConfig
@@ -44,9 +47,9 @@ workspace_agent_params.update({
     "inference_algo": "fpi"
 })
 
-# ### 1. Basic Demo. 
+### 1. Basic Demo.
 
-#Demo of active Inference with the perfect model. 
+#Demo of active Inference with the perfect model.
 
 # Set up random key
 key = jr.PRNGKey(key_idx)

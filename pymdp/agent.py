@@ -290,9 +290,7 @@ class Agent(Module):
         agent = self
         beliefs_B = beliefs_A if beliefs_B is None else beliefs_B
         if self.inference_algo == 'ovf':
-            smoothed_marginals_and_joints = vmap(inference.smoothing_ovf)(beliefs_A, self.B, actions)
-            marginal_beliefs = smoothed_marginals_and_joints[0]
-            joint_beliefs = smoothed_marginals_and_joints[1]
+            marginal_beliefs, joint_beliefs = vmap(inference.smoothing_ovf)(beliefs_A, self.B, actions)
         else:
             marginal_beliefs = beliefs_A
             if self.learn_B:
