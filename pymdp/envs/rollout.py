@@ -238,7 +238,7 @@ def _update_agent_parameters(agent, qs, qs_prev, observation_t, action_t, qs_0):
         agent = agent.infer_parameters(
             qs, 
             observation_t, 
-            action_B if agent.learn_B else action_t,
+            action_B,
             beliefs_B=beliefs_B,
             beliefs_D=qs_0
         )
