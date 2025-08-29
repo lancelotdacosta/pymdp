@@ -1,4 +1,6 @@
 from typing import List, Tuple, Literal, Optional
+
+import jax.numpy
 import jax.numpy as jnp
 import jax.random as jr
 from .utils import list_array_scaled

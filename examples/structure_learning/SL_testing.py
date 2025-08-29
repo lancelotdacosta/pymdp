@@ -31,11 +31,12 @@ if __name__ == "__main__":
             "use_param_info_gain": True,
             "use_states_info_gain": True,
             "action_selection": "stochastic",
-            "learning_mode": "online"
+            "learning_mode": "offline"
         },
         model_params={
-            "T": 10,
-            "init": "gaussian"
+            "T": 100,
+            "init": "gaussian",
+            "scale": 0.01
         }
     )
 
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     print()
 
     # Run simulation.
-    num_trials = 10000
+    num_trials = 1000
     _, key, info = multi_trial_rollout(agent, env, num_timesteps=model.structure.T, num_trials=num_trials, rng_key=key)
 
     # Analysis of simulation results
@@ -66,4 +67,4 @@ if __name__ == "__main__":
     plot_parameter_learning(info, learning_config, env, trial_lines=False)
     print_parameter_learning(info, learning_config, env, display_dirichlet_counts=True)
     pe_analysis = compute_prediction_errors(info)
-    plot_prediction_errors(pe_analysis, yscale='linear', smoothing=None, num_trials=num_trials, trial_lines=False)
+    plot_prediction_errors(pe_analysis, yscale='linear', smoothing=100, num_trials=num_trials, trial_lines=False)
